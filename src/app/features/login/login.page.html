@@ -1,0 +1,77 @@
+<ion-content>
+  <div class="flex flex-col justify-start min-h-screen px-8 bg-gray-50">
+    <div class="text-left mt-10">
+      <h1 class="text-3xl font-bold text-[#1a1a2e]">Welcome To Virdan</h1>
+      <p class="text-sm text-gray-400 mt-3">Good to see you. Enter your username and password to continue.</p>
+    </div>
+
+    <!-- Form -->
+    <!-- Error per field -->
+    <div class="flex flex-col gap-4 mt-4">
+      <!-- Input 1 -->
+      <div class="relative">
+        <input type="text" [(ngModel)]="data.username" placeholder=" "
+          class="peer w-full px-4 pt-5 pb-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-[#007BFF] text-sm" />
+        <label class="absolute left-4 top-3.5 text-gray-400 text-sm transition-all 
+      peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-sm 
+      peer-focus:top-1 peer-focus:text-xs peer-focus:text-[#007BFF] 
+      peer-[:not(:placeholder-shown)]:top-1 peer-[:not(:placeholder-shown)]:text-xs">
+          Username
+        </label>
+        @if (errors['username']) {
+        <p class="text-red-400 text-sm mt-2 ml-1">{{ errors['username'] }}</p>
+        }
+      </div>
+
+      <!-- Input 2 -->
+      <div class="relative">
+        <input [type]="showPassword ? 'text' : 'password'" [(ngModel)]="data.password" placeholder=" "
+          class="peer w-full px-4 pt-5 pb-2 pr-12 rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-[#007BFF] text-sm" />
+        <label class="absolute left-4 top-3.5 text-gray-400 text-sm transition-all 
+    peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-sm 
+    peer-focus:top-1 peer-focus:text-xs peer-focus:text-[#007BFF] 
+    peer-[:not(:placeholder-shown)]:top-1 peer-[:not(:placeholder-shown)]:text-xs">
+          Password
+        </label>
+        <button type="button" (click)="showPassword = !showPassword"
+          class="absolute right-4 top-[1.1rem] text-gray-400">
+          <ion-icon [name]="showPassword ? 'eye-off-outline' : 'eye-outline'" class="text-xl"></ion-icon>
+        </button>
+        @if (errors['password']) {
+        <p class="text-red-400 text-sm mt-2 ml-1">{{ errors['password'] }}</p>
+        }
+      </div>
+    </div>
+
+    <button (click)="login()" [disabled]="loading"
+      class="w-full py-3 rounded-xl bg-[#007BFF] text-white font-semibold text-sm disabled:opacity-50 mt-5">
+      {{ loading ? 'Creating account...' : 'Next' }}
+    </button>
+
+    <div class="flex items-center gap-3 mt-7">
+      <div class="flex-1 h-px bg-[#ADB5BD]"></div>
+      <span class="text-xs text-[#ADB5BD] font-medium">OR</span>
+      <div class="flex-1 h-px bg-[#ADB5BD]"></div>
+    </div>
+
+    <!-- Google -->
+    <button
+      class="mt-5 w-full py-3 rounded-xl border border-solid border-gray-200 bg-white flex items-center justify-center gap-3 text-sm font-semibold text-gray-700 active:scale-95 transition-all">
+      <img src="assets/icons/google_logo.svg" class="w-6 h-6" alt="Google" />
+      Continue with Google
+    </button>
+
+    <!-- Apple -->
+    <button
+      class="mt-5 w-full py-3 rounded-xl border border-black bg-black flex items-center justify-center gap-3 text-sm font-semibold text-white active:scale-95 transition-all">
+      <img src="assets/icons/apple_logo.svg" class="w-6 h-6 invert" alt="Apple" />
+      Continue with Apple
+    </button>
+
+    <!-- Footer -->
+    <p class="text-center text-sm text-gray-400 mt-6">
+      Don't have an account?
+      <a (click)="router.navigate(['/register'])" class="text-[#007BFF] font-semibold cursor-pointer">Sign Up</a>
+    </p>
+  </div>
+</ion-content>
