@@ -15,7 +15,7 @@ import { LoginResponse } from '../../core/models/auth.model';
   standalone: true,
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   host: { class: 'ion-page' },
-  imports: [FormsModule, IonContent],
+  imports: [FormsModule, IonContent, IonIcon],
   templateUrl: './login.page.html',
   styleUrl: './login.page.scss'
 })
@@ -42,14 +42,10 @@ export class LoginPage {
       return;
     }
     this.loading = true;
-    this.api.post<LoginResponse>('auth/login', this.data, true).subscribe({
+    this.api.post<LoginResponse>('auth/login', this.data, false).subscribe({
       next: (res) => {
-        // res.sessionId, res.otp sudah typed
-        // this.router.navigate(['/register/verify'], {
-        //   state: { sessionId: res.sessionId }
-        // });
-        console.log("full response:", res)
         this.loading = false;
+        this.router.navigate(['/homepage']);
       },
       error: (err) => {
         if (err.param) {

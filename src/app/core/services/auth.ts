@@ -1,5 +1,6 @@
 import { Injectable, signal, computed } from '@angular/core';
-import { Preferences } from '@capacitor/preferences';
+import { SecureStorage } from '@aparajita/capacitor-secure-storage';
+import { LoginResponse } from '../models/auth.model';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -7,18 +8,41 @@ export class AuthService {
   isLoggedIn = computed(() => !!this._token());
 
   async init() {
-    const { value } = await Preferences.get({ key: 'token' });
-    this._token.set(value);
+    try {
+      const result = await SecureStorage.get('access_token');
+      this._token.set(result as string ?? null);
+    } catch {
+      this._token.set(null);
+    }
   }
 
-  async setToken(token: string) {
-    this._token.set(token);
-    await Preferences.set({ key: 'token', value: token });
+  async setSessionId(sessionId: string) {
+    await SecureStorage.set('session_id', sessionId);
+  }
+
+  async getSessionId(): Promise<string | null> {
+    try {
+      const result = await SecureStorage.get('session_id');
+      return result as string ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async clearSessionId() {
+    await SecureStorage.remove('session_id');
+  }
+
+  async setTokens(res: LoginResponse) {
+    await SecureStorage.set('access_token', res.accessToken);
+    await SecureStorage.set('refresh_token', res.refreshToken);
+    this._token.set(res.accessToken);
   }
 
   async logout() {
+    await SecureStorage.remove('access_token');
+    await SecureStorage.remove('refresh_token');
     this._token.set(null);
-    await Preferences.remove({ key: 'token' });
   }
 
   getToken() {

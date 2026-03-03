@@ -7,3 +7,8 @@ export interface ApiError {
 export interface ApiErrorResponse {
   error: ApiError;
 }
+
+// Success no data
+export interface ApiSuccessResponseNoData {
+  status: string;
+}

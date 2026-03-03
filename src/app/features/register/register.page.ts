@@ -35,14 +35,13 @@ export class RegisterPage {
       return;
     }
     this.loading = true;
-    this.api.post<SignupStartResponse>('auth/signup/start', this.data, true).subscribe({
-      next: (res) => {
-        // res.sessionId, res.otp sudah typed
-        // this.router.navigate(['/register/verify'], {
-        //   state: { sessionId: res.sessionId }
-        // });
-        console.log("full response:", res)
-        this.loading = false;
+    this.api.post<SignupStartResponse>('auth/signup/start', this.data, false).subscribe({
+      next: async (res: SignupStartResponse) => {
+        await this.auth.setSessionId(res.sessionId);
+        console.log("expires at: ", res.otpExpiresAt)
+        this.router.navigate(['/verify-otp'], {
+          state: { otpExpiresAt: res.otpExpiresAt }
+        });
       },
       error: (err) => {
         if (err.param) {

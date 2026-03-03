@@ -5,17 +5,15 @@
       <p class="text-sm text-gray-400 mt-3">Good to see you. Enter your username and password to continue.</p>
     </div>
 
-    <!-- Form -->
-    <!-- Error per field -->
-    <div class="flex flex-col gap-4 mt-4">
-      <!-- Input 1 -->
+    <form class="flex flex-col gap-4 mt-4" (ngSubmit)="login()">
+      <!-- Username -->
       <div class="relative">
-        <input type="text" [(ngModel)]="data.username" placeholder=" "
+        <input type="text" autocomplete="current-password" [(ngModel)]="data.username" name="username" placeholder=" "
           class="peer w-full px-4 pt-5 pb-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-[#007BFF] text-sm" />
         <label class="absolute left-4 top-3.5 text-gray-400 text-sm transition-all 
-      peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-sm 
-      peer-focus:top-1 peer-focus:text-xs peer-focus:text-[#007BFF] 
-      peer-[:not(:placeholder-shown)]:top-1 peer-[:not(:placeholder-shown)]:text-xs">
+          peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-sm 
+          peer-focus:top-1 peer-focus:text-xs peer-focus:text-[#007BFF] 
+          peer-[:not(:placeholder-shown)]:top-1 peer-[:not(:placeholder-shown)]:text-xs">
           Username
         </label>
         @if (errors['username']) {
@@ -23,14 +21,15 @@
         }
       </div>
 
-      <!-- Input 2 -->
+      <!-- Password -->
       <div class="relative">
-        <input [type]="showPassword ? 'text' : 'password'" [(ngModel)]="data.password" placeholder=" "
+        <input autocomplete="username" [type]="showPassword ? 'text' : 'password'" [(ngModel)]="data.password"
+          name="password" placeholder=" "
           class="peer w-full px-4 pt-5 pb-2 pr-12 rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-[#007BFF] text-sm" />
         <label class="absolute left-4 top-3.5 text-gray-400 text-sm transition-all 
-    peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-sm 
-    peer-focus:top-1 peer-focus:text-xs peer-focus:text-[#007BFF] 
-    peer-[:not(:placeholder-shown)]:top-1 peer-[:not(:placeholder-shown)]:text-xs">
+          peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-sm 
+          peer-focus:top-1 peer-focus:text-xs peer-focus:text-[#007BFF] 
+          peer-[:not(:placeholder-shown)]:top-1 peer-[:not(:placeholder-shown)]:text-xs">
           Password
         </label>
         <button type="button" (click)="showPassword = !showPassword"
@@ -41,12 +40,16 @@
         <p class="text-red-400 text-sm mt-2 ml-1">{{ errors['password'] }}</p>
         }
       </div>
-    </div>
 
-    <button (click)="login()" [disabled]="loading"
-      class="w-full py-3 rounded-xl bg-[#007BFF] text-white font-semibold text-sm disabled:opacity-50 mt-5">
-      {{ loading ? 'Creating account...' : 'Next' }}
-    </button>
+      @if (errors['general']) {
+      <p class="text-red-400 text-sm">{{ errors['general'] }}</p>
+      }
+
+      <button type="submit" [disabled]="loading"
+        class="w-full py-3 rounded-xl bg-[#007BFF] text-white font-semibold text-sm disabled:opacity-50 mt-1">
+        {{ loading ? 'Signing in...' : 'Sign In' }}
+      </button>
+    </form>
 
     <div class="flex items-center gap-3 mt-7">
       <div class="flex-1 h-px bg-[#ADB5BD]"></div>
@@ -55,20 +58,19 @@
     </div>
 
     <!-- Google -->
-    <button
+    <button type="button"
       class="mt-5 w-full py-3 rounded-xl border border-solid border-gray-200 bg-white flex items-center justify-center gap-3 text-sm font-semibold text-gray-700 active:scale-95 transition-all">
       <img src="assets/icons/google_logo.svg" class="w-6 h-6" alt="Google" />
       Continue with Google
     </button>
 
     <!-- Apple -->
-    <button
+    <button type="button"
       class="mt-5 w-full py-3 rounded-xl border border-black bg-black flex items-center justify-center gap-3 text-sm font-semibold text-white active:scale-95 transition-all">
       <img src="assets/icons/apple_logo.svg" class="w-6 h-6 invert" alt="Apple" />
       Continue with Apple
     </button>
 
-    <!-- Footer -->
     <p class="text-center text-sm text-gray-400 mt-6">
       Don't have an account?
       <a (click)="router.navigate(['/register'])" class="text-[#007BFF] font-semibold cursor-pointer">Sign Up</a>
