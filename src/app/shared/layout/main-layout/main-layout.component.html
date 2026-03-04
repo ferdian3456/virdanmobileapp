@@ -1,0 +1,30 @@
+<div class="flex flex-col h-screen">
+  <!-- Page Content -->
+  <div class="flex-1 overflow-hidden">
+    <router-outlet></router-outlet>
+  </div>
+
+  <!-- Bottom Navbar -->
+  <nav class="bg-white border-t border-gray-100 flex items-center justify-around px-4 py-3 z-50">
+    <a routerLink="/app/home" class="flex flex-col items-center">
+      <ion-icon [name]="isActive('/app/home') ? 'home' : 'home-outline'"
+        [class]="isActive('/app/home') ? 'text-2xl text-[#007BFF]' : 'text-2xl text-gray-400'"></ion-icon>
+    </a>
+    <a routerLink="/app/search" class="flex flex-col items-center">
+      <ion-icon [name]="isActive('/app/search') ? 'search' : 'search-outline'"
+        [class]="isActive('/app/search') ? 'text-2xl text-[#007BFF]' : 'text-2xl text-gray-400'"></ion-icon>
+    </a>
+    <a routerLink="/app/add-post" class="flex flex-col items-center">
+      <ion-icon [name]="isActive('/app/add-post') ? 'add-circle' : 'add-circle-outline'"
+        [class]="isActive('/app/add-post') ? 'text-[2.5rem] text-[#007BFF]' : 'text-[2.5rem] text-gray-400'"></ion-icon>
+    </a>
+    <a routerLink="/app/notifications" class="flex flex-col items-center">
+      <ion-icon [name]="isActive('/app/notifications') ? 'notifications' : 'notifications-outline'"
+        [class]="isActive('/app/notifications') ? 'text-2xl text-[#007BFF]' : 'text-2xl text-gray-400'"></ion-icon>
+    </a>
+    <a routerLink="/app/profile" class="flex flex-col items-center">
+      <ion-icon [name]="isActive('/app/profile') ? 'person' : 'person-outline'"
+        [class]="isActive('/app/profile') ? 'text-2xl text-[#007BFF]' : 'text-2xl text-gray-400'"></ion-icon>
+    </a>
+  </nav>
+</div>

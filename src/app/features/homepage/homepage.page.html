@@ -1,3 +1,65 @@
-<ion-content>
-  <h1>Welcome to homepage</h1>
+<ion-content [fullscreen]="true">
+  <!-- Header -->
+  <div class="flex items-center justify-end px-4 py-3 bg-white border-b border-gray-100">
+    <div class="flex items-center gap-4">
+      <ion-icon name="heart-outline" class="text-2xl text-gray-800"
+        (click)="router.navigate(['/app/notifications'])"></ion-icon>
+      <ion-icon name="paper-plane-outline" class="text-2xl text-gray-800"></ion-icon>
+    </div>
+  </div>
+
+  <!-- Feed -->
+  @for (post of posts; track post.postId) {
+    <div class="bg-white mb-2">
+      <!-- Post Header -->
+      <div class="flex items-center justify-between px-4 py-3">
+        <div class="flex items-center gap-3">
+          @if (post.ownerImageUrl) {
+            <img [src]="post.ownerImageUrl" class="w-9 h-9 rounded-full object-cover" />
+          } @else {
+            <div class="w-9 h-9 rounded-full bg-[#007BFF] flex items-center justify-center">
+              <span class="text-white text-sm font-semibold">{{ post.ownerName[0].toUpperCase() }}</span>
+            </div>
+          }
+          <div>
+            <p class="text-sm font-semibold text-[#1a1a2e]">{{ post.ownerName }}</p>
+            <p class="text-xs text-gray-400">{{ post.createDatetime | date:'shortDate' }}</p>
+          </div>
+        </div>
+        <ion-icon name="ellipsis-horizontal" class="text-xl text-gray-500"></ion-icon>
+      </div>
+
+      <!-- Post Image -->
+      <img [src]="post.postImageUrl" class="w-full object-cover" style="aspect-ratio: 1/1" />
+
+      <!-- Post Actions -->
+      <div class="flex items-center justify-between px-4 py-3">
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-1" (click)="toggleLike(post)">
+            <ion-icon [name]="post.liked ? 'heart' : 'heart-outline'"
+              [class]="post.liked ? 'text-2xl text-red-500' : 'text-2xl text-gray-800'"></ion-icon>
+          </div>
+          <ion-icon name="chatbubble-outline" class="text-2xl text-gray-800"></ion-icon>
+          <ion-icon name="paper-plane-outline" class="text-2xl text-gray-800"></ion-icon>
+        </div>
+        <ion-icon name="bookmark-outline" class="text-2xl text-gray-800"></ion-icon>
+      </div>
+
+      <!-- Likes & Caption -->
+      <div class="px-4 pb-4">
+        <p class="text-sm font-semibold text-[#1a1a2e]">{{ post.likeCount }} likes</p>
+        <p class="text-sm mt-1">
+          <span class="font-semibold text-[#1a1a2e]">{{ post.ownerName }}</span> {{ post.caption }}
+        </p>
+      </div>
+    </div>
+  }
+
+  <!-- Infinite Scroll -->
+  <ion-infinite-scroll (ionInfinite)="loadMore($event)" [disabled]="!hasMore">
+    <ion-infinite-scroll-content loadingText="Loading..."></ion-infinite-scroll-content>
+  </ion-infinite-scroll>
+
+  <!-- Bottom padding agar tidak tertutup navbar -->
+  <div class="h-20"></div>
 </ion-content>

@@ -38,7 +38,7 @@ export class RegisterPage {
     this.api.post<SignupStartResponse>('auth/signup/start', this.data, false).subscribe({
       next: async (res: SignupStartResponse) => {
         await this.auth.setSessionId(res.sessionId);
-        console.log("expires at: ", res.otpExpiresAt)
+        await this.auth.setOtpExpiresAt(res.otpExpiresAt);
         this.router.navigate(['/verify-otp'], {
           state: { otpExpiresAt: res.otpExpiresAt }
         });

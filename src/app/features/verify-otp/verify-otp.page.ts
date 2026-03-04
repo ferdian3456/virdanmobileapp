@@ -34,13 +34,15 @@ export class VerifyOtpPage implements OnInit, OnDestroy {
 
   constructor(public router: Router, private api: ApiService, private auth: AuthService) {
     addIcons({ arrowBackOutline });
-    const nav = this.router.getCurrentNavigation();
+    const nav = this.router.currentNavigation();
     this.otpExpiresAt = nav?.extras?.state?.['otpExpiresAt'] ?? 0;
   }
 
   async ngOnInit() {
     this.data.sessionId = await this.auth.getSessionId() ?? '';
-    console.log("expires at in verify-otp: ", this.otpExpiresAt);
+    if (!this.otpExpiresAt) {
+      this.otpExpiresAt = await this.auth.getOtpExpiresAt();
+    }
     this.startTimer();
   }
 
@@ -72,8 +74,9 @@ export class VerifyOtpPage implements OnInit, OnDestroy {
     this.loading = true;
     this.data.otp = this.otpValue
     this.api.post<ApiSuccessResponseNoData>('auth/signup/otp', this.data, false).subscribe({
-      next: (res) => {
-        this.loading = false;
+      next: async (res) => {
+        await this.auth.clearOtpExpiresAt();
+        this.loading = false
         this.router.navigate(['/verify-username']);
       },
       error: (err) => {

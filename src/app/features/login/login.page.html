@@ -1,3 +1,22 @@
+@if (showResumeModal) {
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-8">
+    <div class="bg-white w-full rounded-2xl p-6">
+      <h2 class="text-lg font-bold text-[#1a1a2e]">Resume Registration</h2>
+      <p class="text-sm text-gray-400 mt-2">You have an unfinished registration. Would you like to continue where you left off?</p>
+      <div class="flex gap-3 mt-6">
+        <button (click)="startOver()"
+          class="flex-1 py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold text-sm">
+          No
+        </button>
+        <button (click)="continueRegistration()"
+          class="flex-1 py-3 rounded-xl bg-[#007BFF] text-white font-semibold text-sm">
+          Yes
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
 <ion-content>
   <div class="flex flex-col justify-start min-h-screen px-8 bg-gray-50">
     <div class="text-left mt-10">

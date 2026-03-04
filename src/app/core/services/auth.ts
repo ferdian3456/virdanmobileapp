@@ -48,4 +48,21 @@ export class AuthService {
   getToken() {
     return this._token();
   }
+
+  async setOtpExpiresAt(expiresAt: number) {
+    await SecureStorage.set('otp_expires_at', expiresAt.toString());
+  }
+
+  async getOtpExpiresAt(): Promise<number> {
+    try {
+      const result = await SecureStorage.get('otp_expires_at');
+      return parseInt(result as string) ?? 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  async clearOtpExpiresAt() {
+    await SecureStorage.remove('otp_expires_at');
+  }
 }

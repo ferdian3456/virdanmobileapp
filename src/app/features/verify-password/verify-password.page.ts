@@ -53,7 +53,7 @@ export class VerifyPasswordPage implements OnInit {
         await this.auth.setTokens(res);
         await this.auth.clearSessionId();
         this.loading = false;
-        this.router.navigate(['/homepage']);
+        this.router.navigate(['/app/home']);
       },
       error: (err) => {
         if (err.param) {
