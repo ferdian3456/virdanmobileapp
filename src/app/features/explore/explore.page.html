@@ -1,0 +1,118 @@
+<ion-content [fullscreen]="true">
+  <!-- Search Bar -->
+  <div
+    class="px-4 pt-6 pb-3 bg-white sticky top-0 z-10 border-b border-gray-100"
+  >
+    <div class="flex items-center gap-5">
+      @if (isSearching()) {
+      <ion-icon
+        name="arrow-back-outline"
+        class="text-2xl text-gray-800 shrink-0 cursor-pointer"
+        (click)="onSearchClear()"
+      ></ion-icon>
+      }
+      <div
+        class="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5 flex-1"
+      >
+        <ion-icon
+          name="search-outline"
+          [class]="isSearching() ? 'text-xl shrink-0 text-gray-400' : 'text-xl shrink-0 text-gray-800'"
+        ></ion-icon>
+        <input
+          type="text"
+          [value]="searchQuery()"
+          (input)="onSearchInput($any($event.target).value)"
+          (focus)="onSearchFocus()"
+          (blur)="onSearchBlur()"
+          placeholder="Search people, tags, places..."
+          class="flex-1 bg-transparent text-sm text-gray-700 outline-none placeholder-gray-400"
+        />
+        @if (searchQuery()) {
+        <button
+          (click)="searchQuery.set('')"
+          class="text-gray-400 text-sm font-semibold shrink-0"
+        >
+          ✕
+        </button>
+        }
+      </div>
+    </div>
+  </div>
+
+  @if (isSearching()) {
+    @if (!searchQuery()) {
+      <div class="flex flex-col items-center justify-center px-8 pt-20 text-center">
+        <ion-icon name="search-outline" class="text-5xl text-gray-200 mb-4"></ion-icon>
+      </div>
+    } @else if (searchResults().length === 0) {
+      <div class="flex flex-col items-center justify-center px-8 pt-20 text-center">
+        <p class="text-sm font-semibold text-[#1a1a2e]">
+          No results for "{{ searchQuery() }}"
+        </p>
+        <p class="text-xs text-gray-400 mt-1">Try a different keyword</p>
+      </div>
+    } @else {
+      <div class="grid grid-cols-3 gap-0.5 p-0.5">
+        @for (post of searchResults(); track post.postId) {
+          <div
+            class="relative aspect-square bg-gray-100 overflow-hidden"
+            (click)="navigateToFeedFromSearch(post)"
+          >
+            <img [src]="post.postImageUrl" class="w-full h-full object-cover" loading="lazy" />
+          </div>
+        }
+      </div>
+    }
+  } @else if (loading) {
+    <div class="grid grid-cols-3 gap-0.5 p-0.5">
+      @for (item of [1,2,3,4,5,6,7,8,9]; track item) {
+        <div class="bg-gray-200 animate-pulse aspect-square"></div>
+      }
+    </div>
+  } @else if (!hasServers()) {
+    <div class="flex flex-col items-center justify-start pt-[8.80rem] px-8 text-center">
+      <img src="assets/illustrator/post.svg" class="w-72 mb-5" alt="" />
+      <p class="text-lg font-bold text-[#1a1a2e]">Nothing to explore yet</p>
+      <p class="text-sm text-gray-400 mt-2 mb-7 leading-relaxed">
+        Posts from your servers will appear here. Join a server to get started.
+      </p>
+      <button
+        (click)="router.navigate(['/app/explore-servers'])"
+        class="w-full py-3 rounded-xl bg-[#007BFF] text-white font-semibold text-sm"
+      >
+        Find Servers to Join
+      </button>
+    </div>
+  } @else {
+    @if (posts().length === 0 && !loading) {
+      <div class="flex flex-col items-center justify-start pt-[8.80rem] px-8 text-center">
+        <img src="assets/illustrator/taking_photo.svg" class="w-72 h-60 mb-5" alt="" />
+        <p class="text-lg font-bold text-[#1a1a2e]">No posts yet</p>
+        <p class="text-sm text-gray-400 mt-2 mb-7 leading-relaxed">
+          Be the first to share something in your servers.
+        </p>
+        <button
+          (click)="router.navigate(['/app/create-post'])"
+          class="w-full py-3 rounded-xl bg-[#007BFF] text-white font-semibold text-sm"
+        >
+          Create a Post
+        </button>
+      </div>
+    } @else {
+      <div class="grid grid-cols-3 gap-0.5 p-0.5">
+        @for (post of posts(); track post.postId; let i = $index) {
+          <div
+            class="relative aspect-square bg-gray-100 overflow-hidden"
+            (click)="navigateToFeed(post, i)"
+          >
+            <img [src]="post.postImageUrl" class="w-full h-full object-cover" loading="lazy" />
+          </div>
+        }
+      </div>
+      <ion-infinite-scroll (ionInfinite)="loadMore($event)" [disabled]="!hasMore">
+        <ion-infinite-scroll-content loadingText="Loading..."></ion-infinite-scroll-content>
+      </ion-infinite-scroll>
+      <div class="h-20"></div>
+    }
+  }
+</ion-content>

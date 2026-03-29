@@ -7,6 +7,7 @@ export interface Post {
   caption: string;
   commentCount: number;
   likeCount: number;
+  isLiked?: boolean;
   createDatetime: string;
   updateDatetime: string;
   liked?: boolean;
@@ -17,4 +18,27 @@ export interface PostsResponse {
   page: {
     nextCursor: string;
   };
+}
+
+export interface Comment {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorAvatar: string | null;
+  content: string;
+  createDatetime: string;
+  updateDatetime: string;
+  parentId: string | null;
+}
+
+export interface CommentsResponse {
+  data: Comment[];
+  page: {
+    nextCursor: string;
+    limit: number;
+  };
+}
+
+export interface CreateCommentRequest {
+  content: string;
 }

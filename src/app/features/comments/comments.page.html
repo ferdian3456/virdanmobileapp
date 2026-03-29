@@ -1,0 +1,246 @@
+<ion-content [fullscreen]="true">
+  <!-- Header -->
+  <div class="px-4 pt-12 pb-3 bg-white border-b border-gray-200">
+    <div class="flex items-center justify-between">
+      <ion-icon
+        name="arrow-back-outline"
+        class="text-xl text-gray-900"
+        (click)="goBack()"
+      ></ion-icon>
+      <span class="text-base font-semibold text-gray-900">Comments</span>
+      <div class="w-6"></div>
+    </div>
+  </div>
+
+  <!-- Loading skeleton -->
+  @if (loading) {
+  <div class="flex flex-col">
+    @for (item of [1,2,3]; track item) {
+    <div class="flex gap-3 px-4 py-3 bg-white">
+      <div class="w-9 h-9 rounded-full bg-gray-200 animate-pulse shrink-0"></div>
+      <div class="flex-1">
+        <div class="h-4 bg-gray-200 animate-pulse rounded w-20 mb-2"></div>
+        <div class="h-5 bg-gray-200 animate-pulse rounded w-full mb-2"></div>
+        <div class="h-3 bg-gray-200 animate-pulse rounded w-16"></div>
+      </div>
+    </div>
+    }
+  </div>
+  }
+
+  <!-- Empty state -->
+  @else if (comments().length === 0) {
+  <div class="flex flex-col items-center justify-start pt-32 px-5 text-center">
+    <p class="text-base font-semibold text-gray-900 mb-1">No comments yet</p>
+    <p class="text-sm text-gray-500">Start the conversation</p>
+  </div>
+  }
+
+  <!-- Comments list -->
+  @else {
+  <div class="flex flex-col bg-white pb-24">
+    @for (comment of comments(); track comment.id) {
+    <div
+      class="px-4 py-3 comment-item"
+      (touchstart)="onTouchStartComment(comment, $event)"
+      (touchend)="onTouchEndComment($event)"
+      (touchmove)="onTouchMoveComment()"
+    >
+      <div class="flex gap-3">
+        <!-- Avatar -->
+        @if (comment.authorAvatar) {
+        <img [src]="comment.authorAvatar" class="w-9 h-9 rounded-full object-cover shrink-0" />
+        } @else {
+        <div
+          class="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+          [style.background-color]="getAvatarColor(comment.authorName).bg"
+        >
+          <span
+            class="text-sm font-semibold"
+            [style.color]="getAvatarColor(comment.authorName).text"
+          >
+            {{ getAvatarInitial(comment.authorName) }}
+          </span>
+        </div>
+        }
+
+        <!-- Comment content -->
+        <div class="flex-1 min-w-0">
+          <!-- Username with Love icon on the right -->
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-base font-semibold text-gray-900">
+              {{ comment.authorName }}
+            </span>
+            <ion-icon
+              [name]="comment.liked ?? false ? 'heart' : 'heart-outline'"
+              [class]="comment.liked ?? false ? 'text-lg text-red-500' : 'text-lg text-gray-400'"
+            ></ion-icon>
+          </div>
+
+          <!-- Comment text -->
+          <p class="text-base text-gray-900 mb-1.5 leading-snug">
+            {{ comment.content }}
+          </p>
+
+          <!-- Time and Reply (sejajar dalam satu baris) -->
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-gray-500">{{ comment.timeAgo }}</span>
+            <span class="text-sm text-gray-400">·</span>
+            <span
+              (click)="replyToComment(comment)"
+              class="text-sm text-gray-600 font-semibold"
+            >
+              Reply
+            </span>
+          </div>
+
+          <!-- Nested replies -->
+          @if (comment.replies && comment.replies.length > 0) {
+          <div class="mt-3 flex flex-col gap-3">
+            @for (reply of comment.replies; track reply.id) {
+            <div
+              class="flex gap-3 comment-item"
+              (touchstart)="onTouchStartComment(reply, $event)"
+              (touchend)="onTouchEndComment($event)"
+              (touchmove)="onTouchMoveComment()"
+            >
+              <!-- Reply avatar -->
+              @if (reply.authorAvatar) {
+              <img [src]="reply.authorAvatar" class="w-8 h-8 rounded-full object-cover shrink-0" />
+              } @else {
+              <div
+                class="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                [style.background-color]="getAvatarColor(reply.authorName).bg"
+              >
+                <span
+                  class="text-xs font-semibold"
+                  [style.color]="getAvatarColor(reply.authorName).text"
+                >
+                  {{ getAvatarInitial(reply.authorName) }}
+                </span>
+              </div>
+              }
+
+              <!-- Reply content -->
+              <div class="flex-1">
+                <!-- Username -->
+                <div class="mb-0.5">
+                  <span class="text-sm font-semibold text-gray-900">
+                    {{ reply.authorName }}
+                  </span>
+                </div>
+
+                <!-- Reply text -->
+                <p class="text-sm text-gray-900 mb-1 leading-snug">
+                  {{ reply.content }}
+                </p>
+
+                <!-- Time and Reply (sejajar) -->
+                <div class="flex items-center gap-2">
+                  <span class="text-sm text-gray-500">{{ reply.timeAgo }}</span>
+                  <span class="text-sm text-gray-400">·</span>
+                  <span
+                    (click)="replyToComment(reply)"
+                    class="text-sm text-gray-600 font-semibold"
+                  >
+                    Reply
+                  </span>
+                </div>
+              </div>
+            </div>
+            }
+          </div>
+          }
+        </div>
+      </div>
+    </div>
+    }
+  </div>
+
+  <!-- Infinite scroll -->
+  @if (hasMore) {
+  <ion-infinite-scroll (ionInfinite)="loadMore($event)">
+    <ion-infinite-scroll-content loadingText="Loading..."></ion-infinite-scroll-content>
+  </ion-infinite-scroll>
+  }
+
+  <div class="h-4"></div>
+  }
+
+  <!-- Input field (fixed at bottom) - NO AVATAR -->
+  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
+    <!-- Reply mode indicator -->
+    @if (replyingTo()) {
+    <div class="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+      <div class="flex items-center gap-2">
+        <div class="w-0.5 h-3.5 bg-blue-500 rounded-full"></div>
+        <span class="text-sm text-gray-700">
+          Replying to <span class="font-semibold text-gray-900">@{{ replyingTo()?.authorName }}</span>
+        </span>
+      </div>
+      <button (click)="cancelReply()" class="p-1 -mr-1">
+        <ion-icon name="close-outline" class="text-xl text-gray-600"></ion-icon>
+      </button>
+    </div>
+    }
+
+    <div class="flex items-center px-4 py-3 safe-area-bottom">
+      <!-- Input field ONLY - no avatar -->
+      <div class="flex-1 flex items-center bg-gray-100 rounded-full px-4 py-3">
+        <input
+          type="text"
+          [(ngModel)]="commentContent"
+          (keyup.enter)="submitComment()"
+          placeholder="Add a comment..."
+          class="flex-1 bg-transparent text-base text-gray-900 outline-none placeholder-gray-500"
+          [disabled]="submitting"
+        />
+        <button
+          (click)="submitComment()"
+          [disabled]="submitting || !commentContent.trim()"
+          class="shrink-0 ml-2"
+          [class.opacity-50]="submitting || !commentContent.trim()"
+        >
+          @if (submitting) {
+          <ion-spinner name="crescent" class="text-lg text-blue-600"></ion-spinner>
+          } @else {
+          <ion-icon
+            [name]="commentContent.trim() ? 'paper-plane' : 'paper-plane-outline'"
+            class="text-xl text-blue-600"
+          ></ion-icon>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+</ion-content>
+
+<style>
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .comment-item {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  ion-content {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  input {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  ion-icon {
+    transition: transform 0.15s ease;
+  }
+
+  button:active ion-icon {
+    transform: scale(0.9);
+  }
+</style>

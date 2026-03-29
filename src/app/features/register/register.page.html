@@ -1,4 +1,4 @@
-<ion-content>
+<ion-content [fullscreen]="true">
   <div class="flex flex-col justify-start min-h-screen px-8 bg-gray-50">
     <ion-icon (click)="router.navigate(['/login'])" name="arrow-back-outline" class="mt-10 text-2xl"></ion-icon>
 
@@ -9,17 +9,16 @@
     <!-- Form -->
     <!-- Error per field -->
     <div class="relative mt-4">
-      <input type="email" [(ngModel)]="data.email" placeholder=" "
-        class="peer w-full px-4 pt-5 pb-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-[#007BFF] text-sm" />
-      <label class="absolute left-4 top-3.5 text-gray-400 text-sm transition-all 
-        peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-sm 
-        peer-focus:top-1 peer-focus:text-xs peer-focus:text-[#007BFF] 
-        peer-[:not(:placeholder-shown)]:top-1 peer-[:not(:placeholder-shown)]:text-xs">
+      <input type="email" [(ngModel)]="data.email" placeholder=" " (keyup.enter)="register()"
+        class="peer w-full px-4 pt-5 pb-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-[#007BFF] text-sm caret-[#007BFF]" />
+      <label class="absolute left-4 top-1 text-xs text-[#007BFF] transition-all pointer-events-none
+        peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-sm peer-placeholder-shown:text-gray-400
+        peer-focus:top-1 peer-focus:text-xs peer-focus:text-[#007BFF]">
         Email
       </label>
       <!-- Hint muncul hanya saat focus DAN kosong -->
-      <span class="absolute left-4 top-[1.4rem] text-gray-300 text-sm pointer-events-none
-    opacity-0 peer-focus:opacity-100 peer-[:not(:placeholder-shown)]:opacity-0 transition-opacity">
+      <span class="absolute left-[1.05rem] top-[1.4rem] text-gray-300 text-sm pointer-events-none
+        opacity-0 peer-placeholder-shown:peer-focus:opacity-100 transition-opacity">
         johndoe@gmail.com
       </span>
       @if (errors['email']) {

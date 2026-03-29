@@ -4,10 +4,21 @@ export interface SignupStartResponse {
 }
 
 export interface LoginResponse {
-    accessToken: string;
-	accessTokenExpiresIn: number;
-	refreshToken: string;
-	refreshTokenExpiresIn: number;
-	tokenType: string;
+  accessToken: string;
+  accessTokenExpiresIn: number;
+  refreshToken: string;
+  refreshTokenExpiresIn: number;
+  tokenType: string;
 }
 
+export interface TokenResponse {
+  accessToken: string;
+  accessTokenExpiresIn: number;
+  refreshToken: string;
+  refreshTokenExpiresIn: number;
+  tokenType: string;
+}
+
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
