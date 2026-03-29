@@ -20,7 +20,6 @@ import {
   IonTitle,
   IonSpinner,
   ToastController,
-  IonBackButton,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
@@ -37,7 +36,6 @@ import { ApiService } from '../../core/services/api';
   styleUrls: ['./create-post.page.scss'],
   standalone: true,
   imports: [
-    IonBackButton,
     CommonModule,
     FormsModule,
     IonContent,
