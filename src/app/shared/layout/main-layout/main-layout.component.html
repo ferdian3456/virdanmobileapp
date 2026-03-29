@@ -5,26 +5,64 @@
   </div>
 
   <!-- Bottom Navbar -->
-  <nav class="bg-white border-t border-gray-100 flex items-center justify-around px-4 py-3 z-50">
+  <nav
+    class="bg-white border-t border-gray-100 flex items-center justify-around px-4 py-3 z-50"
+  >
     <a routerLink="/app/home" class="flex flex-col items-center">
-      <ion-icon [name]="isActive('/app/home') ? 'home' : 'home-outline'"
-        [class]="isActive('/app/home') ? 'text-2xl text-[#007BFF]' : 'text-2xl text-gray-400'"></ion-icon>
+      <ion-icon
+        [name]="isActive('/app/home') ? 'home' : 'home-outline'"
+        [class]="
+          isActive('/app/home')
+            ? 'text-2xl text-[#007BFF]'
+            : 'text-2xl text-gray-400'
+        "
+      ></ion-icon>
     </a>
-    <a routerLink="/app/search" class="flex flex-col items-center">
-      <ion-icon [name]="isActive('/app/search') ? 'search' : 'search-outline'"
-        [class]="isActive('/app/search') ? 'text-2xl text-[#007BFF]' : 'text-2xl text-gray-400'"></ion-icon>
+    <a routerLink="/app/explore" class="flex flex-col items-center">
+      <ion-icon
+        [name]="isActive('/app/explore') ? 'search' : 'search-outline'"
+        [class]="
+          isActive('/app/explore')
+            ? 'text-2xl text-[#007BFF]'
+            : 'text-2xl text-gray-400'
+        "
+      ></ion-icon>
     </a>
-    <a routerLink="/app/add-post" class="flex flex-col items-center">
-      <ion-icon [name]="isActive('/app/add-post') ? 'add-circle' : 'add-circle-outline'"
-        [class]="isActive('/app/add-post') ? 'text-[2.5rem] text-[#007BFF]' : 'text-[2.5rem] text-gray-400'"></ion-icon>
+    <a routerLink="/app/create-post" class="flex flex-col items-center">
+      <ion-icon
+        [name]="
+          isActive('/app/create-post') ? 'add-circle' : 'add-circle-outline'
+        "
+        [class]="
+          isActive('/app/create-post')
+            ? 'text-[2.5rem] text-[#007BFF]'
+            : 'text-[2.5rem] text-gray-400'
+        "
+      ></ion-icon>
     </a>
-    <a routerLink="/app/notifications" class="flex flex-col items-center">
-      <ion-icon [name]="isActive('/app/notifications') ? 'notifications' : 'notifications-outline'"
-        [class]="isActive('/app/notifications') ? 'text-2xl text-[#007BFF]' : 'text-2xl text-gray-400'"></ion-icon>
+    <a routerLink="/app/notification" class="flex flex-col items-center">
+      <ion-icon
+        [name]="
+          isActive('/app/notification')
+            ? 'notifications'
+            : 'notifications-outline'
+        "
+        [class]="
+          isActive('/app/notification')
+            ? 'text-2xl text-[#007BFF]'
+            : 'text-2xl text-gray-400'
+        "
+      ></ion-icon>
     </a>
     <a routerLink="/app/profile" class="flex flex-col items-center">
-      <ion-icon [name]="isActive('/app/profile') ? 'person' : 'person-outline'"
-        [class]="isActive('/app/profile') ? 'text-2xl text-[#007BFF]' : 'text-2xl text-gray-400'"></ion-icon>
+      <ion-icon
+        [name]="isActive('/app/profile') ? 'person' : 'person-outline'"
+        [class]="
+          isActive('/app/profile')
+            ? 'text-2xl text-[#007BFF]'
+            : 'text-2xl text-gray-400'
+        "
+      ></ion-icon>
     </a>
   </nav>
 </div>

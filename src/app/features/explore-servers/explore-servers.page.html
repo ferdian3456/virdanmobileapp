@@ -1,0 +1,142 @@
+<ion-content [fullscreen]="true">
+  <!-- Header -->
+  <div class="px-5 pt-12 pb-4 bg-white border-b border-gray-100">
+    <div class="flex items-center justify-center relative mb-4">
+      <ion-icon
+        name="arrow-back-outline"
+        class="text-2xl text-gray-800 cursor-pointer absolute left-0"
+        (click)="router.navigate(['/app/home'])"
+      ></ion-icon>
+      <h2 class="text-base font-bold text-[#1a1a2e]">Gabung Server</h2>
+    </div>
+
+    <h1 class="text-3xl mt-7 font-bold text-[#1a1a2e] leading-tight mb-1">
+      Temukan<br /><span class="text-[#007BFF]">Komunitasmu</span>
+    </h1>
+    <p class="text-sm text-gray-400 mb-4">
+      Temukan komunitas yang sesuai minatmu, mulai dari gaming, edukasi, hingga
+      kreativitas — semua ada di sini.
+    </p>
+
+    <div class="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
+      <ion-icon
+        name="search-outline"
+        class="text-lg text-gray-400 shrink-0"
+      ></ion-icon>
+      <input
+        type="text"
+        [(ngModel)]="searchQuery"
+        placeholder="Search servers..."
+        class="flex-1 bg-transparent text-sm text-gray-700 outline-none placeholder-gray-400"
+      />
+    </div>
+  </div>
+
+  <!-- Category Tabs -->
+  <div
+    class="flex gap-2 px-4 py-3 overflow-x-auto no-scrollbar bg-white border-b border-gray-100"
+  >
+    <button
+      (click)="selectCategory(0)"
+      [class]="activeCategoryId() === 0
+        ? 'px-4 py-1.5 rounded-full bg-[#007BFF] text-white text-xs font-semibold whitespace-nowrap'
+        : 'px-4 py-1.5 rounded-full border border-gray-200 text-gray-500 text-xs font-medium whitespace-nowrap bg-white'"
+    >
+      All
+    </button>
+    @for (cat of categories(); track cat.id) {
+    <button
+      (click)="selectCategory(cat.id)"
+      [class]="activeCategoryId() === cat.id
+        ? 'px-4 py-1.5 rounded-full bg-[#007BFF] text-white text-xs font-semibold whitespace-nowrap'
+        : 'px-4 py-1.5 rounded-full border border-gray-200 text-gray-500 text-xs font-medium whitespace-nowrap bg-white'"
+    >
+      {{ cat.categoryName }}
+    </button>
+    }
+  </div>
+
+  <!-- Loading skeleton -->
+  @if (loading) {
+  <div class="flex flex-col gap-0">
+    @for (item of [1,2,3,4,5]; track item) {
+    <div
+      class="flex items-center gap-3 px-5 py-4 bg-white border-b border-gray-50"
+    >
+      <div
+        class="w-12 h-12 rounded-xl bg-gray-200 animate-pulse shrink-0"
+      ></div>
+      <div class="flex-1">
+        <div class="h-3 bg-gray-200 animate-pulse rounded w-32 mb-2"></div>
+        <div class="h-2.5 bg-gray-200 animate-pulse rounded w-48"></div>
+      </div>
+      <div class="w-16 h-8 bg-gray-200 animate-pulse rounded-xl shrink-0"></div>
+    </div>
+    }
+  </div>
+  }
+
+  <!-- Empty state -->
+  @else if (filteredServers.length === 0) {
+  <div class="flex flex-col items-center justify-start pt-20 px-5 text-center">
+    <div
+      class="w-16 h-16 rounded-2xl bg-[#E7F1FF] flex items-center justify-center mb-4"
+    >
+      <ion-icon
+        name="people-outline"
+        class="text-3xl text-[#007BFF]"
+      ></ion-icon>
+    </div>
+    <p class="text-base font-bold text-[#1a1a2e]">No servers found</p>
+    <p class="text-sm text-gray-400 mt-2">
+      Try a different category or search keyword.
+    </p>
+  </div>
+  }
+
+  <!-- Server List -->
+  @else {
+  <div class="flex flex-col bg-white">
+    @for (server of filteredServers; track server.id) {
+    <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-50">
+      @if (server.avatarImageUrl) {
+      <img
+        [src]="server.avatarImageUrl"
+        class="w-12 h-12 rounded-xl object-cover shrink-0"
+      />
+      } @else {
+      <div
+        class="w-12 h-12 rounded-xl bg-[#E7F1FF] flex items-center justify-center shrink-0"
+      >
+        <span class="text-lg font-bold text-[#007BFF]"
+          >{{ server.name[0].toUpperCase() }}</span
+        >
+      </div>
+      }
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-semibold text-[#1a1a2e] truncate">
+          {{ server.name }}
+        </p>
+        <p class="text-xs text-gray-400 truncate mt-0.5">
+          {{ server.description || server.categoryName }}
+        </p>
+      </div>
+      <button
+        (click)="joinServer(server.id)"
+        [disabled]="joiningServerId() === server.id"
+        class="px-4 py-2 rounded-xl bg-[#007BFF] text-white text-xs font-semibold shrink-0 disabled:opacity-50"
+      >
+        {{ joiningServerId() === server.id ? '...' : 'Join' }}
+      </button>
+    </div>
+    }
+  </div>
+
+  <ion-infinite-scroll (ionInfinite)="loadMore($event)" [disabled]="!hasMore">
+    <ion-infinite-scroll-content
+      loadingText="Loading..."
+    ></ion-infinite-scroll-content>
+  </ion-infinite-scroll>
+  <div class="h-20"></div>
+  }
+</ion-content>

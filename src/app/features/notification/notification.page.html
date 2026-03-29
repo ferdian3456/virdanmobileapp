@@ -1,0 +1,141 @@
+<ion-content [fullscreen]="true">
+  <div class="px-4 pt-12 pb-3 border-b border-gray-100">
+    <h1 class="text-xl font-bold text-[#1a1a2e] text-center">Notifications</h1>
+  </div>
+
+  <div class="flex px-4 pt-3 pb-2 gap-2">
+    <button
+      (click)="activeTab.set('all')"
+      [class]="activeTab() === 'all'
+          ? 'flex-1 py-2 rounded-full bg-[#E7F1FF] text-[#007BFF] text-sm font-semibold'
+          : 'flex-1 py-2 rounded-full bg-gray-100 text-gray-400 text-sm font-medium'"
+    >
+      All
+    </button>
+    <button
+      (click)="activeTab.set('mentions')"
+      [class]="activeTab() === 'mentions'
+          ? 'flex-1 py-2 rounded-full bg-[#E7F1FF] text-[#007BFF] text-sm font-semibold'
+          : 'flex-1 py-2 rounded-full bg-gray-100 text-gray-400 text-sm font-medium'"
+    >
+      Mentions
+    </button>
+  </div>
+
+  @if (!hasServers()) {
+  <div
+    class="flex flex-col items-center justify-start pt-[5.3rem] px-8 text-center"
+  >
+    <img src="assets/illustrator/notification.svg" class="w-60 mb-5" alt="" />
+    <p class="text-lg font-bold text-[#1a1a2e]">No notification yet</p>
+    <p class="text-sm text-gray-400 mt-2 mb-7 leading-relaxed">
+      Join a server to start receiving notifications from the community.
+    </p>
+    <button
+      (click)="router.navigate(['/app/explore-servers'])"
+      class="w-full py-3 rounded-xl bg-[#007BFF] text-white font-semibold text-sm"
+    >
+      Find Servers to Join
+    </button>
+  </div>
+  } @else {
+  <div class="flex flex-col min-h-full bg-white">
+    <div class="flex flex-col px-4 pb-24">
+      <!-- New -->
+      @if (filteredNew.length > 0) {
+      <p class="text-sm font-bold text-[#1a1a2e] mt-4 mb-2">New</p>
+      @for (notif of filteredNew; track notif.id) {
+      <ng-container
+        *ngTemplateOutlet="notifItem; context: { notif: notif }"
+      ></ng-container>
+      } }
+
+      <!-- Today -->
+      @if (filteredToday.length > 0) {
+      <p class="text-sm font-bold text-[#1a1a2e] mt-4 mb-2">Today</p>
+      @for (notif of filteredToday; track notif.id) {
+      <ng-container
+        *ngTemplateOutlet="notifItem; context: { notif: notif }"
+      ></ng-container>
+      } }
+
+      <!-- Earlier -->
+      @if (filteredEarlier.length > 0) {
+      <p class="text-sm font-bold text-[#1a1a2e] mt-4 mb-2">Earlier</p>
+      @for (notif of filteredEarlier; track notif.id) {
+      <ng-container
+        *ngTemplateOutlet="notifItem; context: { notif: notif }"
+      ></ng-container>
+      } } @if (filteredNew.length === 0 && filteredToday.length === 0 &&
+      filteredEarlier.length === 0) {
+      <div
+        class="flex flex-col items-center justify-start pt-24 px-5 text-center"
+      >
+        <img
+          src="assets/illustrator/social_life.svg"
+          class="w-72 mb-5"
+          alt=""
+        />
+        <p class="text-lg font-bold text-[#1a1a2e]">No notifications yet</p>
+        <p class="text-sm text-gray-400 mt-2">
+          When someone likes or comments on your post, you'll see it here.
+        </p>
+      </div>
+      }
+    </div>
+  </div>
+
+  <!-- Notification Item Template -->
+  <ng-template #notifItem let-notif="notif">
+    <div
+      [class]="notif.read ? 'flex items-center gap-3 py-3' : 'flex items-center gap-3 py-3 bg-[#F5F9FF] -mx-4 px-4 rounded-xl'"
+    >
+      <!-- Avatar -->
+      <div class="relative shrink-0">
+        @if (notif.actorImageUrl) {
+        <img
+          [src]="notif.actorImageUrl"
+          class="w-11 h-11 rounded-full object-cover"
+        />
+        } @else {
+        <div
+          class="w-11 h-11 rounded-full bg-gray-200 flex items-center justify-center"
+        >
+          <span class="text-sm font-bold text-gray-500"
+            >{{ notif.actorName[0].toUpperCase() }}</span
+          >
+        </div>
+        }
+        <!-- Type badge -->
+        <div
+          [class]="'absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center ' + getTypeColor(notif.type)"
+        >
+          <ion-icon
+            [name]="getTypeIcon(notif.type)"
+            class="text-[10px] text-white"
+          ></ion-icon>
+        </div>
+      </div>
+
+      <!-- Text -->
+      <div class="flex-1 min-w-0">
+        <p class="text-sm text-[#1a1a2e] leading-snug">
+          <span class="font-semibold">{{ notif.actorName }}</span> {{
+          notif.message }}
+        </p>
+        <p class="text-xs text-[#007BFF] mt-0.5">{{ notif.timeAgo }}</p>
+      </div>
+
+      <!-- Post thumbnail -->
+      @if (notif.postImageUrl) {
+      <img
+        [src]="notif.postImageUrl"
+        class="w-11 h-11 rounded-lg object-cover shrink-0"
+      />
+      } @else {
+      <div class="w-11 h-11 rounded-lg bg-gray-100 shrink-0"></div>
+      }
+    </div>
+  </ng-template>
+  }
+</ion-content>

@@ -29,6 +29,7 @@ export class RegisterPage {
   }
 
   register() {
+    (document.activeElement as HTMLElement)?.blur();
     this.errors = {}
     if (!this.data.email) {
       this.errors.email = 'Username is required to not be empty.';

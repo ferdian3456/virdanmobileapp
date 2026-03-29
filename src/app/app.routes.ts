@@ -35,10 +35,21 @@ export const routes: Routes = [
     children: [
       { path: '', redirectTo: 'home', pathMatch: 'full' },
       { path: 'home', loadComponent: () => import('./features/homepage/homepage.page').then(m => m.HomepagePage) },
-      // { path: 'search', loadComponent: () => import('./features/search/search.page').then(m => m.SearchPage) },
-      // { path: 'add-post', loadComponent: () => import('./features/add-post/add-post.page').then(m => m.AddPostPage) },
-      // { path: 'notifications', loadComponent: () => import('./features/notifications/notifications.page').then(m => m.NotificationsPage) },
+      { path: 'explore', loadComponent: () => import('./features/explore/explore.page').then(m => m.ExplorePage) },
+      { path: 'create-post', loadComponent: () => import('./features/create-post/create-post.page').then(m => m.CreatePostPage) },
+      { path: 'notification', loadComponent: () => import('./features/notification/notification.page').then(m => m.NotificationPage) },
       // { path: 'profile', loadComponent: () => import('./features/profile/profile.page').then(m => m.ProfilePage) },
+      { path: 'explore-servers', loadComponent: () => import('./features/explore-servers/explore-servers.page').then(m => m.ExploreServersPage) },
+      {
+        path: 'feed',
+        loadComponent: () => import('./features/feed/feed.page').then( m => m.FeedPage)
+      },
     ]
-  }
+  },
+  {
+    path: 'app/comments',
+    loadComponent: () => import('./features/comments/comments.page').then(m => m.CommentsPage),
+    canActivate: [authGuard],
+  },
+
 ]

@@ -1,65 +1,172 @@
 <ion-content [fullscreen]="true">
+  @if (loadingServers) {
+  <div class="flex items-center justify-center h-full">
+    <ion-icon
+      name="reload-outline"
+      class="text-3xl text-gray-300 animate-spin"
+    ></ion-icon>
+  </div>
+  } @else if (!hasServers()) {
+  <div
+    class="flex flex-col items-center justify-start pt-56 h-full px-8 text-center"
+  >
+    <img src="assets/illustrator/community.svg" class="w-72 mb-5" alt="" />
+    <p class="text-lg font-bold text-[#1a1a2e]">No servers yet</p>
+    <p class="text-sm text-gray-400 mt-2 mb-7 leading-relaxed">
+      Join a community or create your own to start seeing posts here.
+    </p>
+    <button
+      (click)="router.navigate(['/app/explore-servers'])"
+      class="w-full py-3 rounded-xl bg-[#007BFF] text-white font-semibold text-sm mb-3"
+    >
+      Explore Servers
+    </button>
+    <button
+      (click)="router.navigate(['/app/create-server'])"
+      class="w-full py-3 rounded-xl border border-[#007BFF] text-[#007BFF] font-semibold text-sm bg-white"
+    >
+      Create a Server
+    </button>
+  </div>
+  } @else {
   <!-- Header -->
-  <div class="flex items-center justify-end px-4 py-3 bg-white border-b border-gray-100">
-    <div class="flex items-center gap-4">
-      <ion-icon name="heart-outline" class="text-2xl text-gray-800"
-        (click)="router.navigate(['/app/notifications'])"></ion-icon>
-      <ion-icon name="paper-plane-outline" class="text-2xl text-gray-800"></ion-icon>
-    </div>
+  <div
+    class="flex items-center justify-between px-5 py-6 bg-white border-b border-gray-100"
+  >
+    <button
+      (click)="showServerDropdown = !showServerDropdown"
+      class="flex items-center gap-2"
+    >
+      <span class="text-base font-bold text-[#1a1a2e]"
+        >{{ activeServerName() }}</span
+      >
+      <ion-icon
+        name="chevron-down-outline"
+        class="text-base text-gray-500"
+      ></ion-icon>
+    </button>
+    <ion-icon
+      name="paper-plane-outline"
+      class="text-2xl text-gray-800"
+    ></ion-icon>
   </div>
 
-  <!-- Feed -->
-  @for (post of posts; track post.postId) {
-    <div class="bg-white mb-2">
-      <!-- Post Header -->
-      <div class="flex items-center justify-between px-4 py-3">
-        <div class="flex items-center gap-3">
-          @if (post.ownerImageUrl) {
-            <img [src]="post.ownerImageUrl" class="w-9 h-9 rounded-full object-cover" />
-          } @else {
-            <div class="w-9 h-9 rounded-full bg-[#007BFF] flex items-center justify-center">
-              <span class="text-white text-sm font-semibold">{{ post.ownerName[0].toUpperCase() }}</span>
-            </div>
-          }
-          <div>
-            <p class="text-sm font-semibold text-[#1a1a2e]">{{ post.ownerName }}</p>
-            <p class="text-xs text-gray-400">{{ post.createDatetime | date:'shortDate' }}</p>
-          </div>
+  @if (showServerDropdown) {
+  <div
+    class="absolute left-0 right-0 bg-white border border-gray-100 shadow-sm z-50 mx-4 rounded-xl overflow-hidden"
+  >
+    @for (server of servers(); track server.id) {
+    <button
+      (click)="selectServer(server.id)"
+      class="w-full px-4 py-3 text-left text-sm flex items-center justify-between border-b border-gray-50 last:border-0"
+      [class.text-[#007BFF]]="activeServerId() === server.id"
+      [class.font-semibold]="activeServerId() === server.id"
+    >
+      {{ server.name }} @if (activeServerId() === server.id) {
+      <ion-icon name="checkmark-outline" class="text-[#007BFF]"></ion-icon>
+      }
+    </button>
+    }
+  </div>
+  } @if (posts().length === 0 && !loadingPosts) {
+  <div
+    class="flex flex-col items-center justify-start pt-[14rem] px-8 text-center"
+  >
+    <img src="assets/illustrator/posting_photo.svg" class="w-80 mb-5" alt="" />
+    <p class="text-lg font-bold text-[#1a1a2e]">No posts yet</p>
+    <p class="text-sm text-gray-400 mt-2 mb-7 leading-relaxed">
+      Be the first to share something in this server.
+    </p>
+    <button
+      (click)="router.navigate(['/app/create-post'])"
+      class="w-full py-3 rounded-xl bg-[#007BFF] text-white font-semibold text-sm"
+    >
+      Create a Post
+    </button>
+  </div>
+  } @else { @for (post of posts(); track post.postId) {
+  <div class="bg-white mb-2">
+    <div class="flex items-center justify-between px-4 py-3">
+      <div class="flex items-center gap-3">
+        @if (post.ownerImageUrl) {
+        <img
+          [src]="post.ownerImageUrl"
+          class="w-9 h-9 rounded-full object-cover"
+        />
+        } @else {
+        <div
+          class="w-9 h-9 rounded-full bg-[#007BFF] flex items-center justify-center"
+        >
+          <span class="text-white text-sm font-semibold"
+            >{{ post.ownerName[0].toUpperCase() }}</span
+          >
         </div>
-        <ion-icon name="ellipsis-horizontal" class="text-xl text-gray-500"></ion-icon>
-      </div>
-
-      <!-- Post Image -->
-      <img [src]="post.postImageUrl" class="w-full object-cover" style="aspect-ratio: 1/1" />
-
-      <!-- Post Actions -->
-      <div class="flex items-center justify-between px-4 py-3">
-        <div class="flex items-center gap-4">
-          <div class="flex items-center gap-1" (click)="toggleLike(post)">
-            <ion-icon [name]="post.liked ? 'heart' : 'heart-outline'"
-              [class]="post.liked ? 'text-2xl text-red-500' : 'text-2xl text-gray-800'"></ion-icon>
-          </div>
-          <ion-icon name="chatbubble-outline" class="text-2xl text-gray-800"></ion-icon>
-          <ion-icon name="paper-plane-outline" class="text-2xl text-gray-800"></ion-icon>
+        }
+        <div>
+          <p class="text-sm font-semibold text-[#1a1a2e]">
+            {{ post.ownerName }}
+          </p>
+          <p class="text-xs text-gray-400">
+            {{ post.createDatetime | date:'shortDate' }}
+          </p>
         </div>
-        <ion-icon name="bookmark-outline" class="text-2xl text-gray-800"></ion-icon>
       </div>
-
-      <!-- Likes & Caption -->
-      <div class="px-4 pb-4">
-        <p class="text-sm font-semibold text-[#1a1a2e]">{{ post.likeCount }} likes</p>
-        <p class="text-sm mt-1">
-          <span class="font-semibold text-[#1a1a2e]">{{ post.ownerName }}</span> {{ post.caption }}
-        </p>
-      </div>
+      <ion-icon
+        name="ellipsis-horizontal"
+        class="text-xl text-gray-500"
+      ></ion-icon>
     </div>
+    <img
+      [src]="post.postImageUrl"
+      class="w-full object-cover"
+      style="aspect-ratio: 1/1"
+    />
+    <div class="flex items-center justify-between px-4 py-3">
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-1" (click)="toggleLike(post)">
+          <ion-icon
+            [name]="post.liked ? 'heart' : 'heart-outline'"
+            [class]="post.liked ? 'text-2xl text-red-500' : 'text-2xl text-gray-800'"
+          >
+          </ion-icon>
+        </div>
+        <div class="flex items-center gap-1" (click)="openComments(post)">
+          <ion-icon
+            name="chatbubble-outline"
+            class="text-2xl text-gray-800"
+          ></ion-icon>
+          @if (post.commentCount > 0) {
+          <span class="text-xs text-gray-600 ml-1"
+            >{{ post.commentCount }}</span
+          >
+          }
+        </div>
+        <ion-icon
+          name="paper-plane-outline"
+          class="text-2xl text-gray-800"
+        ></ion-icon>
+      </div>
+      <ion-icon
+        name="bookmark-outline"
+        class="text-2xl text-gray-800"
+      ></ion-icon>
+    </div>
+    <div class="px-4 pb-4">
+      <p class="text-sm font-semibold text-[#1a1a2e]">
+        {{ post.likeCount }} likes
+      </p>
+      <p class="text-sm mt-1">
+        <span class="font-semibold text-[#1a1a2e]">{{ post.ownerName }}</span>
+        {{ post.caption }}
+      </p>
+    </div>
+  </div>
   }
-
-  <!-- Infinite Scroll -->
   <ion-infinite-scroll (ionInfinite)="loadMore($event)" [disabled]="!hasMore">
-    <ion-infinite-scroll-content loadingText="Loading..."></ion-infinite-scroll-content>
+    <ion-infinite-scroll-content
+      loadingText="Loading..."
+    ></ion-infinite-scroll-content>
   </ion-infinite-scroll>
-
-  <!-- Bottom padding agar tidak tertutup navbar -->
   <div class="h-20"></div>
+  } }
 </ion-content>
