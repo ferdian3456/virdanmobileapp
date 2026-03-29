@@ -38,7 +38,7 @@ export const routes: Routes = [
       { path: 'explore', loadComponent: () => import('./features/explore/explore.page').then(m => m.ExplorePage) },
       { path: 'create-post', loadComponent: () => import('./features/create-post/create-post.page').then(m => m.CreatePostPage) },
       { path: 'notification', loadComponent: () => import('./features/notification/notification.page').then(m => m.NotificationPage) },
-      // { path: 'profile', loadComponent: () => import('./features/profile/profile.page').then(m => m.ProfilePage) },
+      { path: 'profile', loadComponent: () => import('./features/profile/profile.page').then(m => m.ProfilePage) },
       { path: 'explore-servers', loadComponent: () => import('./features/explore-servers/explore-servers.page').then(m => m.ExploreServersPage) },
       {
         path: 'feed',
@@ -49,6 +49,11 @@ export const routes: Routes = [
   {
     path: 'app/comments',
     loadComponent: () => import('./features/comments/comments.page').then(m => m.CommentsPage),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'app/post-detail/:postId',
+    loadComponent: () => import('./features/post-detail/post-detail.page').then(m => m.PostDetailPage),
     canActivate: [authGuard],
   },
 
