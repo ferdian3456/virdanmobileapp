@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth-guard';
 import { sessionGuard } from './core/guards/session-guard';
+import { guestGuard } from './core/guards/guest-guard';
 
 export const routes: Routes = [
   {
@@ -10,23 +11,28 @@ export const routes: Routes = [
   },
   {
     path: 'register',
-    loadComponent: () => import('./features/register/register.page').then(m => m.RegisterPage)
+    loadComponent: () => import('./features/register/register.page').then(m => m.RegisterPage),
+    canActivate: [guestGuard]
   },
   {
     path: 'login',
-    loadComponent: () => import('./features/login/login.page').then(m => m.LoginPage)
+    loadComponent: () => import('./features/login/login.page').then(m => m.LoginPage),
+    canActivate: [guestGuard]
   },
   {
     path: 'verify-otp',
-    loadComponent: () => import('./features/verify-otp/verify-otp.page').then(m => m.VerifyOtpPage), canActivate: [sessionGuard]
+    loadComponent: () => import('./features/verify-otp/verify-otp.page').then(m => m.VerifyOtpPage), 
+    canActivate: [sessionGuard, guestGuard]
   },
   {
     path: 'verify-username',
-    loadComponent: () => import('./features/verify-username/verify-username.page').then(m => m.VerifyUsernamePage), canActivate: [sessionGuard]
+    loadComponent: () => import('./features/verify-username/verify-username.page').then(m => m.VerifyUsernamePage), 
+    canActivate: [sessionGuard, guestGuard]
   },
   {
     path: 'verify-password',
-    loadComponent: () => import('./features/verify-password/verify-password.page').then(m => m.VerifyPasswordPage), canActivate: [sessionGuard]
+    loadComponent: () => import('./features/verify-password/verify-password.page').then(m => m.VerifyPasswordPage), 
+    canActivate: [sessionGuard, guestGuard]
   },
   {
     path: 'app',
