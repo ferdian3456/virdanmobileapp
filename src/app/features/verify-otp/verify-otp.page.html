@@ -1,20 +1,38 @@
 <ion-content [fullscreen]="true">
-  <div class="flex flex-col justify-start min-h-screen px-8 bg-gray-50">
-    <ion-icon (click)="router.navigate(['/register'])" name="arrow-back-outline" class="mt-10 text-2xl"></ion-icon>
+  <div class="flex flex-col justify-start min-h-full px-8 bg-gray-50">
+    <ion-icon
+      (click)="router.navigate(['/register'])"
+      name="arrow-back-outline"
+      class="mt-10 text-2xl"
+    ></ion-icon>
 
     <p class="text-3xl mt-6 font-bold">Verify OTP</p>
-    <p class="text-sm mt-3 text-[#6C757D]">We've sent a verification code to your email. Please enter it below.</p>
+    <p class="text-sm mt-3 text-[#6C757D]">
+      We've sent a verification code to your email. Please enter it below.
+    </p>
 
-    <p class="text-sm mt-2" [class.text-red-400]="timeLeft === 'Expired'"
-      [class.text-gray-400]="timeLeft !== 'Expired'">
-      {{ timeLeft === 'Expired' ? 'Code expired. Please try again.' : 'Code expires in ' + timeLeft }}
+    <p
+      class="text-sm mt-2"
+      [class.text-red-400]="timeLeft === 'Expired'"
+      [class.text-gray-400]="timeLeft !== 'Expired'"
+    >
+      {{ timeLeft === 'Expired' ? 'Code expired. Please try again.' : 'Code
+      expires in ' + timeLeft }}
     </p>
 
     <div class="flex gap-3 justify-center mt-7">
       @for (digit of otpDigits; track $index) {
-      <input [id]="'otp-' + $index" type="text" maxlength="1" inputmode="numeric" [value]="digit"
-        (input)="onOtpInput($event, $index)" (keydown)="onOtpKeydown($event, $index)" (keyup.enter)="verifyOtp()"
-        class="w-12 h-12 text-center text-lg font-semibold rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-[#007BFF]" />
+      <input
+        [id]="'otp-' + $index"
+        type="text"
+        maxlength="1"
+        inputmode="numeric"
+        [value]="digit"
+        (input)="onOtpInput($event, $index)"
+        (keydown)="onOtpKeydown($event, $index)"
+        (keyup.enter)="verifyOtp()"
+        class="w-12 h-12 text-center text-lg font-semibold rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-[#007BFF]"
+      />
       }
     </div>
 
@@ -22,8 +40,11 @@
     <p class="text-red-400 text-sm mt-2 text-center">{{ errors['otp'] }}</p>
     }
 
-    <button (click)="verifyOtp()" [disabled]="loading"
-      class="w-full py-3 rounded-xl bg-[#007BFF] text-white font-semibold text-sm disabled:opacity-50 mt-7">
+    <button
+      (click)="verifyOtp()"
+      [disabled]="loading"
+      class="w-full py-3 rounded-xl bg-[#007BFF] text-white font-semibold text-sm disabled:opacity-50 mt-7"
+    >
       {{ loading ? 'Creating account...' : 'Next' }}
     </button>
 

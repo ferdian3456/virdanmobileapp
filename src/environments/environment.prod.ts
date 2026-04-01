@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://your-production-api.com/api'
+  apiUrl: 'https://class-trigger-orlando-scanners.trycloudflare.com/api'
 };

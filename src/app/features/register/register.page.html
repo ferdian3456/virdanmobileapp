@@ -1,37 +1,50 @@
 <ion-content [fullscreen]="true">
-  <div class="flex flex-col justify-start min-h-screen px-8 bg-gray-50">
-    <ion-icon (click)="router.navigate(['/login'])" name="arrow-back-outline" class="mt-10 text-2xl"></ion-icon>
+  <div class="flex flex-col justify-start min-h-full px-8 bg-gray-50">
+    <ion-icon
+      (click)="router.navigate(['/login'])"
+      name="arrow-back-outline"
+      class="mt-10 text-2xl"
+    ></ion-icon>
 
     <p class="text-3xl mt-6 font-bold">Whats your email?</p>
-    <p class="text-sm mt-3 text-[#6C757D]">Enter the email where you can be contacted. No one will see this on your
-      profile.</p>
+    <p class="text-sm mt-3 text-[#6C757D]">
+      Enter the email where you can be contacted. No one will see this on your
+      profile.
+    </p>
 
     <!-- Form -->
     <!-- Error per field -->
     <div class="relative mt-4">
-      <input type="email" [(ngModel)]="data.email" placeholder=" " (keyup.enter)="register()"
-        class="peer w-full px-4 pt-5 pb-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-[#007BFF] text-sm caret-[#007BFF]" />
-      <label class="absolute left-4 top-1 text-xs text-[#007BFF] transition-all pointer-events-none
-        peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-sm peer-placeholder-shown:text-gray-400
-        peer-focus:top-1 peer-focus:text-xs peer-focus:text-[#007BFF]">
+      <input
+        type="email"
+        [(ngModel)]="data.email"
+        placeholder=" "
+        (keyup.enter)="register()"
+        class="peer w-full px-4 pt-5 pb-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-[#007BFF] text-sm caret-[#007BFF]"
+      />
+      <label
+        class="absolute left-4 top-1 text-xs text-[#007BFF] transition-all pointer-events-none peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-sm peer-placeholder-shown:text-gray-400 peer-focus:top-1 peer-focus:text-xs peer-focus:text-[#007BFF]"
+      >
         Email
       </label>
       <!-- Hint muncul hanya saat focus DAN kosong -->
-      <span class="absolute left-[1.05rem] top-[1.4rem] text-gray-300 text-sm pointer-events-none
-        opacity-0 peer-placeholder-shown:peer-focus:opacity-100 transition-opacity">
+      <span
+        class="absolute left-[1.05rem] top-[1.4rem] text-gray-300 text-sm pointer-events-none opacity-0 peer-placeholder-shown:peer-focus:opacity-100 transition-opacity"
+      >
         johndoe@gmail.com
       </span>
       @if (errors['email']) {
       <p class="text-red-400 text-sm mt-2 ml-1">{{ errors['email'] }}</p>
-      }
-
-      @if (errors['general']) {
+      } @if (errors['general']) {
       <p class="text-red-400 text-sm mt-2">{{ errors['general'] }}</p>
       }
     </div>
 
-    <button (click)="register()" [disabled]="loading"
-      class="w-full py-3 rounded-xl bg-[#007BFF] text-white font-semibold text-sm disabled:opacity-50 mt-5">
+    <button
+      (click)="register()"
+      [disabled]="loading"
+      class="w-full py-3 rounded-xl bg-[#007BFF] text-white font-semibold text-sm disabled:opacity-50 mt-5"
+    >
       {{ loading ? 'Creating account...' : 'Next' }}
     </button>
 
@@ -43,22 +56,32 @@
 
     <!-- Google -->
     <button
-      class="mt-5 w-full py-3 rounded-xl border border-solid border-gray-200 bg-white flex items-center justify-center gap-3 text-sm font-semibold text-gray-700 active:scale-95 transition-all">
+      class="mt-5 w-full py-3 rounded-xl border border-solid border-gray-200 bg-white flex items-center justify-center gap-3 text-sm font-semibold text-gray-700 active:scale-95 transition-all"
+    >
       <img src="assets/icons/google_logo.svg" class="w-6 h-6" alt="Google" />
       Continue with Google
     </button>
 
     <!-- Apple -->
     <button
-      class="mt-5 w-full py-3 rounded-xl border border-black bg-black flex items-center justify-center gap-3 text-sm font-semibold text-white active:scale-95 transition-all">
-      <img src="assets/icons/apple_logo.svg" class="w-6 h-6 invert" alt="Apple" />
+      class="mt-5 w-full py-3 rounded-xl border border-black bg-black flex items-center justify-center gap-3 text-sm font-semibold text-white active:scale-95 transition-all"
+    >
+      <img
+        src="assets/icons/apple_logo.svg"
+        class="w-6 h-6 invert"
+        alt="Apple"
+      />
       Continue with Apple
     </button>
 
     <!-- Footer -->
     <p class="text-center text-sm text-gray-400 mt-6">
       Already have an account?
-      <a (click)="router.navigate(['/login'])" class="text-[#007BFF] font-semibold cursor-pointer">Sign In</a>
+      <a
+        (click)="router.navigate(['/login'])"
+        class="text-[#007BFF] font-semibold cursor-pointer"
+        >Sign In</a
+      >
     </p>
   </div>
 </ion-content>
