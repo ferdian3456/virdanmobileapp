@@ -1,31 +1,46 @@
 <ion-content [fullscreen]="true">
-  <div class="flex flex-col justify-start min-h-screen px-8 bg-gray-50">
-    <ion-icon name="arrow-back-outline" class="mt-10 text-2xl cursor-pointer" (click)="router.navigate(['/verify-otp'])"></ion-icon>
+  <div class="flex flex-col justify-start min-h-full px-8 bg-gray-50">
+    <ion-icon
+      name="arrow-back-outline"
+      class="mt-10 text-2xl cursor-pointer"
+      (click)="router.navigate(['/verify-otp'])"
+    ></ion-icon>
 
     <h1 class="text-3xl mt-6 font-bold">Choose a username</h1>
-    <p class="text-sm mt-3 text-[#6C757D]">Pick a unique username. This is how others will find you.</p>
+    <p class="text-sm mt-3 text-[#6C757D]">
+      Pick a unique username. This is how others will find you.
+    </p>
 
     <form class="flex flex-col gap-4 mt-6" (ngSubmit)="submit()">
       <div class="relative">
-        <input type="text" [(ngModel)]="data.username" name="username" autocomplete="username" placeholder=" "
+        <input
+          type="text"
+          [(ngModel)]="data.username"
+          name="username"
+          autocomplete="username"
+          placeholder=" "
           (keyup.enter)="submit()"
-          class="peer w-full px-4 pt-5 pb-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-[#007BFF] text-sm" />
-        <label class="absolute left-4 top-1 text-xs text-[#007BFF] transition-all pointer-events-none
-          peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-sm peer-placeholder-shown:text-gray-400
-          peer-focus:top-1 peer-focus:text-xs peer-focus:text-[#007BFF]">
+          class="peer w-full px-4 pt-5 pb-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-[#007BFF] text-sm"
+        />
+        <label
+          class="absolute left-4 top-1 text-xs text-[#007BFF] transition-all pointer-events-none peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-sm peer-placeholder-shown:text-gray-400 peer-focus:top-1 peer-focus:text-xs peer-focus:text-[#007BFF]"
+        >
           Username
         </label>
         @if (errors['username']) {
-          <p class="text-red-400 text-sm mt-2 ml-1">{{ errors['username'] }}</p>
+        <p class="text-red-400 text-sm mt-2 ml-1">{{ errors['username'] }}</p>
         }
       </div>
 
       @if (errors['general']) {
-        <p class="text-red-400 text-sm">{{ errors['general'] }}</p>
+      <p class="text-red-400 text-sm">{{ errors['general'] }}</p>
       }
 
-      <button type="submit" [disabled]="loading"
-        class="w-full py-3 rounded-xl bg-[#007BFF] text-white font-semibold text-sm disabled:opacity-50 mt-1">
+      <button
+        type="submit"
+        [disabled]="loading"
+        class="w-full py-3 rounded-xl bg-[#007BFF] text-white font-semibold text-sm disabled:opacity-50 mt-1"
+      >
         {{ loading ? 'Saving...' : 'Continue' }}
       </button>
     </form>

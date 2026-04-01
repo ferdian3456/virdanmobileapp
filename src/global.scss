@@ -13,6 +13,37 @@
 @import "@ionic/angular/css/text-transformation.css";
 @import "@ionic/angular/css/flex-utils.css";
 
+// ─── Safe Area Global Fix ────────────────────────────────────────────────────
+// Pastikan Ionic selalu pakai safe-area dari device
+:root {
+  --ion-safe-area-top: env(safe-area-inset-top);
+  --ion-safe-area-bottom: env(safe-area-inset-bottom);
+  --ion-safe-area-left: env(safe-area-inset-left);
+  --ion-safe-area-right: env(safe-area-inset-right);
+}
+
+// ion-content fullscreen tanpa ion-header:
+// Tambahkan padding top (status bar) & bottom (system nav bar) secara otomatis
+ion-content {
+  --padding-top: var(--ion-safe-area-top, 0px);
+  --padding-bottom: var(--ion-safe-area-bottom, 0px);
+}
+
+// Utility classes safe area (tidak ada bawaan di Tailwind)
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+// 100dvh = dynamic viewport height, lebih akurat dari 100vh di mobile
+.h-dvh {
+  height: 100dvh;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;

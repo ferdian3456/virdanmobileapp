@@ -4,7 +4,8 @@
 
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:8081/api'
+  // apiUrl: 'http://localhost:8081/api'
+  apiUrl: 'https://class-trigger-orlando-scanners.trycloudflare.com/api'
 };
 
 /*
