@@ -20,7 +20,11 @@
         class="text-xs text-gray-500"
       ></ion-icon>
     </div>
-    <ion-icon name="menu-outline" class="text-2xl text-gray-800"></ion-icon>
+    <ion-icon
+      (click)="router.navigate(['/app/settings'])"
+      name="settings-outline"
+      class="text-2xl text-gray-800"
+    ></ion-icon>
   </div>
 
   <!-- Profile Info Section -->

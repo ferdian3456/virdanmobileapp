@@ -67,5 +67,9 @@ export const routes: Routes = [
     loadComponent: () => import('./features/create-server/create-server.page').then( m => m.CreateServerPage),
     canActivate: [authGuard],
   },
-
+  {
+    path: 'app/settings',
+    loadComponent: () => import('./features/settings/settings.page').then( m => m.SettingsPage),
+    canActivate: [authGuard],
+  },
 ]
