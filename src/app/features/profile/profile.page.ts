@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { IonContent, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { gridOutline, videocamOutline, bookmarkOutline, menuOutline, chevronDownOutline, reloadOutline, imagesOutline } from 'ionicons/icons';
+import { gridOutline, videocamOutline, bookmarkOutline, settingsOutline, chevronDownOutline, reloadOutline, imagesOutline } from 'ionicons/icons';
 import { ApiService } from '../../core/services/api';
 import { StateService } from '../../core/services/state.service';
 
@@ -53,7 +53,7 @@ export class ProfilePage implements OnInit {
   private stateService = inject(StateService);
 
   constructor() {
-    addIcons({ gridOutline, videocamOutline, bookmarkOutline, menuOutline, chevronDownOutline, reloadOutline, imagesOutline });
+    addIcons({ gridOutline, videocamOutline, bookmarkOutline, settingsOutline, chevronDownOutline, reloadOutline, imagesOutline });
   }
 
   ngOnInit() {
