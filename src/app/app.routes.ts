@@ -62,5 +62,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/post-detail/post-detail.page').then(m => m.PostDetailPage),
     canActivate: [authGuard],
   },
+  {
+    path: 'app/create-server',
+    loadComponent: () => import('./features/create-server/create-server.page').then( m => m.CreateServerPage),
+    canActivate: [authGuard],
+  },
 
 ]

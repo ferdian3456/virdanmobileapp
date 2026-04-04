@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { IonContent, IonIcon, IonInfiniteScroll, IonInfiniteScrollContent } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { heartOutline, peopleOutline ,heart, chatbubbleOutline, paperPlaneOutline, bookmarkOutline, ellipsisHorizontal, reloadOutline, imagesOutline, chevronDownOutline, checkmarkOutline } from 'ionicons/icons';
+import { heartOutline, peopleOutline, heart, chatbubbleOutline, paperPlaneOutline, bookmarkOutline, ellipsisHorizontal, reloadOutline, imagesOutline, chevronDownOutline, checkmarkOutline, addOutline, searchOutline } from 'ionicons/icons';
 import { ApiService } from '../../core/services/api';
 import { StateService } from '../../core/services/state.service';
 import { Post, PostsResponse } from '../../core/models/post.model';
@@ -47,7 +47,7 @@ export class HomepagePage implements OnInit {
   private stateService = inject(StateService);
 
   constructor() {
-    addIcons({reloadOutline,paperPlaneOutline,chevronDownOutline,checkmarkOutline,ellipsisHorizontal,chatbubbleOutline,bookmarkOutline,heartOutline,imagesOutline,peopleOutline,heart});
+    addIcons({reloadOutline,chevronDownOutline,paperPlaneOutline,checkmarkOutline,addOutline,searchOutline,ellipsisHorizontal,chatbubbleOutline,bookmarkOutline,heartOutline,imagesOutline,peopleOutline,heart});
   }
 
   activeServerName = computed(() => 

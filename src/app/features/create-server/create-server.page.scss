@@ -1,0 +1,41 @@
+// Rotate animation for chevron icon
+.rotate-180 {
+  transform: rotate(180deg);
+}
+
+// Scrollable dropdown list
+.max-h-60 {
+  max-height: 15rem; // 240px
+}
+
+// Smooth transitions
+.transition-transform {
+  transition: transform 0.2s ease;
+}
+
+.transition-colors {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+// Scrollbar styling for webkit browsers
+.max-h-60::-webkit-scrollbar {
+  width: 6px;
+}
+
+.max-h-60::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.max-h-60::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.max-h-60::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+// Utility classes
+.transform {
+  transform: translateZ(0); // Enable GPU acceleration
+}

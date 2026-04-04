@@ -1,0 +1,285 @@
+<ion-content [fullscreen]="true">
+  <!-- Header -->
+  <div class="px-4 py-6 pb-3 bg-white border-b border-gray-200">
+    <div class="flex items-center justify-between">
+      <ion-icon
+        name="arrow-back-outline"
+        class="text-xl text-gray-900"
+        (click)="goBack()"
+      ></ion-icon>
+      <span class="text-base font-semibold text-gray-900">Create Server</span>
+      <div class="w-6"></div>
+    </div>
+  </div>
+
+  <div class="px-5 pb-10">
+    <!-- Avatar Upload -->
+    <div class="flex flex-col items-center pt-8 pb-6">
+      <div class="relative">
+        <button
+          (click)="pickAvatar()"
+          class="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 bg-white flex items-center justify-center overflow-hidden"
+          [class.border-solid]="avatarPreview"
+          [class.border-gray-200]="avatarPreview"
+        >
+          @if (avatarPreview) {
+          <img [src]="avatarPreview" class="w-full h-full object-cover" />
+          } @else {
+          <ion-icon
+            name="image-outline"
+            class="text-3xl text-gray-300"
+          ></ion-icon>
+          }
+        </button>
+        <button
+          (click)="pickAvatar()"
+          class="absolute -bottom-2 -right-2 w-7 h-7 rounded-full bg-[#007BFF] flex items-center justify-center shadow"
+        >
+          <ion-icon name="pencil-outline" class="text-xs text-white"></ion-icon>
+        </button>
+        <input
+          #avatarInput
+          type="file"
+          accept="image/*"
+          class="hidden"
+          (change)="onAvatarSelected($event)"
+        />
+      </div>
+      <p class="text-sm font-medium text-[#1a1a2e] mt-4">
+        Server Icon
+        <span class="text-gray-400 font-normal text-xs">(optional)</span>
+      </p>
+      <p class="text-xs text-gray-400 mt-0.5">PNG, JPG min 512px</p>
+    </div>
+
+    <!-- Server Name -->
+    <div class="mb-5">
+      <div class="flex items-center justify-between mb-2">
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          Server Name
+          <span class="text-[#DC3545]">*</span>
+        </p>
+        <span class="text-xs text-gray-400">{{ form.name.length }}/40</span>
+      </div>
+      <div
+        class="bg-white rounded-xl border border-gray-200 flex items-center px-4 py-3 gap-3"
+      >
+        <ion-icon
+          name="server-outline"
+          class="text-lg text-gray-400 flex-shrink-0"
+        ></ion-icon>
+        <input
+          [(ngModel)]="form.name"
+          type="text"
+          placeholder="Enter server name..."
+          class="flex-1 text-sm text-[#1a1a2e] bg-transparent outline-none placeholder-gray-400"
+          maxlength="40"
+        />
+      </div>
+    </div>
+
+    <!-- Short Name -->
+    <div class="mb-5">
+      <div class="flex items-center justify-between mb-2">
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          Short Name
+          <span class="text-[#DC3545]">*</span>
+        </p>
+        <span class="text-xs text-gray-400"
+          >{{ form.shortName.length }}/10</span
+        >
+      </div>
+      <div
+        class="bg-white rounded-xl border border-gray-200 flex items-center px-4 py-3 gap-3"
+      >
+        <ion-icon
+          name="server-outline"
+          class="text-lg text-gray-400 flex-shrink-0"
+        ></ion-icon>
+        <input
+          [(ngModel)]="form.shortName"
+          type="text"
+          placeholder="Server abbreviation"
+          class="flex-1 text-sm text-[#1a1a2e] bg-transparent outline-none placeholder-gray-400"
+          maxlength="10"
+        />
+      </div>
+      <p class="text-xs text-gray-400 mt-1.5">
+        Server abbreviation for display
+      </p>
+    </div>
+
+    <!-- Category -->
+    <div class="mb-5">
+      <p
+        class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2"
+      >
+        Category
+        <span class="text-[#DC3545]">*</span>
+      </p>
+      @if (isLoadingCategories()) {
+      <div
+        class="bg-white rounded-xl border border-gray-200 flex items-center justify-center px-4 py-3"
+      >
+        <ion-icon
+          name="reload-outline"
+          class="text-lg text-gray-400 animate-spin mr-2"
+        ></ion-icon>
+        <span class="text-sm text-gray-400">Loading categories...</span>
+      </div>
+      } @else {
+      <div class="relative">
+        <button
+          (click)="isCategoryDropdownOpen.set(!isCategoryDropdownOpen())"
+          class="w-full bg-white rounded-xl border border-gray-200 flex items-center px-4 py-3 gap-3 text-left"
+        >
+          <ion-icon
+            name="server-outline"
+            class="text-lg text-gray-400 flex-shrink-0"
+          ></ion-icon>
+          <span
+            class="flex-1 text-sm"
+            [class.text-gray-400]="!form.category || form.category === 0"
+            [class.text-[#1a1a2e]]="form.category && form.category !== 0"
+          >
+            {{ getCategoryDisplayName() }}
+          </span>
+          <ion-icon
+            name="chevron-down-outline"
+            class="text-lg text-gray-400 flex-shrink-0 transition-transform"
+            [class.transform]="isCategoryDropdownOpen()"
+            [class.rotate-180]="isCategoryDropdownOpen()"
+          ></ion-icon>
+        </button>
+
+        @if (isCategoryDropdownOpen()) {
+        <div
+          class="absolute left-0 right-0 bg-white rounded-xl border border-gray-200 shadow-lg z-50 mt-1 overflow-hidden"
+        >
+          <div class="max-h-60 overflow-y-auto">
+            @for (cat of categories(); track cat.id) {
+            <button
+              (click)="selectCategory(cat.id)"
+              class="w-full px-4 py-3 text-left text-sm flex items-center justify-between border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors"
+              [class.bg-blue-50]="form.category === cat.id"
+              [class.text-[#007BFF]]="form.category === cat.id"
+              [class.font-semibold]="form.category === cat.id"
+            >
+              <span>{{ cat.categoryName }}</span>
+              @if (form.category === cat.id) {
+              <ion-icon
+                name="checkmark-outline"
+                class="text-[#007BFF]"
+              ></ion-icon>
+              }
+            </button>
+            }
+          </div>
+        </div>
+        }
+      </div>
+      }
+    </div>
+
+    <!-- Description -->
+    <div class="mb-5">
+      <p
+        class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2"
+      >
+        Description
+        <span class="text-gray-400 font-normal">(optional)</span>
+      </p>
+      <textarea
+        [(ngModel)]="form.description"
+        placeholder="Tell us a bit about this server..."
+        rows="4"
+        maxlength="150"
+        class="w-full bg-white rounded-xl border border-gray-200 px-4 py-3 text-sm text-[#1a1a2e] placeholder-gray-400 outline-none resize-none"
+      ></textarea>
+      <p class="text-xs text-gray-400 mt-1.5 text-right">
+        {{ form.description.length }}/150
+      </p>
+    </div>
+
+    <!-- Privacy -->
+    <div class="mb-8">
+      <p
+        class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2"
+      >
+        Privacy
+      </p>
+      <div class="flex gap-3">
+        <!-- Public -->
+        <button
+          (click)="form.isPrivate = false"
+          class="flex-1 bg-white rounded-xl border-2 px-4 py-4 text-left transition-all"
+          [class.border-[#007BFF]]="!form.isPrivate"
+          [class.border-gray-200]="form.isPrivate"
+        >
+          <ion-icon
+            name="globe-outline"
+            class="text-2xl mb-2"
+            [class.text-[#007BFF]]="!form.isPrivate"
+            [class.text-gray-400]="form.isPrivate"
+          ></ion-icon>
+          <p
+            class="text-sm font-semibold"
+            [class.text-[#007BFF]]="!form.isPrivate"
+            [class.text-[#1a1a2e]]="form.isPrivate"
+          >
+            Public
+          </p>
+          <p class="text-xs text-gray-400 mt-0.5 leading-relaxed">
+            Visible in global search
+          </p>
+        </button>
+
+        <!-- Private -->
+        <button
+          (click)="form.isPrivate = true"
+          class="flex-1 bg-white rounded-xl border-2 px-4 py-4 text-left transition-all"
+          [class.border-[#007BFF]]="form.isPrivate"
+          [class.border-gray-200]="!form.isPrivate"
+        >
+          <ion-icon
+            name="lock-closed-outline"
+            class="text-2xl mb-2"
+            [class.text-[#007BFF]]="form.isPrivate"
+            [class.text-gray-400]="!form.isPrivate"
+          ></ion-icon>
+          <p
+            class="text-sm font-semibold"
+            [class.text-[#007BFF]]="form.isPrivate"
+            [class.text-[#1a1a2e]]="!form.isPrivate"
+          >
+            Private
+          </p>
+          <p class="text-xs text-gray-400 mt-0.5 leading-relaxed">
+            Invite only
+          </p>
+        </button>
+      </div>
+    </div>
+  </div>
+</ion-content>
+
+<!-- Submit Button -->
+<ion-footer class="ion-no-border bg-white border-t border-gray-100">
+  <div class="px-5 py-4">
+    <button
+      (click)="submit()"
+      [disabled]="isSubmitting || !form.name.trim() || !form.shortName.trim() || !form.category || form.category === 0"
+      class="w-full py-4 rounded-2xl bg-[#007BFF] text-white font-semibold text-sm disabled:opacity-50 transition-opacity"
+    >
+      @if (isSubmitting) {
+      <div class="flex items-center justify-center gap-2">
+        <ion-icon
+          name="reload-outline"
+          class="animate-spin text-base"
+        ></ion-icon>
+        <span>Creating server...</span>
+      </div>
+      } @else { Create Server }
+    </button>
+  </div>
+</ion-footer>
