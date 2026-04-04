@@ -1,6 +1,6 @@
 <ion-content [fullscreen]="true">
   <!-- Header -->
-  <div class="px-4 pt-12 pb-3 bg-white border-b border-gray-200">
+  <div class="px-4 py-6 pb-3 bg-white border-b border-gray-200">
     <div class="flex items-center justify-between">
       <ion-icon
         name="arrow-back-outline"
@@ -17,7 +17,9 @@
   <div class="flex flex-col">
     @for (item of [1,2,3]; track item) {
     <div class="flex gap-3 px-4 py-3 bg-white">
-      <div class="w-9 h-9 rounded-full bg-gray-200 animate-pulse shrink-0"></div>
+      <div
+        class="w-9 h-9 rounded-full bg-gray-200 animate-pulse shrink-0"
+      ></div>
       <div class="flex-1">
         <div class="h-4 bg-gray-200 animate-pulse rounded w-20 mb-2"></div>
         <div class="h-5 bg-gray-200 animate-pulse rounded w-full mb-2"></div>
@@ -49,7 +51,10 @@
       <div class="flex gap-3">
         <!-- Avatar -->
         @if (comment.authorAvatar) {
-        <img [src]="comment.authorAvatar" class="w-9 h-9 rounded-full object-cover shrink-0" />
+        <img
+          [src]="comment.authorAvatar"
+          class="w-9 h-9 rounded-full object-cover shrink-0"
+        />
         } @else {
         <div
           class="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
@@ -106,7 +111,10 @@
             >
               <!-- Reply avatar -->
               @if (reply.authorAvatar) {
-              <img [src]="reply.authorAvatar" class="w-8 h-8 rounded-full object-cover shrink-0" />
+              <img
+                [src]="reply.authorAvatar"
+                class="w-8 h-8 rounded-full object-cover shrink-0"
+              />
               } @else {
               <div
                 class="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
@@ -160,7 +168,9 @@
   <!-- Infinite scroll -->
   @if (hasMore) {
   <ion-infinite-scroll (ionInfinite)="loadMore($event)">
-    <ion-infinite-scroll-content loadingText="Loading..."></ion-infinite-scroll-content>
+    <ion-infinite-scroll-content
+      loadingText="Loading..."
+    ></ion-infinite-scroll-content>
   </ion-infinite-scroll>
   }
 
@@ -168,14 +178,21 @@
   }
 
   <!-- Input field (fixed at bottom) - NO AVATAR -->
-  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
+  <div
+    class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50"
+  >
     <!-- Reply mode indicator -->
     @if (replyingTo()) {
-    <div class="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+    <div
+      class="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-200"
+    >
       <div class="flex items-center gap-2">
         <div class="w-0.5 h-3.5 bg-blue-500 rounded-full"></div>
         <span class="text-sm text-gray-700">
-          Replying to <span class="font-semibold text-gray-900">@{{ replyingTo()?.authorName }}</span>
+          Replying to
+          <span class="font-semibold text-gray-900"
+            >@{{ replyingTo()?.authorName }}</span
+          >
         </span>
       </div>
       <button (click)="cancelReply()" class="p-1 -mr-1">
@@ -202,7 +219,10 @@
           [class.opacity-50]="submitting || !commentContent.trim()"
         >
           @if (submitting) {
-          <ion-spinner name="crescent" class="text-lg text-blue-600"></ion-spinner>
+          <ion-spinner
+            name="crescent"
+            class="text-lg text-blue-600"
+          ></ion-spinner>
           } @else {
           <ion-icon
             [name]="commentContent.trim() ? 'paper-plane' : 'paper-plane-outline'"
