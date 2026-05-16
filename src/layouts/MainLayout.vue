@@ -1,102 +1,84 @@
 <template>
   <q-layout view="lHh Lpr lFf">
-    <q-header elevated>
-      <q-toolbar>
-        <q-btn
-          flat
-          dense
-          round
-          icon="menu"
-          aria-label="Menu"
-          @click="toggleLeftDrawer"
-        />
-
-        <q-toolbar-title>
-          Quasar App
-        </q-toolbar-title>
-
-        <div>Quasar v{{ $q.version }}</div>
-      </q-toolbar>
-    </q-header>
-
-    <q-drawer
-      v-model="leftDrawerOpen"
-      show-if-above
-      bordered
-    >
-      <q-list>
-        <q-item-label
-          header
-        >
-          Essential Links
-        </q-item-label>
-
-        <EssentialLink
-          v-for="link in linksList"
-          :key="link.title"
-          v-bind="link"
-        />
-      </q-list>
-    </q-drawer>
-
     <q-page-container>
       <router-view />
     </q-page-container>
+
+    <q-footer
+      v-if="!route.meta.hideBottomNav"
+      bordered
+      class="bg-white text-dark pb-safe nav-footer"
+    >
+      <q-tabs
+        no-caps
+        active-color="primary"
+        indicator-color="transparent"
+        class="text-grey-6"
+        align="justify"
+      >
+        <q-route-tab name="home" to="/app/home" exact class="nav-tab">
+          <template #default>
+            <PhHouse :size="28" :weight="isActive('home') ? 'fill' : 'regular'" />
+          </template>
+        </q-route-tab>
+
+        <q-route-tab name="explore" to="/app/explore" class="nav-tab">
+          <template #default>
+            <PhMagnifyingGlass
+              :size="28"
+              :weight="isActive('explore') ? 'bold' : 'regular'"
+            />
+          </template>
+        </q-route-tab>
+
+        <q-route-tab name="create-post" to="/app/create-post" class="nav-tab">
+          <template #default>
+            <PhPlusCircle
+              :size="30"
+              :weight="isActive('create-post') ? 'fill' : 'regular'"
+            />
+          </template>
+        </q-route-tab>
+
+        <q-route-tab name="notifications" to="/app/notifications" class="nav-tab">
+          <template #default>
+            <PhHeart :size="28" :weight="isActive('notifications') ? 'fill' : 'regular'" />
+          </template>
+        </q-route-tab>
+
+        <q-route-tab name="profile" to="/app/profile" class="nav-tab">
+          <template #default>
+            <PhUserCircle :size="28" :weight="isActive('profile') ? 'fill' : 'regular'" />
+          </template>
+        </q-route-tab>
+      </q-tabs>
+    </q-footer>
   </q-layout>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import EssentialLink, { type EssentialLinkProps } from 'components/EssentialLink.vue';
+import { useRoute } from 'vue-router';
+import {
+  PhHouse, PhMagnifyingGlass, PhPlusCircle, PhHeart, PhUserCircle,
+} from '@phosphor-icons/vue';
 
-const linksList: EssentialLinkProps[] = [
-  {
-    title: 'Docs',
-    caption: 'quasar.dev',
-    icon: 'school',
-    link: 'https://quasar.dev'
-  },
-  {
-    title: 'Github',
-    caption: 'github.com/quasarframework',
-    icon: 'code',
-    link: 'https://github.com/quasarframework'
-  },
-  {
-    title: 'Discord Chat Channel',
-    caption: 'chat.quasar.dev',
-    icon: 'chat',
-    link: 'https://chat.quasar.dev'
-  },
-  {
-    title: 'Forum',
-    caption: 'forum.quasar.dev',
-    icon: 'record_voice_over',
-    link: 'https://forum.quasar.dev'
-  },
-  {
-    title: 'Twitter',
-    caption: '@quasarframework',
-    icon: 'rss_feed',
-    link: 'https://twitter.quasar.dev'
-  },
-  {
-    title: 'Facebook',
-    caption: '@QuasarFramework',
-    icon: 'public',
-    link: 'https://facebook.quasar.dev'
-  },
-  {
-    title: 'Quasar Awesome',
-    caption: 'Community Quasar projects',
-    icon: 'favorite',
-    link: 'https://awesome.quasar.dev'
-  }
-];
+const route = useRoute();
 
-const leftDrawerOpen = ref(false);
-
-function toggleLeftDrawer () {
-  leftDrawerOpen.value = !leftDrawerOpen.value;
+function isActive(name: string): boolean {
+  return route.name === name;
 }
 </script>
+
+<style lang="scss">
+.nav-footer {
+  border-top: 1px solid #DEE2E6;
+}
+
+.nav-tab {
+  min-height: 56px;
+
+  .q-tab__content {
+    padding: 0 !important;
+  }
+}
+</style>
