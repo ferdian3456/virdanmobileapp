@@ -144,7 +144,6 @@ import {
   ChevronLeft, Image as ImageIcon, Globe, Lock, Check,
 } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
-import { useAppStore } from 'src/stores/app.store';
 import { useServerCreateStore } from 'src/stores/server-create.store';
 import { useToast } from 'src/composables/useToast';
 import VButton from 'src/components/VButton.vue';
@@ -164,7 +163,6 @@ const MAX_FILE_SIZE_MB = 5;
 
 const router = useRouter();
 const route = useRoute();
-const appStore = useAppStore();
 const serverCreateStore = useServerCreateStore();
 const toast = useToast();
 
