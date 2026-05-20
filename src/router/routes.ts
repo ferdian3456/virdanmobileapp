@@ -25,6 +25,12 @@ const routes: RouteRecordRaw[] = [
         meta: { onboardingFlow: true },
       },
       {
+        path: 'create-server/profile',
+        name: 'onboarding-create-server-profile',
+        component: () => import('pages/YourProfilePage.vue'),
+        meta: { onboardingFlow: true },
+      },
+      {
         path: 'explore-servers',
         name: 'onboarding-explore-servers',
         component: () => import('pages/ExploreServersPage.vue'),
@@ -60,6 +66,12 @@ const routes: RouteRecordRaw[] = [
         path: 'create-server',
         name: 'create-server',
         component: () => import('pages/CreateServerPage.vue'),
+        meta: { hideBottomNav: true },
+      },
+      {
+        path: 'create-server/profile',
+        name: 'create-server-profile',
+        component: () => import('pages/YourProfilePage.vue'),
         meta: { hideBottomNav: true },
       },
       {
