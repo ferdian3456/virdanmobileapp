@@ -32,6 +32,42 @@
         </div>
       </div>
 
+      <!-- Profile picker (hidden if no history) -->
+      <template v-if="profileHistory.length > 0">
+        <FieldLabel label="Profile" optional-tag />
+        <q-select
+          outlined
+          dense
+          emit-value
+          map-options
+          :options="pickerOptions"
+          :loading="isLoadingHistory"
+          :model-value="pickedProfileId"
+          placeholder="Choose profile..."
+          class="yp-input"
+          hide-bottom-space
+          @update:model-value="(val: string) => {
+            const opt = pickerOptions.find((o) => o.value === val);
+            if (opt) onPickerChange(opt);
+          }"
+        >
+          <template #option="scope">
+            <q-item v-bind="scope.itemProps">
+              <q-item-section avatar v-if="scope.opt.raw?.avatarImageUrl">
+                <q-avatar size="32px">
+                  <img :src="scope.opt.raw.avatarImageUrl" alt="" />
+                </q-avatar>
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ scope.opt.label }}</q-item-label>
+                <q-item-label caption>{{ scope.opt.sublabel }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </template>
+        </q-select>
+        <p class="field-help">Pick a profile from another server to copy</p>
+      </template>
+
       <!-- Nickname -->
       <FieldLabel label="Nickname" required :count="`${form.nickname.length}/50`" />
       <q-input
@@ -80,12 +116,28 @@ import { ref, computed, onMounted, h, defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ChevronLeft, Camera } from 'lucide-vue-next';
+import { api } from 'src/boot/axios';
 import { useServerCreateStore } from 'src/stores/server-create.store';
 import { useToast } from 'src/composables/useToast';
 import VButton from 'src/components/VButton.vue';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const MAX_FILE_SIZE_MB = 5;
+
+interface ProfileHistoryItem {
+  profileId: string;
+  serverId: string;
+  serverName: string;
+  nickname: string;
+  bio: string | null;
+  avatarImageId: string | null;
+  avatarImageUrl: string | null;
+  isStillMember: boolean;
+}
+
+interface ProfileHistoryResponse {
+  data: ProfileHistoryItem[];
+}
 
 const router = useRouter();
 const route = useRoute();
@@ -104,6 +156,11 @@ const form = ref({
   bio: '',
 });
 
+const profileHistory = ref<ProfileHistoryItem[]>([]);
+const isLoadingHistory = ref(false);
+const pickedAvatarImageId = ref<string | null>(null);
+const pickedProfileId = ref<string | null>(null);
+
 const avatarLetter = computed(() => {
   const ch = form.value.nickname.trim().charAt(0);
   return ch ? ch.toUpperCase() : 'A';
@@ -113,6 +170,35 @@ const canSubmit = computed(() => {
   const n = form.value.nickname.trim();
   return n.length >= 3 && n.length <= 50;
 });
+
+const pickerOptions = computed(() => {
+  const items = profileHistory.value.map((p) => ({
+    label: `${p.serverName} — ${p.nickname}`,
+    sublabel: p.isStillMember ? 'Active member' : 'Left server',
+    value: p.profileId,
+    raw: p,
+  }));
+  return [
+    { label: 'Clear selection', sublabel: '', value: '__clear__', raw: null },
+    ...items,
+  ];
+});
+
+function onPickerChange(opt: { value: string; raw: ProfileHistoryItem | null }) {
+  if (opt.value === '__clear__' || !opt.raw) {
+    pickedAvatarImageId.value = null;
+    pickedProfileId.value = null;
+    profileAvatarPreview.value = null;
+    return;
+  }
+  const item = opt.raw;
+  pickedProfileId.value = item.profileId;
+  pickedAvatarImageId.value = item.avatarImageId;
+  profileAvatarPreview.value = item.avatarImageUrl;
+  profileAvatarFile.value = null;
+  form.value.nickname = item.nickname;
+  form.value.bio = item.bio ?? '';
+}
 
 /* ─── Inline mini-component for field label + counter ──────────── */
 const FieldLabel = defineComponent({
@@ -143,8 +229,22 @@ onMounted(() => {
     void router.replace({
       name: isOnboarding.value ? 'onboarding-create-server' : 'create-server',
     });
+    return;
   }
+  void loadProfileHistory();
 });
+
+async function loadProfileHistory() {
+  isLoadingHistory.value = true;
+  try {
+    const res = await api.get<ProfileHistoryResponse>('/profiles/history');
+    profileHistory.value = res.data?.data ?? [];
+  } catch {
+    profileHistory.value = [];
+  } finally {
+    isLoadingHistory.value = false;
+  }
+}
 
 function pickAvatar() {
   avatarInput.value?.click();
@@ -166,6 +266,8 @@ function onAvatarSelected(event: Event) {
   }
 
   profileAvatarFile.value = file;
+  pickedAvatarImageId.value = null;
+  pickedProfileId.value = null;
   const reader = new FileReader();
   reader.onload = (e) => {
     profileAvatarPreview.value = (e.target?.result as string) ?? null;
