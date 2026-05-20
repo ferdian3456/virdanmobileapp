@@ -15,9 +15,6 @@
         <button class="avatar-uploader" type="button" @click="pickAvatar">
           <img v-if="profileAvatarPreview" :src="profileAvatarPreview" alt="" class="avatar-preview" />
           <span v-else class="avatar-letter">{{ avatarLetter }}</span>
-          <span class="avatar-camera">
-            <Camera :size="14" :stroke-width="2" />
-          </span>
         </button>
         <input
           ref="avatarInput"
@@ -115,7 +112,7 @@
 import { ref, computed, onMounted, h, defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { ChevronLeft, Camera } from 'lucide-vue-next';
+import { ChevronLeft } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
 import { AxiosError } from 'axios';
 import { useServerCreateStore } from 'src/stores/server-create.store';
@@ -433,21 +430,6 @@ function goBack() {
   font-size: 40px;
   font-weight: 700;
   color: #007BFF;
-}
-
-.avatar-camera {
-  position: absolute;
-  right: 4px;
-  bottom: 4px;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: #007BFF;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #fff;
 }
 
 .hidden-input { display: none; }
