@@ -117,8 +117,11 @@ import type { PropType } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ChevronLeft, Camera } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
+import { AxiosError } from 'axios';
 import { useServerCreateStore } from 'src/stores/server-create.store';
 import { useToast } from 'src/composables/useToast';
+import { normalizeError } from 'src/composables/useApiError';
+import { useAppStore } from 'src/stores/app.store';
 import VButton from 'src/components/VButton.vue';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
@@ -142,6 +145,7 @@ interface ProfileHistoryResponse {
 const router = useRouter();
 const route = useRoute();
 const serverCreateStore = useServerCreateStore();
+const appStore = useAppStore();
 const toast = useToast();
 
 const isOnboarding = computed(() => route.meta.onboardingFlow === true);
@@ -275,9 +279,52 @@ function onAvatarSelected(event: Event) {
   reader.readAsDataURL(file);
 }
 
-function submit() {
-  // Real submit implemented in Task 10
-  toast.error('Submit not implemented yet.');
+async function submit() {
+  if (!canSubmit.value || isSubmitting.value) return;
+  const draft = serverCreateStore.draft;
+  if (!draft) {
+    toast.error('Missing server data. Please restart create flow.');
+    void router.replace({
+      name: isOnboarding.value ? 'onboarding-create-server' : 'create-server',
+    });
+    return;
+  }
+
+  isSubmitting.value = true;
+  try {
+    const fd = new FormData();
+    fd.append('name', draft.name);
+    fd.append('shortName', draft.shortName);
+    fd.append('categoryId', String(draft.categoryId));
+    fd.append('description', draft.description);
+    fd.append('isPrivate', String(draft.isPrivate));
+    if (draft.serverAvatarFile) {
+      fd.append('serverAvatar', draft.serverAvatarFile, draft.serverAvatarFile.name);
+    }
+    fd.append('nickname', form.value.nickname.trim());
+    fd.append('bio', form.value.bio.trim());
+    if (profileAvatarFile.value) {
+      fd.append('profileAvatar', profileAvatarFile.value, profileAvatarFile.value.name);
+    } else if (pickedAvatarImageId.value) {
+      fd.append('avatarImageId', pickedAvatarImageId.value);
+    }
+
+    await api.post('/servers/create', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    toast.success('Server created successfully.');
+    serverCreateStore.clearDraft();
+    await appStore.fetchMyServers(true);
+    await router.push({ name: 'home' });
+  } catch (err) {
+    if (err instanceof AxiosError || err instanceof Error) {
+      const norm = normalizeError(err);
+      toast.error(norm.message);
+    }
+  } finally {
+    isSubmitting.value = false;
+  }
 }
 
 function goBack() {
