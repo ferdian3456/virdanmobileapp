@@ -151,7 +151,7 @@ import VButton from 'src/components/VButton.vue';
 
 interface ServerCategory {
   id: number;
-  name: string;
+  categoryName: string;
 }
 
 interface CategoriesResponse {
@@ -186,7 +186,7 @@ const form = ref({
 });
 
 const categoryOptions = computed(() =>
-  categories.value.map((c) => ({ label: c.name, value: c.id }))
+  categories.value.map((c) => ({ label: c.categoryName, value: c.id }))
 );
 
 const canSubmit = computed(() => {
