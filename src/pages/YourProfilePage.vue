@@ -50,9 +50,9 @@
         >
           <template #option="scope">
             <q-item v-bind="scope.itemProps">
-              <q-item-section avatar v-if="scope.opt.raw?.avatarImageUrl">
+              <q-item-section avatar v-if="scope.opt.raw?.avatarUrl">
                 <q-avatar size="32px">
-                  <img :src="scope.opt.raw.avatarImageUrl" alt="" />
+                  <img :src="scope.opt.raw.avatarUrl" alt="" />
                 </q-avatar>
               </q-item-section>
               <q-item-section>
@@ -131,7 +131,7 @@ interface ProfileHistoryItem {
   nickname: string;
   bio: string | null;
   avatarImageId: string | null;
-  avatarImageUrl: string | null;
+  avatarUrl: string | null;
   isStillMember: boolean;
 }
 
@@ -195,7 +195,7 @@ function onPickerChange(opt: { value: string; raw: ProfileHistoryItem | null }) 
   const item = opt.raw;
   pickedProfileId.value = item.profileId;
   pickedAvatarImageId.value = item.avatarImageId;
-  profileAvatarPreview.value = item.avatarImageUrl;
+  profileAvatarPreview.value = item.avatarUrl;
   profileAvatarFile.value = null;
   form.value.nickname = item.nickname;
   form.value.bio = item.bio ?? '';

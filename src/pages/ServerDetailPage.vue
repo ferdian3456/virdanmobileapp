@@ -28,7 +28,7 @@
         <div class="sd-banner" :style="bannerStyle"></div>
         <div class="sd-avatar-row">
           <div class="sd-avatar">
-            <img v-if="server.avatarImageUrl" :src="server.avatarImageUrl" alt="" />
+            <img v-if="server.avatarUrl" :src="server.avatarUrl" alt="" />
             <span v-else>{{ server.shortName?.charAt(0).toUpperCase() }}</span>
           </div>
         </div>
@@ -122,8 +122,8 @@ interface ServerDetail {
   name: string;
   shortName: string;
   categoryName: string | null;
-  avatarImageUrl: string | null;
-  bannerImageUrl: string | null;
+  avatarUrl: string | null;
+  bannerUrl: string | null;
   description: string | null;
   createdAt: string;
   createdBy?: string;
@@ -171,8 +171,8 @@ const isOwner = computed(
 );
 
 const bannerStyle = computed(() => {
-  if (server.value?.bannerImageUrl) {
-    return { backgroundImage: `url(${server.value.bannerImageUrl})` };
+  if (server.value?.bannerUrl) {
+    return { backgroundImage: `url(${server.value.bannerUrl})` };
   }
   return { background: 'linear-gradient(135deg, #007BFF, #007BFF)' };
 });

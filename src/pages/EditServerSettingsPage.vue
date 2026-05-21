@@ -23,7 +23,7 @@
       <section class="avatar-section">
         <button class="avatar-btn" type="button" @click="pickAvatar">
           <img v-if="avatarPreview" :src="avatarPreview" alt="" />
-          <img v-else-if="server.avatarImageUrl" :src="server.avatarImageUrl" alt="" />
+          <img v-else-if="server.avatarUrl" :src="server.avatarUrl" alt="" />
           <span v-else class="avatar-fallback">{{ server.shortName?.charAt(0)?.toUpperCase() }}</span>
           <span class="avatar-edit">
             <Pencil :size="14" :stroke-width="2.2" />
@@ -145,8 +145,8 @@ interface ServerDetail {
   name: string;
   shortName: string;
   categoryName?: string | null;
-  avatarImageUrl: string | null;
-  bannerImageUrl: string | null;
+  avatarUrl: string | null;
+  bannerUrl: string | null;
   description: string | null;
   isPrivate?: boolean | null;
 }

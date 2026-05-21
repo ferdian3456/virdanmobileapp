@@ -10,7 +10,7 @@ export interface Server {
   id: string;
   name: string;
   shortName: string;
-  avatarImageUrl: string | null;
+  avatarUrl: string | null;
   joinedAt?: string;
 }
 
