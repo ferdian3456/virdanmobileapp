@@ -417,7 +417,7 @@ async function loadComments(reset: boolean) {
     if (totalCount.value === null) totalCount.value = comments.value.length;
   } catch (err) {
     const norm = normalizeError(err);
-    toast.error(norm.message);
+    toast.error({ title: norm.message });
   } finally {
     loading.value = false;
   }
@@ -458,7 +458,7 @@ async function sendComment() {
     autoResize();
   } catch (err) {
     const norm = normalizeError(err);
-    toast.error(norm.message);
+    toast.error({ title: norm.message });
   } finally {
     isSubmitting.value = false;
   }
@@ -482,7 +482,7 @@ function deleteComment(c: CommentItem) {
       } catch (err) {
         comments.value = prev;
         const norm = normalizeError(err);
-        toast.error(norm.message);
+        toast.error({ title: norm.message });
       } finally {
         deletingId.value = null;
       }

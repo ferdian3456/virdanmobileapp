@@ -102,7 +102,7 @@ async function logout() {
     appStore.reset();
     await router.push({ name: 'login' });
   } catch {
-    toast.error('Failed to sign out. Please try again.');
+    toast.error({ title: 'Failed to sign out. Please try again.' });
   } finally {
     isLoggingOut.value = false;
   }

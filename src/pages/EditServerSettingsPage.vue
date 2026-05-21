@@ -209,7 +209,7 @@ async function loadServer() {
     };
   } catch (err) {
     const norm = normalizeError(err);
-    toast.error(norm.message);
+    toast.error({ title: norm.message });
   } finally {
     loading.value = false;
   }
@@ -225,12 +225,12 @@ function onAvatarSelected(event: Event) {
   if (!file) return;
 
   if (!ALLOWED_TYPES.includes(file.type)) {
-    toast.error('Unsupported format. Use JPEG, PNG, or WebP.');
+    toast.error({ title: 'Unsupported format. Use JPEG, PNG, or WebP.' });
     return;
   }
   const sizeMB = file.size / (1024 * 1024);
   if (sizeMB > MAX_FILE_SIZE_MB) {
-    toast.error(`Icon must be smaller than ${MAX_FILE_SIZE_MB}MB.`);
+    toast.error({ title: `Icon must be smaller than ${MAX_FILE_SIZE_MB}MB.` });
     return;
   }
 
@@ -272,12 +272,12 @@ async function save() {
     }
 
     await Promise.all(tasks);
-    toast.success('Server settings updated.');
+    toast.success({ title: 'Server settings updated.' });
     await appStore.fetchMyServers(true);
     router.back();
   } catch (err) {
     const norm = normalizeError(err);
-    toast.error(norm.message);
+    toast.error({ title: norm.message });
   } finally {
     isSaving.value = false;
   }
@@ -299,12 +299,12 @@ function confirmDelete() {
     void (async () => {
       try {
         await api.delete(`/servers/${props.id}`);
-        toast.success('Server deleted.');
+        toast.success({ title: 'Server deleted.' });
         await appStore.fetchMyServers(true);
         await router.push({ name: 'home' });
       } catch (err) {
         const norm = normalizeError(err);
-        toast.error(norm.message);
+        toast.error({ title: norm.message });
       }
     })();
   });

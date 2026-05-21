@@ -188,7 +188,7 @@ async function loadServer() {
     server.value = res.data;
   } catch (err) {
     const norm = normalizeError(err);
-    toast.error(norm.message);
+    toast.error({ title: norm.message });
   } finally {
     loadingServer.value = false;
   }

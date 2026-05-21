@@ -226,7 +226,7 @@ const FieldLabel = defineComponent({
 /* ─── Lifecycle ─────────────────────────────────────────────── */
 onMounted(() => {
   if (!serverCreateStore.draft) {
-    toast.error('Missing server data. Please restart.');
+    toast.error({ title: 'Missing server data. Please restart.' });
     void router.replace({
       name: isOnboarding.value ? 'onboarding-create-server' : 'create-server',
     });
@@ -257,12 +257,12 @@ function onAvatarSelected(event: Event) {
   if (!file) return;
 
   if (!ALLOWED_TYPES.includes(file.type)) {
-    toast.error('Unsupported format. Use JPEG, PNG, or WebP.');
+    toast.error({ title: 'Unsupported format. Use JPEG, PNG, or WebP.' });
     return;
   }
   const sizeMB = file.size / (1024 * 1024);
   if (sizeMB > MAX_FILE_SIZE_MB) {
-    toast.error(`Avatar must be smaller than ${MAX_FILE_SIZE_MB}MB.`);
+    toast.error({ title: `Avatar must be smaller than ${MAX_FILE_SIZE_MB}MB.` });
     return;
   }
 
@@ -280,7 +280,7 @@ async function submit() {
   if (!canSubmit.value || isSubmitting.value) return;
   const draft = serverCreateStore.draft;
   if (!draft) {
-    toast.error('Missing server data. Please restart create flow.');
+    toast.error({ title: 'Missing server data. Please restart create flow.' });
     void router.replace({
       name: isOnboarding.value ? 'onboarding-create-server' : 'create-server',
     });
@@ -310,14 +310,14 @@ async function submit() {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
 
-    toast.success('Server created successfully.');
+    toast.success({ title: 'Server created successfully.' });
     serverCreateStore.clearDraft();
     await appStore.fetchMyServers(true);
     await router.push({ name: 'home' });
   } catch (err) {
     if (err instanceof AxiosError || err instanceof Error) {
       const norm = normalizeError(err);
-      toast.error(norm.message);
+      toast.error({ title: norm.message });
     }
   } finally {
     isSubmitting.value = false;

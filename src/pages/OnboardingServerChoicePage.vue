@@ -59,7 +59,7 @@
         :class="{ active: activeCategoryId === cat.id }"
         @click="setCategory(cat.id)"
       >
-        {{ cat.categoryName }}
+        {{ cat.name }}
       </button>
     </div>
 
@@ -127,7 +127,7 @@ import { normalizeError } from 'src/composables/useApiError';
 
 interface CategoryItem {
   id: number;
-  categoryName: string;
+  name: string;
 }
 
 interface DiscoveryServer {
@@ -221,7 +221,7 @@ async function loadServers() {
     servers.value = list;
   } catch (err) {
     const norm = normalizeError(err);
-    toast.error(norm.message);
+    toast.error({ title: norm.message });
   } finally {
     loading.value = false;
   }
@@ -245,13 +245,13 @@ async function join(srv: DiscoveryServer) {
   joiningId.value = srv.id;
   try {
     await api.post(`/servers/${srv.id}/join`);
-    toast.success(`Joined ${srv.name}.`);
+    toast.success({ title: `Joined ${srv.name}.` });
     await appStore.fetchMyServers(true);
     appStore.setActiveServer(srv.id);
     await router.push({ name: 'home' });
   } catch (err) {
     const norm = normalizeError(err);
-    toast.error(norm.message);
+    toast.error({ title: norm.message });
   } finally {
     joiningId.value = null;
   }

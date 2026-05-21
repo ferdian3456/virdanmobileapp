@@ -70,7 +70,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useRouter } from 'vue-router';
 import { AxiosError } from 'axios';
-import { useQuasar } from 'quasar';
+import { useToast } from 'src/composables/useToast';
 import { ArrowLeft } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
 import VButton from 'src/components/VButton.vue';
@@ -85,7 +85,7 @@ let timerInterval: ReturnType<typeof setInterval> | null = null;
 
 const authStore = useAuthStore();
 const router = useRouter();
-const $q = useQuasar();
+const toast = useToast();
 
 const otpValue = computed(() => otpDigits.value.join(''));
 
@@ -199,16 +199,10 @@ async function resendOtp() {
     otpDigits.value = ['', '', '', '', '', ''];
     document.getElementById('otp-0')?.focus();
     
-    $q.notify({
-      type: 'positive',
-      message: 'A new verification code has been sent to your email.'
-    });
+    toast.success({ title: 'A new verification code has been sent to your email.' });
   } catch (error) {
     if (error instanceof AxiosError) {
-      $q.notify({
-        type: 'negative',
-        message: error.response?.data?.error?.message || 'Failed to resend OTP.'
-      });
+      toast.error({ title: error.response?.data?.error?.message || 'Failed to resend OTP.' });
     }
   } finally {
     isResending.value = false;

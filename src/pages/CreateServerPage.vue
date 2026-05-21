@@ -246,7 +246,7 @@ async function loadCategories() {
     });
     categories.value = res.data?.data ?? [];
   } catch {
-    toast.error('Failed to load categories.');
+    toast.error({ title: 'Failed to load categories.' });
   } finally {
     isLoadingCategories.value = false;
   }
@@ -262,13 +262,13 @@ function onAvatarSelected(event: Event) {
   if (!file) return;
 
   if (!ALLOWED_TYPES.includes(file.type)) {
-    toast.error('Unsupported format. Use JPEG, PNG, or WebP.');
+    toast.error({ title: 'Unsupported format. Use JPEG, PNG, or WebP.' });
     return;
   }
 
   const sizeMB = file.size / (1024 * 1024);
   if (sizeMB > MAX_FILE_SIZE_MB) {
-    toast.error(`Icon must be smaller than ${MAX_FILE_SIZE_MB}MB.`);
+    toast.error({ title: `Icon must be smaller than ${MAX_FILE_SIZE_MB}MB.` });
     return;
   }
 

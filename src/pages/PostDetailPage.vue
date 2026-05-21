@@ -119,7 +119,7 @@ async function loadPost() {
     post.value = { ...res.data, liked: !!res.data.isLiked };
   } catch (err) {
     const norm = normalizeError(err);
-    toast.error(norm.message);
+    toast.error({ title: norm.message });
   } finally {
     loading.value = false;
   }
