@@ -141,7 +141,7 @@ import { useQuasar } from 'quasar';
 import { api } from 'src/boot/axios';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useToast } from 'src/composables/useToast';
-import { normalizeError } from 'src/composables/useApiError';
+import { apiErrorToast } from 'src/composables/useApiError';
 
 interface CommentItem {
   id: string;
@@ -416,8 +416,7 @@ async function loadComments(reset: boolean) {
     hasMore.value = !!nextCursor.value;
     if (totalCount.value === null) totalCount.value = comments.value.length;
   } catch (err) {
-    const norm = normalizeError(err);
-    toast.error({ title: norm.message });
+    toast.error(apiErrorToast(err, () => void loadComments(reset)));
   } finally {
     loading.value = false;
   }
@@ -457,8 +456,7 @@ async function sendComment() {
     replyingTo.value = null;
     autoResize();
   } catch (err) {
-    const norm = normalizeError(err);
-    toast.error({ title: norm.message });
+    toast.error(apiErrorToast(err));
   } finally {
     isSubmitting.value = false;
   }
@@ -481,8 +479,7 @@ function deleteComment(c: CommentItem) {
         await api.delete(`/posts/${props.postId}/comments/${c.id}`);
       } catch (err) {
         comments.value = prev;
-        const norm = normalizeError(err);
-        toast.error({ title: norm.message });
+        toast.error(apiErrorToast(err));
       } finally {
         deletingId.value = null;
       }

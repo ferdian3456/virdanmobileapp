@@ -123,7 +123,7 @@ import { ChevronLeft, Camera } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useToast } from 'src/composables/useToast';
-import { normalizeError } from 'src/composables/useApiError';
+import { apiErrorToast } from 'src/composables/useApiError';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const MAX_AVATAR_MB = 5;
@@ -249,8 +249,7 @@ async function save() {
     toast.success({ title: 'Profile updated.' });
     router.back();
   } catch (err) {
-    const norm = normalizeError(err);
-    toast.error({ title: norm.message });
+    toast.error(apiErrorToast(err));
   } finally {
     isSaving.value = false;
   }

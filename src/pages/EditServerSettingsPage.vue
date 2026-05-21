@@ -138,7 +138,7 @@ import {
 import { api } from 'src/boot/axios';
 import { useAppStore } from 'src/stores/app.store';
 import { useToast } from 'src/composables/useToast';
-import { normalizeError } from 'src/composables/useApiError';
+import { apiErrorToast } from 'src/composables/useApiError';
 
 interface ServerDetail {
   id: string;
@@ -208,8 +208,7 @@ async function loadServer() {
       isPrivate: form.value.isPrivate,
     };
   } catch (err) {
-    const norm = normalizeError(err);
-    toast.error({ title: norm.message });
+    toast.error(apiErrorToast(err, () => void loadServer()));
   } finally {
     loading.value = false;
   }
@@ -276,8 +275,7 @@ async function save() {
     await appStore.fetchMyServers(true);
     router.back();
   } catch (err) {
-    const norm = normalizeError(err);
-    toast.error({ title: norm.message });
+    toast.error(apiErrorToast(err));
   } finally {
     isSaving.value = false;
   }
@@ -303,8 +301,7 @@ function confirmDelete() {
         await appStore.fetchMyServers(true);
         await router.push({ name: 'home' });
       } catch (err) {
-        const norm = normalizeError(err);
-        toast.error({ title: norm.message });
+        toast.error(apiErrorToast(err));
       }
     })();
   });

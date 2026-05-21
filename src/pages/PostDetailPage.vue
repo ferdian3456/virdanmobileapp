@@ -86,7 +86,7 @@ import {
 } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
 import { useToast } from 'src/composables/useToast';
-import { normalizeError } from 'src/composables/useApiError';
+import { apiErrorToast } from 'src/composables/useApiError';
 
 interface PostDetail {
   postId: string;
@@ -118,8 +118,7 @@ async function loadPost() {
     const res = await api.get<PostDetail>(`/posts/${props.postId}`);
     post.value = { ...res.data, liked: !!res.data.isLiked };
   } catch (err) {
-    const norm = normalizeError(err);
-    toast.error({ title: norm.message });
+    toast.error(apiErrorToast(err, () => void loadPost()));
   } finally {
     loading.value = false;
   }

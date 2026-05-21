@@ -123,7 +123,7 @@ import { ChevronRight, Search, BadgeCheck, Users } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
 import { useAppStore } from 'src/stores/app.store';
 import { useToast } from 'src/composables/useToast';
-import { normalizeError } from 'src/composables/useApiError';
+import { apiErrorToast } from 'src/composables/useApiError';
 
 interface CategoryItem {
   id: number;
@@ -220,8 +220,7 @@ async function loadServers() {
     }));
     servers.value = list;
   } catch (err) {
-    const norm = normalizeError(err);
-    toast.error({ title: norm.message });
+    toast.error(apiErrorToast(err, () => void loadServers()));
   } finally {
     loading.value = false;
   }
@@ -250,8 +249,7 @@ async function join(srv: DiscoveryServer) {
     appStore.setActiveServer(srv.id);
     await router.push({ name: 'home' });
   } catch (err) {
-    const norm = normalizeError(err);
-    toast.error({ title: norm.message });
+    toast.error(apiErrorToast(err));
   } finally {
     joiningId.value = null;
   }

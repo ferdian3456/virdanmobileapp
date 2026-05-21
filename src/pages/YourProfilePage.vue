@@ -117,7 +117,7 @@ import { api } from 'src/boot/axios';
 import { AxiosError } from 'axios';
 import { useServerCreateStore } from 'src/stores/server-create.store';
 import { useToast } from 'src/composables/useToast';
-import { normalizeError } from 'src/composables/useApiError';
+import { apiErrorToast } from 'src/composables/useApiError';
 import { useAppStore } from 'src/stores/app.store';
 import VButton from 'src/components/VButton.vue';
 
@@ -316,8 +316,7 @@ async function submit() {
     await router.push({ name: 'home' });
   } catch (err) {
     if (err instanceof AxiosError || err instanceof Error) {
-      const norm = normalizeError(err);
-      toast.error({ title: norm.message });
+      toast.error(apiErrorToast(err));
     }
   } finally {
     isSubmitting.value = false;

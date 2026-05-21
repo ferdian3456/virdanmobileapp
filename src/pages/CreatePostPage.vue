@@ -277,7 +277,7 @@ import { storeToRefs } from 'pinia';
 import { api } from 'src/boot/axios';
 import { useAppStore } from 'src/stores/app.store';
 import { useToast } from 'src/composables/useToast';
-import { normalizeError } from 'src/composables/useApiError';
+import { apiErrorToast } from 'src/composables/useApiError';
 import {
   ASPECT_RATIOS, ZOOM_MIN, ZOOM_MAX,
   computeCoverFit, clamp,
@@ -680,8 +680,7 @@ async function submit() {
     toast.success({ title: 'Post shared.' });
     await router.push({ name: 'home' });
   } catch (err) {
-    const norm = normalizeError(err);
-    toast.error({ title: norm.message });
+    toast.error(apiErrorToast(err));
   } finally {
     isUploading.value = false;
   }
