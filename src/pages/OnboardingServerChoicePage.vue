@@ -51,16 +51,28 @@
       >
         All
       </button>
-      <button
-        v-for="cat in categories"
-        :key="cat.id"
-        type="button"
-        class="chip"
-        :class="{ active: activeCategoryId === cat.id }"
-        @click="setCategory(cat.id)"
-      >
-        {{ cat.name }}
-      </button>
+      <template v-if="categoriesLoading">
+        <VSkeleton
+          v-for="(w, i) in CHIP_SKELETON_WIDTHS"
+          :key="i"
+          variant="box"
+          :width="`${w}px`"
+          height="32px"
+          radius="999px"
+        />
+      </template>
+      <template v-else>
+        <button
+          v-for="cat in categories"
+          :key="cat.id"
+          type="button"
+          class="chip"
+          :class="{ active: activeCategoryId === cat.id }"
+          @click="setCategory(cat.id)"
+        >
+          {{ cat.categoryName }}
+        </button>
+      </template>
     </div>
 
     <!-- Popular servers list -->
@@ -70,9 +82,7 @@
         <span class="server-list-count">{{ filteredServers.length }} servers</span>
       </div>
 
-      <div v-if="loading && servers.length === 0" class="state-block">
-        <q-spinner-dots color="primary" size="36px" />
-      </div>
+      <ServerListSkeleton v-if="loading && servers.length === 0" />
 
       <div v-else-if="filteredServers.length === 0" class="state-block">
         <p class="empty-text">No servers match your search.</p>
@@ -84,22 +94,20 @@
         class="server-row"
       >
         <div class="srv-avatar" :style="{ background: srvAvatarColor(srv.shortName ?? srv.name) }">
-          <img v-if="srv.avatarImageUrl" :src="srv.avatarImageUrl" :alt="srv.name" />
+          <img v-if="srv.avatarUrl" :src="srv.avatarUrl" :alt="srv.name" />
           <span v-else>{{ (srv.shortName ?? srv.name).charAt(0).toUpperCase() }}</span>
         </div>
         <div class="srv-meta">
           <div class="srv-name-row">
             <span class="srv-name">{{ srv.name }}</span>
-            <BadgeCheck :size="14" class="srv-verified" />
+            <!-- TODO: server verification badge — BE belum punya field verified -->
           </div>
           <div class="srv-desc">{{ srv.description || 'No description provided' }}</div>
           <div class="srv-stats">
             <span class="srv-stat">
               <Users :size="12" /> {{ formatStat(srv.memberCount) }}
             </span>
-            <span class="srv-online">
-              <span class="online-dot"></span> {{ formatStat(srv.onlineCount) }} online
-            </span>
+            <!-- TODO: online count — BE belum expose onlineCount (perlu presence tracking) -->
           </div>
         </div>
         <button
@@ -111,23 +119,33 @@
           {{ joiningId === srv.id ? '…' : 'Join' }}
         </button>
       </article>
+
+      <!-- Pagination: load-more spinner (not skeleton — list already filled) -->
+      <div v-if="loadingMore" class="load-more">
+        <q-spinner-dots color="primary" size="28px" />
+      </div>
+
+      <!-- Infinite-scroll trigger -->
+      <div ref="sentinelEl" class="sls-sentinel" aria-hidden="true"></div>
     </div>
 
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { ChevronRight, Search, BadgeCheck, Users } from 'lucide-vue-next';
+import { ChevronRight, Search, Users } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
 import { useAppStore } from 'src/stores/app.store';
 import { useToast } from 'src/composables/useToast';
 import { apiErrorToast } from 'src/composables/useApiError';
+import VSkeleton from 'src/components/feedback/VSkeleton.vue';
+import ServerListSkeleton from 'src/components/feedback/skeletons/ServerListSkeleton.vue';
 
 interface CategoryItem {
   id: number;
-  name: string;
+  categoryName: string;
 }
 
 interface DiscoveryServer {
@@ -135,13 +153,12 @@ interface DiscoveryServer {
   name: string;
   shortName: string;
   categoryName: string | null;
-  avatarImageUrl: string | null;
-  bannerImageUrl: string | null;
+  avatarUrl: string | null;
+  bannerUrl: string | null;
   description: string | null;
-  createDatetime: string;
-  // BE doesn't expose memberCount / onlineCount yet — mocked client-side.
-  memberCount?: number;
-  onlineCount?: number;
+  createdAt: string;
+  memberCount: number;
+  // TODO: onlineCount — BE belum expose, perlu presence tracking (kompleks).
 }
 
 interface PaginatedResponse<T> {
@@ -154,11 +171,18 @@ const appStore = useAppStore();
 const toast = useToast();
 
 const categories = ref<CategoryItem[]>([]);
+const categoriesLoading = ref(false);
+const CHIP_SKELETON_WIDTHS = [56, 72, 60, 80, 64, 68];
 const servers = ref<DiscoveryServer[]>([]);
 const activeCategoryId = ref<number | null>(null);
 const searchQuery = ref('');
 const loading = ref(false);
+const loadingMore = ref(false);
+const nextCursor = ref<string | null>(null);
+const sentinelEl = ref<HTMLElement | null>(null);
 const joiningId = ref<string | null>(null);
+
+const SERVERS_LIMIT = 20;
 
 const AVATAR_COLORS = [
   '#8B5CF6', '#EC4899', '#F59E0B', '#10B981',
@@ -190,11 +214,24 @@ const filteredServers = computed(() => {
   );
 });
 
+let scrollObserver: IntersectionObserver | null = null;
+
 onMounted(async () => {
-  await Promise.all([loadCategories(), loadServers()]);
+  await Promise.all([loadCategories(), loadServers(true)]);
+
+  // Infinite scroll: load the next page when the bottom sentinel appears.
+  scrollObserver = new IntersectionObserver((entries) => {
+    if (entries[0]?.isIntersecting) void loadServers(false);
+  });
+  if (sentinelEl.value) scrollObserver.observe(sentinelEl.value);
+});
+
+onUnmounted(() => {
+  scrollObserver?.disconnect();
 });
 
 async function loadCategories() {
+  categoriesLoading.value = true;
   try {
     const res = await api.get<PaginatedResponse<CategoryItem>>('/servers/categories', {
       params: { limit: 20 },
@@ -202,41 +239,42 @@ async function loadCategories() {
     categories.value = res.data?.data ?? [];
   } catch {
     // Silent — chips simply won't render.
-  }
-}
-
-async function loadServers() {
-  if (loading.value) return;
-  loading.value = true;
-  try {
-    const params: Record<string, string | number> = { limit: 20 };
-    if (activeCategoryId.value !== null) params.categoryId = activeCategoryId.value;
-    const res = await api.get<PaginatedResponse<DiscoveryServer>>('/servers/', { params });
-    const list = (res.data?.data ?? []).map((s) => ({
-      ...s,
-      // Mock counts until BE exposes them.
-      memberCount: deterministicCount(s.id, 200, 30000),
-      onlineCount: deterministicCount(s.id + ':online', 5, 1500),
-    }));
-    servers.value = list;
-  } catch (err) {
-    toast.error(apiErrorToast(err, () => void loadServers()));
   } finally {
-    loading.value = false;
+    categoriesLoading.value = false;
   }
 }
 
-function deterministicCount(seed: string, min: number, max: number): number {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = (hash * 31 + seed.charCodeAt(i)) & 0x7fffffff;
+async function loadServers(reset = true) {
+  if (reset) {
+    if (loading.value) return;
+    loading.value = true;
+    nextCursor.value = null;
+  } else {
+    if (loadingMore.value || nextCursor.value === null) return;
+    loadingMore.value = true;
   }
-  return min + (hash % (max - min));
+
+  try {
+    const params: Record<string, string | number> = { limit: SERVERS_LIMIT };
+    if (activeCategoryId.value !== null) params.categoryId = activeCategoryId.value;
+    if (!reset && nextCursor.value) params.cursor = nextCursor.value;
+    const res = await api.get<PaginatedResponse<DiscoveryServer>>('/servers/', { params });
+    const pageData = res.data?.data ?? [];
+    const pageCursor = res.data?.page?.nextCursor ?? null;
+
+    servers.value = reset ? pageData : [...servers.value, ...pageData];
+    nextCursor.value = pageCursor;
+  } catch (err) {
+    toast.error(apiErrorToast(err, () => void loadServers(reset)));
+  } finally {
+    if (reset) loading.value = false;
+    else loadingMore.value = false;
+  }
 }
 
 function setCategory(id: number | null) {
   activeCategoryId.value = id;
-  void loadServers();
+  void loadServers(true);
 }
 
 async function join(srv: DiscoveryServer) {
@@ -284,7 +322,7 @@ async function goCreate() {
 
 .ob-title-accent {
   display: block;
-  color: #6C63FF;
+  color: #007BFF;
 }
 
 .ob-subtitle {
@@ -298,7 +336,7 @@ async function goCreate() {
 .create-card {
   width: calc(100% - 40px);
   margin: 20px 20px 0;
-  background: linear-gradient(135deg, #6C63FF, #5046E5);
+  background: linear-gradient(135deg, #007BFF, #0056CC);
   color: #fff;
   border: 0;
   border-radius: 18px;
@@ -407,7 +445,7 @@ async function goCreate() {
 
   &:focus {
     background: #fff;
-    border-color: #6C63FF;
+    border-color: #007BFF;
   }
 
   &::placeholder {
@@ -448,9 +486,9 @@ async function goCreate() {
   }
 
   &.active {
-    background: #6C63FF;
+    background: #007BFF;
     color: #fff;
-    border-color: #6C63FF;
+    border-color: #007BFF;
   }
 }
 
@@ -530,10 +568,6 @@ async function goCreate() {
   letter-spacing: -0.01em;
 }
 
-.srv-verified {
-  color: #6C63FF;
-}
-
 .srv-desc {
   font-size: 12px;
   color: #6C757D;
@@ -558,23 +592,8 @@ async function goCreate() {
   gap: 4px;
 }
 
-.srv-online {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: #10B981;
-  font-weight: 500;
-}
-
-.online-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #10B981;
-}
-
 .join-btn {
-  background: #6C63FF;
+  background: #007BFF;
   color: #fff;
   border: 0;
   border-radius: 999px;
@@ -587,13 +606,24 @@ async function goCreate() {
   flex-shrink: 0;
 
   &:hover {
-    background: #5046E5;
+    background: #0056CC;
   }
 
   &:disabled {
     opacity: 0.6;
     cursor: default;
   }
+}
+
+/* Pagination */
+.load-more {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0;
+}
+
+.sls-sentinel {
+  height: 1px;
 }
 
 /* States */

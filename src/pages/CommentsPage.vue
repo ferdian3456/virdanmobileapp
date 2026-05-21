@@ -23,7 +23,7 @@
           <span class="post-context-caption">{{ post.caption }}</span>
         </div>
         <div class="post-context-line2">
-          <span>{{ formatRelative(post.createDatetime) }}</span>
+          <span>{{ formatRelative(post.createdAt) }}</span>
           <span v-if="post.likeCount > 0" class="dot">·</span>
           <span v-if="post.likeCount > 0">{{ post.likeCount }} likes</span>
         </div>
@@ -150,8 +150,8 @@ interface CommentItem {
   authorAvatar: string | null;
   parentId: string | null;
   content: string;
-  createDatetime: string;
-  updateDatetime: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface CommentTreeNode extends CommentItem {
@@ -165,7 +165,7 @@ interface PostContext {
   caption: string;
   likeCount: number;
   commentCount: number;
-  createDatetime: string;
+  createdAt: string;
 }
 
 interface PaginatedResponse<T> {
@@ -252,7 +252,7 @@ const visibleComments = computed(() => {
   if (sort.value === 'recent') {
     arr.sort(
       (a, b) =>
-        new Date(b.createDatetime).getTime() - new Date(a.createDatetime).getTime()
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
   // 'relevant' / 'liked' fall back to API order — BE has no like-per-comment yet.
@@ -321,7 +321,7 @@ const CommentNode: Component = markRaw(defineComponent({
                 h('span', { class: 'cm-content' }, node.content),
               ]),
               h('div', { class: 'cm-line2' }, [
-                h('span', { class: 'cm-time' }, fmt(node.createDatetime)),
+                h('span', { class: 'cm-time' }, fmt(node.createdAt)),
                 h(
                   'button',
                   {

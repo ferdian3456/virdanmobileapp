@@ -354,7 +354,7 @@ const ToggleRow = defineComponent({
   }
 
   &.on {
-    background: #6C63FF;
+    background: #007BFF;
   }
 
   .ns-toggle-knob {

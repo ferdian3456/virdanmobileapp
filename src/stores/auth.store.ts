@@ -12,8 +12,8 @@ export interface UserData {
   fullname: string;
   bio: string | null;
   avatarImage: string | null;
-  createDatetime?: string;
-  updateDatetime?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TokenResponse {

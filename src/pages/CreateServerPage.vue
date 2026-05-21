@@ -524,16 +524,16 @@ function goBack() {
   transition: border-color 0.15s ease, background 0.15s ease;
 
   &:hover {
-    border-color: #6C63FF;
+    border-color: #007BFF;
   }
 
   &.active {
-    border-color: #6C63FF;
+    border-color: #007BFF;
     background: #EEF0FF;
 
     .privacy-icon,
     .privacy-name {
-      color: #6C63FF;
+      color: #007BFF;
     }
   }
 }
@@ -552,8 +552,8 @@ function goBack() {
   background: #fff;
 
   &.checked {
-    background: #6C63FF;
-    border-color: #6C63FF;
+    background: #007BFF;
+    border-color: #007BFF;
     color: #fff;
   }
 }

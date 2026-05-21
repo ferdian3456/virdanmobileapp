@@ -21,7 +21,7 @@
         </div>
         <div class="post-meta">
           <div class="post-username">{{ post.ownerName }}</div>
-          <div class="post-time">{{ formatDate(post.createDatetime) }}</div>
+          <div class="post-time">{{ formatDate(post.createdAt) }}</div>
         </div>
         <button class="icon-btn" type="button" aria-label="More">
           <MoreHorizontal :size="20" />
@@ -99,7 +99,7 @@ interface PostDetail {
   commentCount: number;
   isLiked: boolean;
   liked?: boolean;
-  createDatetime: string;
+  createdAt: string;
 }
 
 const props = defineProps<{ postId: string }>();

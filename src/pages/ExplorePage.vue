@@ -66,7 +66,7 @@ interface ExplorePost {
   caption: string;
   likeCount: number;
   commentCount: number;
-  createDatetime: string;
+  createdAt: string;
 }
 
 interface PaginatedResponse<T> {

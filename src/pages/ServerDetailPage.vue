@@ -125,7 +125,7 @@ interface ServerDetail {
   avatarImageUrl: string | null;
   bannerImageUrl: string | null;
   description: string | null;
-  createDatetime: string;
+  createdAt: string;
   createdBy?: string;
 }
 
@@ -139,7 +139,7 @@ interface PostItem {
   likeCount: number;
   commentCount: number;
   isLiked: boolean;
-  createDatetime: string;
+  createdAt: string;
 }
 
 interface PaginatedResponse<T> {
@@ -174,7 +174,7 @@ const bannerStyle = computed(() => {
   if (server.value?.bannerImageUrl) {
     return { backgroundImage: `url(${server.value.bannerImageUrl})` };
   }
-  return { background: 'linear-gradient(135deg, #007BFF, #6C63FF)' };
+  return { background: 'linear-gradient(135deg, #007BFF, #007BFF)' };
 });
 
 onMounted(async () => {

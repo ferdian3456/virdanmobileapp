@@ -115,7 +115,7 @@ import { useToast } from 'src/composables/useToast';
 interface ProfilePost {
   postId: string;
   postImageUrl: string;
-  createDatetime: string;
+  createdAt: string;
 }
 
 interface PaginatedResponse<T> {

@@ -130,7 +130,7 @@
               </div>
               <div class="feed-meta">
                 <div class="feed-username">{{ post.ownerName }}</div>
-                <div class="feed-time">{{ formatDate(post.createDatetime) }}</div>
+                <div class="feed-time">{{ formatDate(post.createdAt) }}</div>
               </div>
               <button class="header-icon-btn" type="button" aria-label="More">
                 <MoreHorizontal :size="20" />
@@ -223,7 +223,7 @@ interface Post {
   commentCount: number;
   isLiked: boolean;
   liked?: boolean;
-  createDatetime: string;
+  createdAt: string;
 }
 
 interface PostsResponse {

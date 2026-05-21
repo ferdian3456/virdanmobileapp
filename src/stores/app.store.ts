@@ -11,7 +11,7 @@ export interface Server {
   name: string;
   shortName: string;
   avatarImageUrl: string | null;
-  joinedDatetime?: string;
+  joinedAt?: string;
 }
 
 export interface ServersMeResponse {

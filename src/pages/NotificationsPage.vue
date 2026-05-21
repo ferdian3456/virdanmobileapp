@@ -102,7 +102,7 @@ function kindBadgeColor(kind: NotificationKind): string {
   if (kind === 'like') return '#DC3545';
   if (kind === 'comment') return '#007BFF';
   if (kind === 'mention') return '#10B981';
-  return '#6C63FF';
+  return '#007BFF';
 }
 
 const NotifRow = defineComponent({

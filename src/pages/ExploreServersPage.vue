@@ -48,7 +48,7 @@
         :class="{ active: activeCategoryId === cat.id }"
         @click="setCategory(cat.id)"
       >
-        {{ cat.name }}
+        {{ cat.categoryName }}
       </button>
     </div>
 
@@ -67,7 +67,7 @@
         :key="srv.id"
         class="server-card"
       >
-        <ServerAvatar :name="srv.name" :short="srv.shortName" :url="srv.avatarImageUrl" />
+        <ServerAvatar :name="srv.name" :short="srv.shortName" :url="srv.avatarUrl" />
 
         <div class="server-meta">
           <div class="server-name">{{ srv.name }}</div>
@@ -111,7 +111,7 @@ import { apiErrorToast } from 'src/composables/useApiError';
 
 interface CategoryItem {
   id: number;
-  name: string;
+  categoryName: string;
 }
 
 interface DiscoveryServer {
@@ -119,10 +119,10 @@ interface DiscoveryServer {
   name: string;
   shortName: string;
   categoryName: string | null;
-  avatarImageUrl: string | null;
-  bannerImageUrl: string | null;
+  avatarUrl: string | null;
+  bannerUrl: string | null;
   description: string | null;
-  createDatetime: string;
+  createdAt: string;
 }
 
 interface PaginatedResponse<T> {
