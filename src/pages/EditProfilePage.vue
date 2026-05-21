@@ -123,7 +123,7 @@ import { ChevronLeft, Camera } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useToast } from 'src/composables/useToast';
-import { normalizeError } from 'src/composables/useApiError';
+import { apiErrorToast } from 'src/composables/useApiError';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const MAX_AVATAR_MB = 5;
@@ -186,7 +186,7 @@ onMounted(async () => {
       };
     }
   } catch {
-    toast.error('Failed to load profile.');
+    toast.error({ title: 'Failed to load profile.' });
   } finally {
     loading.value = false;
   }
@@ -202,12 +202,12 @@ function onAvatarSelected(event: Event) {
   if (!file) return;
 
   if (!ALLOWED_TYPES.includes(file.type)) {
-    toast.error('Unsupported format. Use JPEG, PNG, or WebP.');
+    toast.error({ title: 'Unsupported format. Use JPEG, PNG, or WebP.' });
     return;
   }
   const sizeMB = file.size / (1024 * 1024);
   if (sizeMB > MAX_AVATAR_MB) {
-    toast.error(`Avatar must be smaller than ${MAX_AVATAR_MB}MB.`);
+    toast.error({ title: `Avatar must be smaller than ${MAX_AVATAR_MB}MB.` });
     return;
   }
 
@@ -246,11 +246,10 @@ async function save() {
 
     await Promise.all(tasks);
     await authStore.fetchUser();
-    toast.success('Profile updated.');
+    toast.success({ title: 'Profile updated.' });
     router.back();
   } catch (err) {
-    const norm = normalizeError(err);
-    toast.error(norm.message);
+    toast.error(apiErrorToast(err));
   } finally {
     isSaving.value = false;
   }

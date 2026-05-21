@@ -277,7 +277,7 @@ import { storeToRefs } from 'pinia';
 import { api } from 'src/boot/axios';
 import { useAppStore } from 'src/stores/app.store';
 import { useToast } from 'src/composables/useToast';
-import { normalizeError } from 'src/composables/useApiError';
+import { apiErrorToast } from 'src/composables/useApiError';
 import {
   ASPECT_RATIOS, ZOOM_MIN, ZOOM_MAX,
   computeCoverFit, clamp,
@@ -476,7 +476,7 @@ async function captureFrame() {
     canvas.height = v.videoHeight;
     const ctx = canvas.getContext('2d');
     if (!ctx) {
-      toast.error('Failed to capture frame.');
+      toast.error({ title: 'Failed to capture frame.' });
       return;
     }
     ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
@@ -485,7 +485,7 @@ async function captureFrame() {
       canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.92)
     );
     if (!blob) {
-      toast.error('Failed to encode capture.');
+      toast.error({ title: 'Failed to encode capture.' });
       return;
     }
     const file = new File([blob], 'capture.jpg', { type: 'image/jpeg' });
@@ -523,12 +523,12 @@ async function onFileSelected(event: Event) {
 
 async function loadFile(file: File) {
   if (!ALLOWED_TYPES.includes(file.type)) {
-    toast.error('Unsupported format. Use JPEG, PNG, or WebP.');
+    toast.error({ title: 'Unsupported format. Use JPEG, PNG, or WebP.' });
     return;
   }
   const sizeMB = file.size / (1024 * 1024);
   if (sizeMB > MAX_FILE_SIZE_MB) {
-    toast.error(`Image must be smaller than ${MAX_FILE_SIZE_MB}MB.`);
+    toast.error({ title: `Image must be smaller than ${MAX_FILE_SIZE_MB}MB.` });
     return;
   }
 
@@ -544,7 +544,7 @@ async function loadFile(file: File) {
     await nextTick();
     recalcStage();
   } catch {
-    toast.error('Could not read image.');
+    toast.error({ title: 'Could not read image.' });
   }
 }
 
@@ -653,7 +653,7 @@ async function commitCrop() {
     croppedDataUrl.value = await blobToDataUrl(blob);
     step.value = 'detail';
   } catch {
-    toast.error('Failed to crop image.');
+    toast.error({ title: 'Failed to crop image.' });
   } finally {
     isProcessing.value = false;
   }
@@ -663,7 +663,7 @@ async function commitCrop() {
 async function submit() {
   if (!canPost.value || isUploading.value) return;
   if (!activeServer.value) {
-    toast.error('No active server selected.');
+    toast.error({ title: 'No active server selected.' });
     return;
   }
 
@@ -677,11 +677,10 @@ async function submit() {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
 
-    toast.success('Post shared.');
+    toast.success({ title: 'Post shared.' });
     await router.push({ name: 'home' });
   } catch (err) {
-    const norm = normalizeError(err);
-    toast.error(norm.message);
+    toast.error(apiErrorToast(err));
   } finally {
     isUploading.value = false;
   }

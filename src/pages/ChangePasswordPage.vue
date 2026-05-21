@@ -196,7 +196,7 @@ async function updatePassword() {
     // When BE adds PUT /api/users/password, swap for:
     // await api.put('/users/password', { current: currentPassword.value, new: newPassword.value });
     await new Promise((r) => setTimeout(r, 600));
-    toast.success('Password updated.');
+    toast.success({ title: 'Password updated.' });
     await router.push({ name: 'settings' });
   } catch {
     errors.value.new = 'Failed to update password. Try again.';
@@ -206,7 +206,7 @@ async function updatePassword() {
 }
 
 function onForgot() {
-  toast.info('Password reset flow is coming soon.');
+  toast.info({ title: 'Password reset flow is coming soon.' });
 }
 
 function onBack() {

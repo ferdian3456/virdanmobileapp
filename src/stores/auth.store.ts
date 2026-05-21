@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import axios from 'axios';
 import { SecureStorage } from '@aparajita/capacitor-secure-storage';
 import { api, baseURL } from 'src/boot/axios';
+import { useAppStore } from 'src/stores/app.store';
 
 export interface UserData {
   id: string;
@@ -65,6 +66,7 @@ export const useAuthStore = defineStore('auth', () => {
     await SecureStorage.remove(KEY_REFRESH);
     token.value = null;
     user.value = null;
+    useAppStore().reset();
   }
 
   /* ─── Auth flows ─────────────────────────────────────────────── */

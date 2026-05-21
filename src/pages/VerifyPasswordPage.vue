@@ -78,7 +78,7 @@ import { ref, onMounted } from 'vue';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useRouter } from 'vue-router';
 import { AxiosError } from 'axios';
-import { useQuasar } from 'quasar';
+import { useToast } from 'src/composables/useToast';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
 import VInput from 'src/components/VInput.vue';
@@ -94,7 +94,7 @@ const sessionId = ref('');
 
 const authStore = useAuthStore();
 const router = useRouter();
-const $q = useQuasar();
+const toast = useToast();
 
 onMounted(async () => {
   sessionId.value = (await authStore.getSessionId()) || '';
@@ -129,10 +129,7 @@ async function submit() {
     await authStore.clearSessionId();
     await authStore.fetchUser();
 
-    $q.notify({
-      type: 'positive',
-      message: 'Registration successful! Welcome to Virdan.'
-    });
+    toast.success({ title: 'Registration successful! Welcome to Virdan.' });
 
     // Brand new user has no servers yet — go straight to onboarding gate.
     await router.push({ name: 'onboarding-server-choice' });

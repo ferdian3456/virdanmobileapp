@@ -118,7 +118,7 @@
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useRouter } from 'vue-router';
-import { useQuasar } from 'quasar';
+import { useToast } from 'src/composables/useToast';
 import { AxiosError } from 'axios';
 import { Eye, EyeOff } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
@@ -135,7 +135,7 @@ const errors = ref<Record<string, string>>({});
 
 const authStore = useAuthStore();
 const router = useRouter();
-const $q = useQuasar();
+const toast = useToast();
 
 onMounted(async () => {
   const sessionId = await authStore.getSessionId();
@@ -192,10 +192,7 @@ async function login() {
       password: password.value,
     });
 
-    $q.notify({
-      type: 'positive',
-      message: 'Login successful',
-    });
+    toast.success({ title: 'Login successful' });
 
     await router.push({ name: 'home' });
   } catch (error) {

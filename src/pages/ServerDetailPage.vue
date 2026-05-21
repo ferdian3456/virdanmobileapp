@@ -115,7 +115,7 @@ import { ChevronLeft, Settings } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useToast } from 'src/composables/useToast';
-import { normalizeError } from 'src/composables/useApiError';
+import { apiErrorToast } from 'src/composables/useApiError';
 
 interface ServerDetail {
   id: string;
@@ -187,8 +187,7 @@ async function loadServer() {
     const res = await api.get<ServerDetail>(`/servers/${props.id}`);
     server.value = res.data;
   } catch (err) {
-    const norm = normalizeError(err);
-    toast.error(norm.message);
+    toast.error(apiErrorToast(err, () => void loadServer()));
   } finally {
     loadingServer.value = false;
   }

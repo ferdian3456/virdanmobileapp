@@ -9,7 +9,7 @@
       <span class="cs-spacer"></span>
     </header>
 
-    <q-form class="cs-form" @submit.prevent="submit">
+    <q-form class="cs-form" @submit.prevent="goToProfileStep">
       <!-- Avatar uploader -->
       <div class="avatar-section">
         <button class="avatar-uploader" type="button" @click="pickAvatar">
@@ -126,12 +126,11 @@
     <footer class="cs-footer">
       <VButton
         type="button"
-        label="Create Server"
+        label="Next"
         color="primary"
         class="full-width text-subtitle1"
         :disable="!canSubmit"
-        :loading="isSubmitting"
-        @click="submit"
+        @click="goToProfileStep"
       />
     </footer>
   </q-page>
@@ -141,14 +140,12 @@
 import { ref, computed, onMounted, h, defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { AxiosError } from 'axios';
 import {
   ChevronLeft, Image as ImageIcon, Globe, Lock, Check,
 } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
-import { useAppStore } from 'src/stores/app.store';
+import { useServerCreateStore } from 'src/stores/server-create.store';
 import { useToast } from 'src/composables/useToast';
-import { normalizeError } from 'src/composables/useApiError';
 import VButton from 'src/components/VButton.vue';
 
 interface ServerCategory {
@@ -166,7 +163,7 @@ const MAX_FILE_SIZE_MB = 5;
 
 const router = useRouter();
 const route = useRoute();
-const appStore = useAppStore();
+const serverCreateStore = useServerCreateStore();
 const toast = useToast();
 
 const isOnboarding = computed(() => route.meta.onboardingFlow === true);
@@ -174,7 +171,6 @@ const isOnboarding = computed(() => route.meta.onboardingFlow === true);
 const avatarInput = ref<HTMLInputElement | null>(null);
 const avatarPreview = ref<string | null>(null);
 const avatarFile = ref<File | null>(null);
-const isSubmitting = ref(false);
 const isLoadingCategories = ref(false);
 
 const categories = ref<ServerCategory[]>([]);
@@ -223,7 +219,24 @@ const FieldLabel = defineComponent({
 });
 
 /* ─── Lifecycle ─────────────────────────────────────────────── */
-onMounted(loadCategories);
+onMounted(() => {
+  void loadCategories();
+  hydrateFromDraft();
+});
+
+function hydrateFromDraft() {
+  const draft = serverCreateStore.draft;
+  if (!draft) return;
+  form.value.name = draft.name;
+  form.value.shortName = draft.shortName;
+  form.value.categoryId = draft.categoryId;
+  form.value.description = draft.description;
+  form.value.isPrivate = draft.isPrivate;
+  if (draft.serverAvatarFile) {
+    avatarFile.value = draft.serverAvatarFile;
+    avatarPreview.value = draft.serverAvatarPreview;
+  }
+}
 
 async function loadCategories() {
   isLoadingCategories.value = true;
@@ -233,7 +246,7 @@ async function loadCategories() {
     });
     categories.value = res.data?.data ?? [];
   } catch {
-    toast.error('Failed to load categories.');
+    toast.error({ title: 'Failed to load categories.' });
   } finally {
     isLoadingCategories.value = false;
   }
@@ -249,13 +262,13 @@ function onAvatarSelected(event: Event) {
   if (!file) return;
 
   if (!ALLOWED_TYPES.includes(file.type)) {
-    toast.error('Unsupported format. Use JPEG, PNG, or WebP.');
+    toast.error({ title: 'Unsupported format. Use JPEG, PNG, or WebP.' });
     return;
   }
 
   const sizeMB = file.size / (1024 * 1024);
   if (sizeMB > MAX_FILE_SIZE_MB) {
-    toast.error(`Icon must be smaller than ${MAX_FILE_SIZE_MB}MB.`);
+    toast.error({ title: `Icon must be smaller than ${MAX_FILE_SIZE_MB}MB.` });
     return;
   }
 
@@ -268,42 +281,27 @@ function onAvatarSelected(event: Event) {
   reader.readAsDataURL(file);
 }
 
-async function submit() {
-  if (!canSubmit.value || isSubmitting.value) return;
+function goToProfileStep() {
+  if (!canSubmit.value) return;
 
-  isSubmitting.value = true;
-  try {
-    const fd = new FormData();
-    fd.append('name', form.value.name.trim());
-    fd.append('shortName', form.value.shortName.trim());
-    fd.append('categoryId', String(form.value.categoryId));
-    fd.append('description', form.value.description.trim());
-    fd.append('isPrivate', String(form.value.isPrivate));
-    if (avatarFile.value) {
-      fd.append('avatar', avatarFile.value, avatarFile.value.name);
-    }
+  serverCreateStore.setDraft({
+    name: form.value.name.trim(),
+    shortName: form.value.shortName.trim(),
+    categoryId: form.value.categoryId,
+    description: form.value.description.trim(),
+    isPrivate: form.value.isPrivate,
+    serverAvatarFile: avatarFile.value,
+    serverAvatarPreview: avatarPreview.value,
+  });
 
-    await api.post('/servers/create', fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-
-    toast.success('Server created successfully.');
-
-    // Refresh server list so the new server is selectable / guard passes.
-    await appStore.fetchMyServers(true);
-
-    await router.push({ name: 'home' });
-  } catch (err) {
-    if (err instanceof AxiosError || err instanceof Error) {
-      const norm = normalizeError(err);
-      toast.error(norm.message);
-    }
-  } finally {
-    isSubmitting.value = false;
-  }
+  const target = isOnboarding.value
+    ? 'onboarding-create-server-profile'
+    : 'create-server-profile';
+  void router.push({ name: target });
 }
 
 function goBack() {
+  serverCreateStore.clearDraft();
   if (isOnboarding.value) {
     void router.push({ name: 'onboarding-server-choice' });
     return;

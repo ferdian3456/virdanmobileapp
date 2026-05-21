@@ -151,7 +151,7 @@ onMounted(async () => {
     try {
       await authStore.fetchUser();
     } catch {
-      toast.error('Failed to load profile.');
+      toast.error({ title: 'Failed to load profile.' });
     } finally {
       loadingUser.value = false;
     }

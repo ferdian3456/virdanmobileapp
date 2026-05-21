@@ -1,4 +1,5 @@
 import { AxiosError } from 'axios';
+import type { ToastOptions } from 'src/composables/useToast';
 
 export interface ApiErrorPayload {
   code: string;
@@ -53,4 +54,29 @@ export function applyFieldErrors(
   } else {
     errors[fallbackKey] = normalized.message;
   }
+}
+
+/**
+ * Builds brand error-toast options from an API error.
+ * Network failures get a generic connection headline + caption; other
+ * failures surface the server message as the title.
+ *
+ * Pass `onRetry` ONLY for safe-to-repeat actions (data loads/fetches).
+ * Never pass it for create/update/delete — a retry could duplicate the
+ * operation.
+ */
+export function apiErrorToast(error: unknown, onRetry?: () => void): ToastOptions {
+  const normalized = normalizeError(error);
+  const isNetwork =
+    normalized.status === undefined || normalized.code === 'NETWORK_ERROR';
+
+  const options: ToastOptions = isNetwork
+    ? {
+        title: 'Tidak dapat terhubung',
+        caption: 'Periksa koneksi internetmu lalu coba lagi.',
+      }
+    : { title: normalized.message };
+
+  if (onRetry) options.onRetry = onRetry;
+  return options;
 }
