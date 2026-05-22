@@ -19,13 +19,18 @@ const FALLBACK_MESSAGE = 'An unexpected error occurred. Please try again.';
 export function normalizeError(error: unknown): NormalizedError {
   if (error instanceof AxiosError) {
     const status = error.response?.status;
-    const payload = error.response?.data as
-      | { error?: ApiErrorPayload }
-      | ApiErrorPayload
-      | undefined;
-    const inner = (payload && 'error' in payload ? payload.error : payload) as
-      | ApiErrorPayload
-      | undefined;
+    // Body can be the brand envelope `{error:{...}}`, a bare payload, or
+    // non-object (e.g. Fiber's default 404 returns the string "Not Found").
+    // Guard against `in` on a non-object before unwrapping.
+    const raw: unknown = error.response?.data;
+    let inner: ApiErrorPayload | undefined;
+    if (raw !== null && typeof raw === 'object') {
+      const obj = raw as Record<string, unknown>;
+      const candidate = 'error' in obj ? obj.error : obj;
+      if (candidate && typeof candidate === 'object') {
+        inner = candidate as ApiErrorPayload;
+      }
+    }
 
     const result: NormalizedError = {
       code: inner?.code ?? 'NETWORK_ERROR',
