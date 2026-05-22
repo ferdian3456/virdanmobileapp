@@ -637,7 +637,7 @@ async function goCreate() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 24px 0 32px;
+  padding: 56px 0 32px;
 }
 
 .empty-illustration {
