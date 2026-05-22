@@ -68,12 +68,12 @@
           <div v-else class="post-grid">
             <button
               v-for="post in posts"
-              :key="post.postId"
+              :key="post.id"
               class="post-tile"
               type="button"
               @click="openPost(post)"
             >
-              <img :src="post.postImageUrl" :alt="post.caption" />
+              <img v-if="post.imageUrl" :src="post.imageUrl" :alt="post.caption" />
             </button>
           </div>
 
@@ -127,17 +127,25 @@ interface ServerDetail {
   createdBy?: string;
 }
 
+interface PostAuthor {
+  userId: string;
+  nickname: string;
+  avatarUrl: string | null;
+  status: string;
+}
+
 interface PostItem {
-  postId: string;
-  ownerId: string;
-  ownerName: string;
-  ownerImageUrl: string | null;
-  postImageUrl: string;
+  id: string;
+  serverId: string;
+  author: PostAuthor;
+  imageUrl: string | null;
   caption: string;
   likeCount: number;
   commentCount: number;
-  isLiked: boolean;
+  userLiked: boolean;
+  isOwner: boolean;
   createdAt: string;
+  updatedAt: string;
 }
 
 interface PaginatedResponse<T> {
@@ -223,7 +231,7 @@ async function loadMore(_idx: number, done: (stop?: boolean) => void) {
 }
 
 async function openPost(post: PostItem) {
-  await router.push({ name: 'post-detail', params: { postId: post.postId } });
+  await router.push({ name: 'post-detail', params: { postId: post.id } });
 }
 
 async function openSettings() {

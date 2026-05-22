@@ -15,11 +15,11 @@
     <!-- Post context snippet -->
     <div v-if="post" class="post-context">
       <div class="post-context-thumb">
-        <img v-if="post.postImageUrl" :src="post.postImageUrl" alt="" />
+        <img v-if="post.imageUrl" :src="post.imageUrl" alt="" />
       </div>
       <div class="post-context-meta">
         <div class="post-context-line1">
-          <span class="post-context-author">{{ post.ownerName }}</span>
+          <span class="post-context-author">{{ post.author.nickname }}</span>
           <span class="post-context-caption">{{ post.caption }}</span>
         </div>
         <div class="post-context-line2">
@@ -157,10 +157,17 @@ interface CommentTreeNode extends CommentItem {
   replies: CommentTreeNode[];
 }
 
+interface PostContextAuthor {
+  userId: string;
+  nickname: string;
+  avatarUrl: string | null;
+  status: string;
+}
+
 interface PostContext {
-  postId: string;
-  ownerName: string;
-  postImageUrl: string;
+  id: string;
+  author: PostContextAuthor;
+  imageUrl: string | null;
   caption: string;
   likeCount: number;
   commentCount: number;

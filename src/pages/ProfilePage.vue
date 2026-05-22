@@ -63,12 +63,12 @@
           <div v-else class="post-grid">
             <button
               v-for="post in posts"
-              :key="post.postId"
+              :key="post.id"
               class="post-tile"
               type="button"
               @click="openPost(post)"
             >
-              <img :src="post.postImageUrl" alt="" />
+              <img v-if="post.imageUrl" :src="post.imageUrl" alt="" />
             </button>
           </div>
 
@@ -111,8 +111,8 @@ import PostGridSkeleton from 'src/components/feedback/skeletons/PostGridSkeleton
 import { useToast } from 'src/composables/useToast';
 
 interface ProfilePost {
-  postId: string;
-  postImageUrl: string;
+  id: string;
+  imageUrl: string | null;
   createdAt: string;
 }
 
@@ -198,7 +198,7 @@ async function loadMore(_idx: number, done: (stop?: boolean) => void) {
 }
 
 async function openPost(post: ProfilePost) {
-  await router.push({ name: 'post-detail', params: { postId: post.postId } });
+  await router.push({ name: 'post-detail', params: { postId: post.id } });
 }
 
 async function goSettings() {

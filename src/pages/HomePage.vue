@@ -118,16 +118,16 @@
         <div class="feed">
           <article
             v-for="post in posts"
-            :key="post.postId"
+            :key="post.id"
             class="feed-card"
           >
             <header class="feed-card-header">
               <div class="feed-avatar">
-                <img v-if="post.ownerImageUrl" :src="post.ownerImageUrl" :alt="post.ownerName" />
-                <span v-else>{{ post.ownerName.charAt(0).toUpperCase() }}</span>
+                <img v-if="post.author.avatarUrl" :src="post.author.avatarUrl" :alt="post.author.nickname" />
+                <span v-else>{{ post.author.nickname.charAt(0).toUpperCase() }}</span>
               </div>
               <div class="feed-meta">
-                <div class="feed-username">{{ post.ownerName }}</div>
+                <div class="feed-username">{{ post.author.nickname }}</div>
                 <div class="feed-time">{{ formatDate(post.createdAt) }}</div>
               </div>
               <button class="header-icon-btn" type="button" aria-label="More">
@@ -136,7 +136,7 @@
             </header>
 
             <div class="feed-image-wrap">
-              <img :src="post.postImageUrl" :alt="post.caption" class="feed-image" />
+              <img v-if="post.imageUrl" :src="post.imageUrl" :alt="post.caption" class="feed-image" />
             </div>
 
             <div class="feed-actions">
@@ -175,7 +175,7 @@
             </div>
 
             <div class="feed-caption">
-              <span class="caption-username">{{ post.ownerName }}</span>
+              <span class="caption-username">{{ post.author.nickname }}</span>
               {{ post.caption }}
             </div>
           </article>
@@ -211,18 +211,26 @@ import { useAppStore } from 'stores/app.store';
 import VButton from 'src/components/VButton.vue';
 import FeedSkeleton from 'src/components/feedback/skeletons/FeedSkeleton.vue';
 
+interface PostAuthor {
+  userId: string;
+  nickname: string;
+  avatarUrl: string | null;
+  status: string;
+}
+
 interface Post {
-  postId: string;
-  ownerId: string;
-  ownerName: string;
-  ownerImageUrl: string | null;
-  postImageUrl: string;
+  id: string;
+  serverId: string;
+  author: PostAuthor;
+  imageUrl: string | null;
   caption: string;
   likeCount: number;
   commentCount: number;
-  isLiked: boolean;
+  userLiked: boolean;
+  isOwner: boolean;
   liked?: boolean;
   createdAt: string;
+  updatedAt: string;
 }
 
 interface PostsResponse {
@@ -276,7 +284,7 @@ async function loadPosts(cursor: string | null = null) {
       `/servers/${activeServerId.value}/posts`,
       { params }
     );
-    const newPosts = (res.data?.data ?? []).map((p) => ({ ...p, liked: !!p.isLiked }));
+    const newPosts = (res.data?.data ?? []).map((p) => ({ ...p, liked: !!p.userLiked }));
     if (cursor) posts.value.push(...newPosts);
     else posts.value = newPosts;
     nextCursor.value = res.data?.page?.nextCursor ?? null;
@@ -311,7 +319,7 @@ async function toggleLike(post: Post) {
   post.likeCount = Math.max(0, post.likeCount + (wasLiked ? -1 : 1));
 
   try {
-    const url = `/posts/${post.postId}/likes`;
+    const url = `/posts/${post.id}/likes`;
     const res = wasLiked
       ? await api.delete<{ likeCount: number }>(url)
       : await api.post<{ likeCount: number }>(url, {});
@@ -324,7 +332,7 @@ async function toggleLike(post: Post) {
 }
 
 async function openComments(post: Post) {
-  await router.push({ name: 'comments', params: { postId: post.postId } });
+  await router.push({ name: 'comments', params: { postId: post.id } });
 }
 
 async function goCreatePost() {

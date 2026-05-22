@@ -14,11 +14,11 @@
     <article v-else-if="post" class="post-card">
       <header class="post-header">
         <div class="post-avatar">
-          <img v-if="post.ownerImageUrl" :src="post.ownerImageUrl" :alt="post.ownerName" />
-          <span v-else>{{ post.ownerName.charAt(0).toUpperCase() }}</span>
+          <img v-if="post.author.avatarUrl" :src="post.author.avatarUrl" :alt="post.author.nickname" />
+          <span v-else>{{ post.author.nickname.charAt(0).toUpperCase() }}</span>
         </div>
         <div class="post-meta">
-          <div class="post-username">{{ post.ownerName }}</div>
+          <div class="post-username">{{ post.author.nickname }}</div>
           <div class="post-time">{{ formatDate(post.createdAt) }}</div>
         </div>
         <button class="icon-btn" type="button" aria-label="More">
@@ -27,7 +27,7 @@
       </header>
 
       <div class="post-image-wrap">
-        <img :src="post.postImageUrl" :alt="post.caption" class="post-image" />
+        <img v-if="post.imageUrl" :src="post.imageUrl" :alt="post.caption" class="post-image" />
       </div>
 
       <div class="post-actions">
@@ -56,7 +56,7 @@
       </div>
 
       <div class="post-caption">
-        <span class="caption-username">{{ post.ownerName }}</span>
+        <span class="caption-username">{{ post.author.nickname }}</span>
         {{ post.caption }}
       </div>
 
@@ -87,18 +87,26 @@ import { useToast } from 'src/composables/useToast';
 import { apiErrorToast } from 'src/composables/useApiError';
 import PostCardSkeleton from 'src/components/feedback/skeletons/PostCardSkeleton.vue';
 
+interface PostAuthor {
+  userId: string;
+  nickname: string;
+  avatarUrl: string | null;
+  status: string;
+}
+
 interface PostDetail {
-  postId: string;
-  ownerId: string;
-  ownerName: string;
-  ownerImageUrl: string | null;
-  postImageUrl: string;
+  id: string;
+  serverId: string;
+  author: PostAuthor;
+  imageUrl: string | null;
   caption: string;
   likeCount: number;
   commentCount: number;
-  isLiked: boolean;
+  userLiked: boolean;
+  isOwner: boolean;
   liked?: boolean;
   createdAt: string;
+  updatedAt: string;
 }
 
 const props = defineProps<{ postId: string }>();
@@ -115,7 +123,7 @@ async function loadPost() {
   loading.value = true;
   try {
     const res = await api.get<PostDetail>(`/posts/${props.postId}`);
-    post.value = { ...res.data, liked: !!res.data.isLiked };
+    post.value = { ...res.data, liked: !!res.data.userLiked };
   } catch (err) {
     toast.error(apiErrorToast(err, () => void loadPost()));
   } finally {

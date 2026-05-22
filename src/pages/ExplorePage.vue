@@ -26,12 +26,12 @@
     <div v-else class="post-grid">
       <button
         v-for="post in filteredPosts"
-        :key="post.postId"
+        :key="post.id"
         class="post-tile"
         type="button"
         @click="openPost(post)"
       >
-        <img :src="post.postImageUrl" alt="" />
+        <img v-if="post.imageUrl" :src="post.imageUrl" alt="" />
       </button>
     </div>
 
@@ -58,10 +58,17 @@ import { api } from 'src/boot/axios';
 import { useAppStore } from 'src/stores/app.store';
 import PostGridSkeleton from 'src/components/feedback/skeletons/PostGridSkeleton.vue';
 
+interface ExplorePostAuthor {
+  userId: string;
+  nickname: string;
+  avatarUrl: string | null;
+  status: string;
+}
+
 interface ExplorePost {
-  postId: string;
-  ownerName: string;
-  postImageUrl: string;
+  id: string;
+  author: ExplorePostAuthor;
+  imageUrl: string | null;
   caption: string;
   likeCount: number;
   commentCount: number;
@@ -89,7 +96,7 @@ const filteredPosts = computed(() => {
   if (!q) return posts.value;
   return posts.value.filter(
     (p) =>
-      p.ownerName.toLowerCase().includes(q) ||
+      p.author.nickname.toLowerCase().includes(q) ||
       p.caption.toLowerCase().includes(q)
   );
 });
@@ -154,7 +161,7 @@ async function loadMore(_idx: number, done: (stop?: boolean) => void) {
 }
 
 async function openPost(post: ExplorePost) {
-  await router.push({ name: 'post-detail', params: { postId: post.postId } });
+  await router.push({ name: 'post-detail', params: { postId: post.id } });
 }
 
 async function goCreatePost() {
