@@ -176,10 +176,13 @@ export function fileToImage(file: File): Promise<HTMLImageElement> {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
-      URL.revokeObjectURL(url);
+      // Caller owns the lifetime of img.src — do NOT revoke here, or any
+      // later use of img.src (CSS background-image, another <img> binding,
+      // re-decode) fails with ERR_FILE_NOT_FOUND.
       resolve(img);
     };
     img.onerror = (err) => {
+      // Load failed: caller never sees the URL, so revoke here to avoid leak.
       URL.revokeObjectURL(url);
       reject(err instanceof Error ? err : new Error('Image load failed'));
     };
