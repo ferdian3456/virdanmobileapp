@@ -8,9 +8,7 @@
       <span class="icon-btn"></span>
     </header>
 
-    <div v-if="loading" class="state-block">
-      <q-spinner-dots color="primary" size="36px" />
-    </div>
+    <SettingsFormSkeleton v-if="loading" />
 
     <template v-else>
       <!-- Avatar -->
@@ -124,6 +122,7 @@ import { api } from 'src/boot/axios';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useToast } from 'src/composables/useToast';
 import { apiErrorToast } from 'src/composables/useApiError';
+import SettingsFormSkeleton from 'src/components/feedback/skeletons/SettingsFormSkeleton.vue';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const MAX_AVATAR_MB = 5;

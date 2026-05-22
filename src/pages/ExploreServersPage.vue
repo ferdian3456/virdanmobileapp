@@ -54,9 +54,7 @@
 
     <!-- Server list -->
     <div class="server-list">
-      <div v-if="loading && servers.length === 0" class="state-block">
-        <q-spinner-dots color="primary" size="36px" />
-      </div>
+      <ServerListSkeleton v-if="loading && servers.length === 0" />
 
       <div v-else-if="filteredServers.length === 0" class="state-block">
         <p class="empty-text">No servers match your search.</p>
@@ -108,6 +106,7 @@ import { api } from 'src/boot/axios';
 import { useAppStore } from 'src/stores/app.store';
 import { useToast } from 'src/composables/useToast';
 import { apiErrorToast } from 'src/composables/useApiError';
+import ServerListSkeleton from 'src/components/feedback/skeletons/ServerListSkeleton.vue';
 
 interface CategoryItem {
   id: number;

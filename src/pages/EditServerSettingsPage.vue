@@ -14,9 +14,7 @@
       </button>
     </header>
 
-    <div v-if="loading" class="state-block">
-      <q-spinner-dots color="primary" size="36px" />
-    </div>
+    <SettingsFormSkeleton v-if="loading" />
 
     <template v-else-if="server">
       <!-- Avatar -->
@@ -139,6 +137,7 @@ import { api } from 'src/boot/axios';
 import { useAppStore } from 'src/stores/app.store';
 import { useToast } from 'src/composables/useToast';
 import { apiErrorToast } from 'src/composables/useApiError';
+import SettingsFormSkeleton from 'src/components/feedback/skeletons/SettingsFormSkeleton.vue';
 
 interface ServerDetail {
   id: string;

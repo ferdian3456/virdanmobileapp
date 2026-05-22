@@ -41,9 +41,7 @@
 
     <!-- Comments list -->
     <div class="cm-list">
-      <div v-if="loading && comments.length === 0" class="state-block">
-        <q-spinner-dots color="primary" size="32px" />
-      </div>
+      <CommentListSkeleton v-if="loading && comments.length === 0" />
 
       <div v-else-if="visibleComments.length === 0" class="empty-block">
         <p class="empty-text">No comments yet. Be the first to share your thoughts.</p>
@@ -142,6 +140,7 @@ import { api } from 'src/boot/axios';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useToast } from 'src/composables/useToast';
 import { apiErrorToast } from 'src/composables/useApiError';
+import CommentListSkeleton from 'src/components/feedback/skeletons/CommentListSkeleton.vue';
 
 interface CommentItem {
   id: string;

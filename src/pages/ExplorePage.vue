@@ -12,9 +12,7 @@
     </div>
 
     <!-- Loading -->
-    <div v-if="loading && posts.length === 0" class="state-block">
-      <q-spinner-dots color="primary" size="36px" />
-    </div>
+    <PostGridSkeleton v-if="loading && posts.length === 0" />
 
     <!-- Empty state -->
     <div v-else-if="filteredPosts.length === 0" class="empty-section">
@@ -58,6 +56,7 @@ import { Search } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { api } from 'src/boot/axios';
 import { useAppStore } from 'src/stores/app.store';
+import PostGridSkeleton from 'src/components/feedback/skeletons/PostGridSkeleton.vue';
 
 interface ExplorePost {
   postId: string;

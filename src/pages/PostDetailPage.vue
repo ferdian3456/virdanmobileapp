@@ -9,9 +9,7 @@
       <span class="pd-spacer"></span>
     </header>
 
-    <div v-if="loading" class="state-block">
-      <q-spinner-dots color="primary" size="36px" />
-    </div>
+    <PostCardSkeleton v-if="loading" />
 
     <article v-else-if="post" class="post-card">
       <header class="post-header">
@@ -87,6 +85,7 @@ import {
 import { api } from 'src/boot/axios';
 import { useToast } from 'src/composables/useToast';
 import { apiErrorToast } from 'src/composables/useApiError';
+import PostCardSkeleton from 'src/components/feedback/skeletons/PostCardSkeleton.vue';
 
 interface PostDetail {
   postId: string;

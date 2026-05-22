@@ -1,9 +1,7 @@
 <template>
   <q-page class="bg-grey-1 home-page">
     <!-- Loading servers -->
-    <div v-if="loadingServers" class="state-block">
-      <q-spinner-dots color="primary" size="40px" />
-    </div>
+    <FeedSkeleton v-if="loadingServers" />
 
     <!-- No servers state — fallback (guard normally redirects to onboarding) -->
     <div
@@ -211,6 +209,7 @@ import {
 import { api } from 'boot/axios';
 import { useAppStore } from 'stores/app.store';
 import VButton from 'src/components/VButton.vue';
+import FeedSkeleton from 'src/components/feedback/skeletons/FeedSkeleton.vue';
 
 interface Post {
   postId: string;

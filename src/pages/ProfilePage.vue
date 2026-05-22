@@ -11,9 +11,7 @@
       </button>
     </header>
 
-    <div v-if="loadingUser" class="state-block">
-      <q-spinner-dots color="primary" size="36px" />
-    </div>
+    <ProfileHeaderSkeleton v-if="loadingUser" />
 
     <template v-else-if="user">
       <!-- Identity row: avatar + name + handle -->
@@ -52,9 +50,7 @@
       <!-- Tab content -->
       <div class="pf-content">
         <template v-if="activeTab === 'grid'">
-          <div v-if="loadingPosts && posts.length === 0" class="state-block">
-            <q-spinner-dots color="primary" size="36px" />
-          </div>
+          <PostGridSkeleton v-if="loadingPosts && posts.length === 0" />
 
           <div v-else-if="posts.length === 0" class="empty-grid">
             <div class="empty-icon">
@@ -110,6 +106,8 @@ import { storeToRefs } from 'pinia';
 import { api } from 'src/boot/axios';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useAppStore } from 'src/stores/app.store';
+import ProfileHeaderSkeleton from 'src/components/feedback/skeletons/ProfileHeaderSkeleton.vue';
+import PostGridSkeleton from 'src/components/feedback/skeletons/PostGridSkeleton.vue';
 import { useToast } from 'src/composables/useToast';
 
 interface ProfilePost {

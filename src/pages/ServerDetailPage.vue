@@ -18,9 +18,7 @@
       <span v-else class="sd-spacer"></span>
     </header>
 
-    <div v-if="loadingServer" class="state-block">
-      <q-spinner-dots color="primary" size="36px" />
-    </div>
+    <ServerHeaderSkeleton v-if="loadingServer" />
 
     <template v-else-if="server">
       <!-- Banner + avatar -->
@@ -62,9 +60,7 @@
       <!-- Tab content -->
       <div class="sd-content">
         <template v-if="activeTab === 'posts'">
-          <div v-if="loadingPosts && posts.length === 0" class="state-block">
-            <q-spinner-dots color="primary" size="36px" />
-          </div>
+          <PostGridSkeleton v-if="loadingPosts && posts.length === 0" />
           <div v-else-if="posts.length === 0" class="state-block">
             <p class="empty-text">No posts in this server yet.</p>
           </div>
@@ -116,6 +112,8 @@ import { api } from 'src/boot/axios';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useToast } from 'src/composables/useToast';
 import { apiErrorToast } from 'src/composables/useApiError';
+import ServerHeaderSkeleton from 'src/components/feedback/skeletons/ServerHeaderSkeleton.vue';
+import PostGridSkeleton from 'src/components/feedback/skeletons/PostGridSkeleton.vue';
 
 interface ServerDetail {
   id: string;
