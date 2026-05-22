@@ -37,6 +37,7 @@
           dense
           emit-value
           map-options
+          behavior="menu"
           :options="pickerOptions"
           :loading="isLoadingHistory"
           :model-value="pickedProfileId"
