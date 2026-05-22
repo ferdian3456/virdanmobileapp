@@ -84,7 +84,8 @@
 
       <ServerListSkeleton v-if="loading && servers.length === 0" />
 
-      <div v-else-if="filteredServers.length === 0" class="state-block">
+      <div v-else-if="filteredServers.length === 0" class="empty-state">
+        <img src="/assets/illustrator/empty.svg" alt="" class="empty-illustration" />
         <p class="empty-text">No servers match your search.</p>
       </div>
 
@@ -249,6 +250,9 @@ async function loadServers(reset = true) {
     if (loading.value) return;
     loading.value = true;
     nextCursor.value = null;
+    // Clear list so the skeleton (v-if loading && servers.length === 0)
+    // takes over instead of stale rows from the previous category.
+    servers.value = [];
   } else {
     if (loadingMore.value || nextCursor.value === null) return;
     loadingMore.value = true;
@@ -260,7 +264,9 @@ async function loadServers(reset = true) {
     if (!reset && nextCursor.value) params.cursor = nextCursor.value;
     const res = await api.get<PaginatedResponse<DiscoveryServer>>('/servers/', { params });
     const pageData = res.data?.data ?? [];
-    const pageCursor = res.data?.page?.nextCursor ?? null;
+    // BE returns "" for "no more pages"; treat falsy as null so the
+    // infinite-scroll guard (nextCursor === null) actually short-circuits.
+    const pageCursor = res.data?.page?.nextCursor || null;
 
     servers.value = reset ? pageData : [...servers.value, ...pageData];
     nextCursor.value = pageCursor;
@@ -627,16 +633,22 @@ async function goCreate() {
 }
 
 /* States */
-.state-block {
+.empty-state {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 32px 0;
+  padding: 24px 0 32px;
+}
+
+.empty-illustration {
+  width: 220px;
+  max-width: 60%;
 }
 
 .empty-text {
   color: #6C757D;
   font-size: 14px;
+  margin-top: 8px;
 }
 
 </style>
