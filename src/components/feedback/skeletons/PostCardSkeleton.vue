@@ -55,6 +55,8 @@ import VSkeleton from '../VSkeleton.vue';
 
 .pcs-image {
   aspect-ratio: 1;
+  // VSkeleton box ships a fixed 16px height; release it so aspect-ratio wins.
+  height: auto;
 }
 
 .pcs-actions {

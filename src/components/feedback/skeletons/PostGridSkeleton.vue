@@ -30,5 +30,7 @@ withDefaults(defineProps<{ count?: number }>(), { count: 9 });
 
 .pgs-tile {
   aspect-ratio: 1;
+  // VSkeleton box ships a fixed 16px height; release it so aspect-ratio wins.
+  height: auto;
 }
 </style>
