@@ -20,7 +20,7 @@
 
     <!-- Empty state -->
     <div v-if="filteredItems.length === 0" class="empty-section">
-      <q-img src="/assets/illustrator/notification.svg" style="width: 240px" class="empty-illustration" />
+      <img src="/assets/illustrator/notification.svg" alt="" style="width: 240px" class="empty-illustration" />
       <div class="empty-title">No notifications yet</div>
       <p class="empty-help">When someone likes or comments on your post, you'll see it here.</p>
     </div>

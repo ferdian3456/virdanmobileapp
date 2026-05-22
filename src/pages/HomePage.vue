@@ -8,7 +8,7 @@
       v-else-if="servers.length === 0"
       class="empty-servers"
     >
-      <q-img src="/assets/illustrator/community.svg" style="width: 240px" class="q-mb-lg" />
+      <img src="/assets/illustrator/community.svg" alt="" style="width: 240px" class="q-mb-lg" />
       <div class="empty-title">No servers yet</div>
       <p class="empty-help">
         Join a community or create your own to start seeing posts here.
@@ -101,7 +101,7 @@
         v-if="posts.length === 0 && !loadingPosts"
         class="empty-feed"
       >
-        <q-img src="/assets/illustrator/posting_photo.svg" style="width: 320px" class="q-mt-xl q-mb-lg" />
+        <img src="/assets/illustrator/posting_photo.svg" alt="" style="width: 320px" class="q-mt-xl q-mb-lg" />
         <div class="empty-title">No posts yet</div>
         <p class="empty-help">Be the first to share something in this server.</p>
         <VButton

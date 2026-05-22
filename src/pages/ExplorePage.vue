@@ -16,7 +16,7 @@
 
     <!-- Empty state -->
     <div v-else-if="filteredPosts.length === 0" class="empty-section">
-      <q-img src="/assets/illustrator/social.svg" style="width: 240px" class="empty-illustration" />
+      <img src="/assets/illustrator/social.svg" alt="" style="width: 240px" class="empty-illustration" />
       <div class="empty-title">No posts yet</div>
       <p class="empty-help">Be the first to share something in your servers.</p>
       <button class="empty-cta" type="button" @click="goCreatePost">Create a Post</button>

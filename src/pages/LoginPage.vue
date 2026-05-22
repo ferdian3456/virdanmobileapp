@@ -62,14 +62,14 @@
         style="border: 1px solid #e5e7eb; color: #374151"
       >
         <div class="row items-center no-wrap" style="gap: 12px">
-          <q-img src="/assets/icons/google_logo.svg" width="24px" />
+          <img src="/assets/icons/google_logo.svg" alt="" style="width: 24px" />
           <span>Continue with Google</span>
         </div>
       </VButton>
 
       <VButton color="black" class="full-width">
         <div class="row items-center no-wrap" style="gap: 12px">
-          <q-img src="/assets/icons/apple_logo.svg" width="24px" class="invert" />
+          <img src="/assets/icons/apple_logo.svg" alt="" style="width: 24px" class="invert" />
           <span>Continue with Apple</span>
         </div>
       </VButton>
