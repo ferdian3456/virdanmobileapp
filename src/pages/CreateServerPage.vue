@@ -66,6 +66,7 @@
         dense
         emit-value
         map-options
+        behavior="menu"
         :options="categoryOptions"
         :loading="isLoadingCategories"
         placeholder="Select category…"
