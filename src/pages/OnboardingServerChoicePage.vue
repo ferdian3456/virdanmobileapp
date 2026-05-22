@@ -637,7 +637,7 @@ async function goCreate() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 56px 0 32px;
+  padding: 24px 0 32px;
 }
 
 .empty-illustration {
@@ -648,7 +648,7 @@ async function goCreate() {
 .empty-text {
   color: #6C757D;
   font-size: 14px;
-  margin-top: 8px;
+  margin-top: 24px;
 }
 
 </style>
