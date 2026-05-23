@@ -46,29 +46,173 @@
 }
 
 .sp-content {
-  padding: 24px 20px;
+  padding: 20px 20px 32px;
 }
 
-.sp-section-help {
+.sp-intro {
   font-size: 13px;
   color: #6C757D;
   line-height: 1.5;
-  margin: 0 0 24px;
+  margin: 0 0 8px;
 }
 
-.sp-placeholder {
-  border: 1px dashed #E9ECEF;
-  border-radius: 12px;
-  padding: 24px 20px;
-  color: #6C757D;
-  font-size: 14px;
-  line-height: 1.5;
+.sp-meta {
+  font-size: 12px;
+  color: #ADB5BD;
+  margin: 0 0 20px;
+}
 
-  p {
-    margin: 0;
+/* Article-style sections (Terms, Privacy Policy) */
+.sp-section {
+  margin-top: 24px;
 
-    + p {
-      margin-top: 12px;
-    }
+  &:first-of-type {
+    margin-top: 8px;
   }
+}
+
+.sp-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0F172A;
+  letter-spacing: -0.01em;
+  margin: 0 0 8px;
+}
+
+.sp-section-body {
+  font-size: 14px;
+  color: #495057;
+  line-height: 1.6;
+  margin: 0;
+
+  + .sp-section-body {
+    margin-top: 10px;
+  }
+}
+
+/* Toggle/setting rows (Privacy & Security) */
+.sp-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid #F1F3F5;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.sp-row-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.sp-row-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0F172A;
+  letter-spacing: -0.01em;
+  margin: 0 0 2px;
+}
+
+.sp-row-help {
+  font-size: 12px;
+  color: #6C757D;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.sp-row-coming {
+  font-size: 11px;
+  font-weight: 600;
+  color: #ADB5BD;
+  letter-spacing: 0.04em;
+  align-self: center;
+  white-space: nowrap;
+}
+
+/* FAQ accordion (Help Center) */
+.sp-faq-list {
+  border-top: 1px solid #F1F3F5;
+}
+
+.sp-faq {
+  border-bottom: 1px solid #F1F3F5;
+}
+
+.sp-faq-trigger {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  padding: 14px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  color: #0F172A;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.sp-faq-chev {
+  flex-shrink: 0;
+  color: #ADB5BD;
+  transition: transform 0.2s ease;
+
+  &.open {
+    transform: rotate(180deg);
+  }
+}
+
+.sp-faq-body {
+  padding: 0 0 14px;
+  font-size: 13px;
+  color: #495057;
+  line-height: 1.55;
+}
+
+.sp-contact-card {
+  margin-top: 28px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #F1F3F5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sp-contact-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #007BFF;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sp-contact-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.sp-contact-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0F172A;
+  margin: 0;
+}
+
+.sp-contact-help {
+  font-size: 12px;
+  color: #6C757D;
+  line-height: 1.4;
+  margin: 2px 0 0;
 }
