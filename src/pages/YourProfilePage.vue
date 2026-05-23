@@ -87,7 +87,7 @@
         dense
         maxlength="22"
         prefix="@"
-        placeholder="kylianmbappe"
+        placeholder="yourusername"
         class="yp-input"
         hide-bottom-space
         :error="!!usernameError"
