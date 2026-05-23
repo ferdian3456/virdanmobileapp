@@ -24,7 +24,7 @@
       <SettingsRow icon="user" label="Edit Profile" @click="goEditProfile" />
       <SettingsRow icon="mail" label="Change Email" @click="goChangeEmail" />
       <SettingsRow icon="lock" label="Change Password" @click="goChangePassword" />
-      <SettingsRow icon="shield" label="Privacy &amp; Security" disabled />
+      <SettingsRow icon="shield" label="Privacy &amp; Security" @click="goPrivacySecurity" />
       <SettingsRow icon="ban" label="Blocked Users" badge="3" disabled />
     </SettingsSection>
 
@@ -38,9 +38,9 @@
     </SettingsSection>
 
     <SettingsSection title="ABOUT &amp; SUPPORT">
-      <SettingsRow icon="help" label="Help Center" disabled />
-      <SettingsRow icon="file" label="Terms of Service" disabled />
-      <SettingsRow icon="shield-check" label="Privacy Policy" disabled />
+      <SettingsRow icon="help" label="Help Center" @click="goHelpCenter" />
+      <SettingsRow icon="file" label="Terms of Service" @click="goTermsOfService" />
+      <SettingsRow icon="shield-check" label="Privacy Policy" @click="goPrivacyPolicy" />
     </SettingsSection>
 
     <!-- Logout -->
@@ -126,6 +126,22 @@ function goChangePassword() {
 
 function goChangeEmail() {
   void router.push({ name: 'change-email' });
+}
+
+function goPrivacySecurity() {
+  void router.push({ name: 'privacy-security' });
+}
+
+function goHelpCenter() {
+  void router.push({ name: 'help-center' });
+}
+
+function goTermsOfService() {
+  void router.push({ name: 'terms-of-service' });
+}
+
+function goPrivacyPolicy() {
+  void router.push({ name: 'privacy-policy' });
 }
 
 function goNotificationSettings() {

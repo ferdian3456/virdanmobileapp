@@ -143,6 +143,30 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/NotificationSettingsPage.vue'),
         meta: { hideBottomNav: true },
       },
+      {
+        path: 'privacy-security',
+        name: 'privacy-security',
+        component: () => import('pages/PrivacySecurityPage.vue'),
+        meta: { hideBottomNav: true },
+      },
+      {
+        path: 'help-center',
+        name: 'help-center',
+        component: () => import('pages/HelpCenterPage.vue'),
+        meta: { hideBottomNav: true },
+      },
+      {
+        path: 'terms-of-service',
+        name: 'terms-of-service',
+        component: () => import('pages/TermsOfServicePage.vue'),
+        meta: { hideBottomNav: true },
+      },
+      {
+        path: 'privacy-policy',
+        name: 'privacy-policy',
+        component: () => import('pages/PrivacyPolicyPage.vue'),
+        meta: { hideBottomNav: true },
+      },
     ],
   },
 
