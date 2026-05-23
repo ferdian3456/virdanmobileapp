@@ -23,7 +23,7 @@
           outlined
           dense
           :type="showCurrent ? 'text' : 'password'"
-          placeholder="••••••••"
+          placeholder="Enter your current password"
           class="cp-input"
           hide-bottom-space
           :error="!!errors.current"
@@ -63,7 +63,7 @@
           outlined
           dense
           :type="showNew ? 'text' : 'password'"
-          placeholder="••••••••"
+          placeholder="Enter your new password"
           class="cp-input"
           hide-bottom-space
           :error="!!errors.new"
@@ -85,7 +85,7 @@
           outlined
           dense
           :type="showConfirm ? 'text' : 'password'"
-          placeholder="••••••••"
+          placeholder="Re-enter your new password"
           class="cp-input"
           hide-bottom-space
           :error="!!errors.confirm"
