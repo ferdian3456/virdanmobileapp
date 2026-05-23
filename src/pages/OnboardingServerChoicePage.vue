@@ -75,13 +75,8 @@
       </template>
     </div>
 
-    <!-- Popular servers list -->
+    <!-- Server list -->
     <div class="server-list-wrap">
-      <div class="server-list-header">
-        <h2 class="server-list-title">Popular Servers</h2>
-        <span class="server-list-count">{{ filteredServers.length }} servers</span>
-      </div>
-
       <ServerListSkeleton v-if="loading && servers.length === 0" />
 
       <div v-else-if="filteredServers.length === 0" class="empty-state">
@@ -497,26 +492,6 @@ async function goCreate() {
 /* Server list */
 .server-list-wrap {
   padding: 0 20px;
-}
-
-.server-list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin: 8px 0;
-}
-
-.server-list-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #0F172A;
-  letter-spacing: -0.01em;
-  margin: 0;
-}
-
-.server-list-count {
-  font-size: 12px;
-  color: #6C757D;
 }
 
 .server-row {
