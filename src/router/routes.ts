@@ -132,6 +132,12 @@ const routes: RouteRecordRaw[] = [
         meta: { hideBottomNav: true },
       },
       {
+        path: 'change-email',
+        name: 'change-email',
+        component: () => import('pages/ChangeEmailPage.vue'),
+        meta: { hideBottomNav: true },
+      },
+      {
         path: 'notification-settings',
         name: 'notification-settings',
         component: () => import('pages/NotificationSettingsPage.vue'),

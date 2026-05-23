@@ -22,6 +22,7 @@
 
     <SettingsSection title="ACCOUNT">
       <SettingsRow icon="user" label="Edit Profile" @click="goEditProfile" />
+      <SettingsRow icon="mail" label="Change Email" @click="goChangeEmail" />
       <SettingsRow icon="lock" label="Change Password" @click="goChangePassword" />
       <SettingsRow icon="shield" label="Privacy &amp; Security" disabled />
       <SettingsRow icon="ban" label="Blocked Users" badge="3" disabled />
@@ -58,7 +59,7 @@ import { ref, computed, onMounted, watch, defineComponent, h, type PropType } fr
 import { useRouter } from 'vue-router';
 import {
   ChevronLeft, ChevronRight, LogOut,
-  User, Lock, Shield, Ban, Globe, Sun, Bell, CircleHelp, FileText, ShieldCheck,
+  User, Mail, Lock, Shield, Ban, Globe, Sun, Bell, CircleHelp, FileText, ShieldCheck,
 } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { api } from 'src/boot/axios';
@@ -123,6 +124,10 @@ function goChangePassword() {
   void router.push({ name: 'change-password' });
 }
 
+function goChangeEmail() {
+  void router.push({ name: 'change-email' });
+}
+
 function goNotificationSettings() {
   void router.push({ name: 'notification-settings' });
 }
@@ -161,6 +166,7 @@ const SettingsSection = defineComponent({
 
 const ICON_MAP = {
   user: User,
+  mail: Mail,
   lock: Lock,
   shield: Shield,
   ban: Ban,
