@@ -50,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { Search } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
@@ -82,12 +82,11 @@ interface PaginatedResponse<T> {
 
 const router = useRouter();
 const appStore = useAppStore();
-const { servers } = storeToRefs(appStore);
+const { activeServerId } = storeToRefs(appStore);
 
 const posts = ref<ExplorePost[]>([]);
 const searchQuery = ref('');
 const loading = ref(false);
-const currentServerIdx = ref(0);
 const nextCursor = ref<string | null>(null);
 const hasMore = ref(true);
 
@@ -102,7 +101,7 @@ const filteredPosts = computed(() => {
 });
 
 onMounted(async () => {
-  // Make sure server list is hydrated.
+  // Make sure server list is hydrated so activeServerId is available.
   if (!appStore.isInitialized) {
     try {
       await appStore.fetchMyServers();
@@ -110,40 +109,46 @@ onMounted(async () => {
       // Continue anyway — page shows empty state.
     }
   }
-  await loadFromCurrentServer();
+  await loadPosts(true);
 });
 
-async function loadFromCurrentServer() {
+// Refetch whenever the user switches active server elsewhere (e.g. HomePage).
+watch(activeServerId, () => {
+  void loadPosts(true);
+});
+
+async function loadPosts(reset: boolean) {
   if (loading.value) return;
-  if (currentServerIdx.value >= servers.value.length) {
+  const sid = activeServerId.value;
+  if (!sid) {
+    posts.value = [];
+    nextCursor.value = null;
     hasMore.value = false;
+    return;
+  }
+
+  if (reset) {
+    posts.value = [];
+    nextCursor.value = null;
+    hasMore.value = true;
+  } else if (!hasMore.value || !nextCursor.value) {
     return;
   }
 
   loading.value = true;
   try {
-    const serverId = servers.value[currentServerIdx.value]?.id;
-    if (!serverId) {
-      hasMore.value = false;
-      return;
-    }
     const params: Record<string, string | number> = { limit: 20 };
-    if (nextCursor.value) params.cursor = nextCursor.value;
+    if (!reset && nextCursor.value) params.cursor = nextCursor.value;
     const res = await api.get<PaginatedResponse<ExplorePost>>(
-      `/servers/${serverId}/posts`,
+      `/servers/${sid}/posts`,
       { params }
     );
     const list = res.data?.data ?? [];
-    posts.value.push(...list);
-    nextCursor.value = res.data?.page?.nextCursor ?? null;
-
-    if (!nextCursor.value) {
-      // Move to next server in the list.
-      currentServerIdx.value += 1;
-      hasMore.value = currentServerIdx.value < servers.value.length;
-    } else {
-      hasMore.value = true;
-    }
+    if (reset) posts.value = list;
+    else posts.value.push(...list);
+    // BE returns "" for "no more pages"; normalize to null.
+    nextCursor.value = res.data?.page?.nextCursor || null;
+    hasMore.value = !!nextCursor.value;
   } catch {
     hasMore.value = false;
   } finally {
@@ -156,7 +161,7 @@ async function loadMore(_idx: number, done: (stop?: boolean) => void) {
     done(true);
     return;
   }
-  await loadFromCurrentServer();
+  await loadPosts(false);
   done(!hasMore.value);
 }
 
