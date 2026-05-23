@@ -138,7 +138,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ChevronRight, Search, Users } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
-import { useAppStore } from 'src/stores/app.store';
+import { useServerCreateStore } from 'src/stores/server-create.store';
 import { useToast } from 'src/composables/useToast';
 import { apiErrorToast } from 'src/composables/useApiError';
 import VSkeleton from 'src/components/feedback/VSkeleton.vue';
@@ -168,7 +168,7 @@ interface PaginatedResponse<T> {
 }
 
 const router = useRouter();
-const appStore = useAppStore();
+const serverCreateStore = useServerCreateStore();
 const toast = useToast();
 
 const categories = ref<CategoryItem[]>([]);
@@ -285,18 +285,14 @@ function setCategory(id: number | null) {
 
 async function join(srv: DiscoveryServer) {
   if (joiningId.value) return;
-  joiningId.value = srv.id;
-  try {
-    await api.post(`/servers/${srv.id}/join`);
-    toast.success({ title: `Joined ${srv.name}.` });
-    await appStore.fetchMyServers(true);
-    appStore.setActiveServer(srv.id);
-    await router.push({ name: 'home' });
-  } catch (err) {
-    toast.error(apiErrorToast(err));
-  } finally {
-    joiningId.value = null;
-  }
+  // Join now requires a per-server profile (nickname + username + bio +
+  // avatar). Stash the target and hand off to YourProfilePage.
+  serverCreateStore.setJoinTarget({
+    serverId: srv.id,
+    serverName: srv.name,
+    serverShortName: srv.shortName,
+  });
+  await router.push({ name: 'onboarding-create-server-profile' });
 }
 
 async function goCreate() {

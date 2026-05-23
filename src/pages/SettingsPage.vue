@@ -16,7 +16,7 @@
       </div>
       <div class="ps-meta">
         <div class="ps-name">{{ profile?.nickname || user?.email || '—' }}</div>
-        <!-- TODO Step 3: render @{{ profile.username }} once per-server username column lands -->
+        <div v-if="profile?.username" class="ps-handle">@{{ profile.username }}</div>
       </div>
     </section>
 
@@ -70,6 +70,7 @@ interface ServerProfileMeResponse {
   profileId: string;
   serverId: string;
   nickname: string;
+  username: string;
   bio: string | null;
   avatarImageId: string | null;
   avatarUrl: string | null;

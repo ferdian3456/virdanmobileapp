@@ -79,6 +79,23 @@
       />
       <p class="field-help">How other members see you</p>
 
+      <!-- Username -->
+      <FieldLabel label="Username" required :count="`${form.username.length}/22`" />
+      <q-input
+        v-model="form.username"
+        outlined
+        dense
+        maxlength="22"
+        prefix="@"
+        placeholder="kylianmbappe"
+        class="yp-input"
+        hide-bottom-space
+        :error="!!usernameError"
+        :error-message="usernameError ?? undefined"
+        @update:model-value="onUsernameInput"
+      />
+      <p class="field-help">Letters, digits, underscores and dots. No spaces. Unique within this server.</p>
+
       <!-- Bio -->
       <FieldLabel label="Bio" optional-tag :count="`${form.bio.length}/150`" />
       <q-input
@@ -130,6 +147,7 @@ interface ProfileHistoryItem {
   serverId: string;
   serverName: string;
   nickname: string;
+  username: string;
   bio: string | null;
   avatarImageId: string | null;
   avatarUrl: string | null;
@@ -155,8 +173,26 @@ const isSubmitting = ref(false);
 
 const form = ref({
   nickname: '',
+  username: '',
   bio: '',
 });
+
+const USERNAME_REGEX = /^[a-zA-Z0-9_.]+$/;
+const usernameError = ref<string | null>(null);
+
+function onUsernameInput(val: string | number | null) {
+  const next = (typeof val === 'string' ? val : String(val ?? '')).toLowerCase();
+  form.value.username = next;
+  if (!next) {
+    usernameError.value = null;
+  } else if (!USERNAME_REGEX.test(next)) {
+    usernameError.value = 'Use only letters, digits, _ or . (no spaces)';
+  } else if (next.length < 3) {
+    usernameError.value = 'Must be at least 3 characters';
+  } else {
+    usernameError.value = null;
+  }
+}
 
 const profileHistory = ref<ProfileHistoryItem[]>([]);
 const isLoadingHistory = ref(false);
@@ -170,7 +206,15 @@ const avatarLetter = computed(() => {
 
 const canSubmit = computed(() => {
   const n = form.value.nickname.trim();
-  return n.length >= 3 && n.length <= 50;
+  const u = form.value.username.trim();
+  return (
+    n.length >= 3 &&
+    n.length <= 50 &&
+    u.length >= 3 &&
+    u.length <= 22 &&
+    USERNAME_REGEX.test(u) &&
+    !usernameError.value
+  );
 });
 
 const pickerOptions = computed(() => {
@@ -199,7 +243,9 @@ function onPickerChange(opt: { value: string; raw: ProfileHistoryItem | null }) 
   profileAvatarPreview.value = item.avatarUrl;
   profileAvatarFile.value = null;
   form.value.nickname = item.nickname;
+  form.value.username = item.username;
   form.value.bio = item.bio ?? '';
+  usernameError.value = null;
 }
 
 /* ─── Inline mini-component for field label + counter ──────────── */
@@ -226,10 +272,10 @@ const FieldLabel = defineComponent({
 
 /* ─── Lifecycle ─────────────────────────────────────────────── */
 onMounted(() => {
-  if (!serverCreateStore.draft) {
+  if (!serverCreateStore.draft && !serverCreateStore.joinTarget) {
     toast.error({ title: 'Missing server data. Please restart.' });
     void router.replace({
-      name: isOnboarding.value ? 'onboarding-create-server' : 'create-server',
+      name: isOnboarding.value ? 'onboarding-server-choice' : 'explore-servers',
     });
     return;
   }
@@ -280,10 +326,11 @@ function onAvatarSelected(event: Event) {
 async function submit() {
   if (!canSubmit.value || isSubmitting.value) return;
   const draft = serverCreateStore.draft;
-  if (!draft) {
-    toast.error({ title: 'Missing server data. Please restart create flow.' });
+  const joinTarget = serverCreateStore.joinTarget;
+  if (!draft && !joinTarget) {
+    toast.error({ title: 'Missing server data. Please restart.' });
     void router.replace({
-      name: isOnboarding.value ? 'onboarding-create-server' : 'create-server',
+      name: isOnboarding.value ? 'onboarding-server-choice' : 'explore-servers',
     });
     return;
   }
@@ -291,15 +338,8 @@ async function submit() {
   isSubmitting.value = true;
   try {
     const fd = new FormData();
-    fd.append('name', draft.name);
-    fd.append('shortName', draft.shortName);
-    fd.append('categoryId', String(draft.categoryId));
-    fd.append('description', draft.description);
-    fd.append('isPrivate', String(draft.isPrivate));
-    if (draft.serverAvatarFile) {
-      fd.append('serverAvatar', draft.serverAvatarFile, draft.serverAvatarFile.name);
-    }
     fd.append('nickname', form.value.nickname.trim());
+    fd.append('username', form.value.username.trim().toLowerCase());
     fd.append('bio', form.value.bio.trim());
     if (profileAvatarFile.value) {
       fd.append('profileAvatar', profileAvatarFile.value, profileAvatarFile.value.name);
@@ -307,13 +347,36 @@ async function submit() {
       fd.append('avatarImageId', pickedAvatarImageId.value);
     }
 
-    await api.post('/servers/create', fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    let createdServerId: string | null = null;
 
-    toast.success({ title: 'Server created successfully.' });
-    serverCreateStore.clearDraft();
+    if (draft) {
+      fd.append('name', draft.name);
+      fd.append('shortName', draft.shortName);
+      fd.append('categoryId', String(draft.categoryId));
+      fd.append('description', draft.description);
+      fd.append('isPrivate', String(draft.isPrivate));
+      if (draft.serverAvatarFile) {
+        fd.append('serverAvatar', draft.serverAvatarFile, draft.serverAvatarFile.name);
+      }
+      const res = await api.post<{ server: { id: string } }>('/servers/create', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      createdServerId = res.data?.server?.id ?? null;
+      toast.success({ title: 'Server created successfully.' });
+      serverCreateStore.clearDraft();
+    } else if (joinTarget) {
+      await api.post(`/servers/${joinTarget.serverId}/join`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      createdServerId = joinTarget.serverId;
+      toast.success({ title: `Joined ${joinTarget.serverName}.` });
+      serverCreateStore.clearJoinTarget();
+    }
+
     await appStore.fetchMyServers(true);
+    if (createdServerId) {
+      appStore.setActiveServer(createdServerId);
+    }
     await router.push({ name: 'home' });
   } catch (err) {
     if (err instanceof AxiosError || err instanceof Error) {

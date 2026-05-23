@@ -17,16 +17,34 @@ export interface CreateServerDraft {
   serverAvatarPreview: string | null;
 }
 
+/** Snapshot of the server a user is about to join, set on Join click. */
+export interface JoinServerTarget {
+  serverId: string;
+  serverName: string;
+  serverShortName: string;
+}
+
 export const useServerCreateStore = defineStore('server-create', () => {
   const draft = ref<CreateServerDraft | null>(null);
+  const joinTarget = ref<JoinServerTarget | null>(null);
 
   function setDraft(value: CreateServerDraft) {
     draft.value = value;
+    joinTarget.value = null;
   }
 
   function clearDraft() {
     draft.value = null;
   }
 
-  return { draft, setDraft, clearDraft };
+  function setJoinTarget(value: JoinServerTarget) {
+    joinTarget.value = value;
+    draft.value = null;
+  }
+
+  function clearJoinTarget() {
+    joinTarget.value = null;
+  }
+
+  return { draft, joinTarget, setDraft, clearDraft, setJoinTarget, clearJoinTarget };
 });

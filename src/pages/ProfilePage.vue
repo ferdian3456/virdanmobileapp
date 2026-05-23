@@ -3,7 +3,7 @@
     <!-- Header -->
     <header class="pf-header">
       <button class="username-trigger" type="button">
-        <span class="username">{{ profile?.nickname || user?.email || '—' }}</span>
+        <span class="username">{{ profile?.username || profile?.nickname || user?.email || '—' }}</span>
         <ChevronDown :size="18" class="dropdown-chevron" />
       </button>
       <button class="icon-btn" type="button" @click="goSettings" aria-label="Settings">
@@ -23,7 +23,7 @@
 
         <div class="identity-meta">
           <div class="identity-name">{{ profile?.nickname || user?.email || '—' }}</div>
-          <!-- TODO Step 3: render @{{ profile.username }} once per-server username column lands -->
+          <div v-if="profile?.username" class="identity-handle">@{{ profile.username }}</div>
         </div>
       </section>
 
@@ -132,6 +132,7 @@ interface ServerProfileMeResponse {
   profileId: string;
   serverId: string;
   nickname: string;
+  username: string;
   bio: string | null;
   avatarImageId: string | null;
   avatarUrl: string | null;

@@ -43,7 +43,7 @@
       </FieldRow>
 
       <!-- Username -->
-      <FieldRow label="Username">
+      <FieldRow label="Username" :count="`${form.username.length}/22`">
         <q-input
           v-model="form.username"
           outlined
@@ -52,8 +52,11 @@
           hide-bottom-space
           class="ep-input"
           prefix="@"
+          :error="!!usernameError"
+          :error-message="usernameError ?? undefined"
+          @update:model-value="onUsernameInput"
         />
-        <p class="field-help">Unique across all servers</p>
+        <p class="field-help">Letters, digits, _ or . (no spaces). Unique within this server.</p>
       </FieldRow>
 
       <!-- Bio -->
@@ -103,12 +106,15 @@ interface ServerProfileMeResponse {
   profileId: string;
   serverId: string;
   nickname: string;
+  username: string;
   bio: string | null;
   avatarImageId: string | null;
   avatarUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
+
+const USERNAME_REGEX = /^[a-zA-Z0-9_.]+$/;
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const MAX_AVATAR_MB = 5;
@@ -127,6 +133,21 @@ const initial = computed(
 const loading = ref(false);
 const isSaving = ref(false);
 const serverAvatarUrl = ref<string | null>(null);
+const usernameError = ref<string | null>(null);
+
+function onUsernameInput(val: string | number | null) {
+  const next = (typeof val === 'string' ? val : String(val ?? '')).toLowerCase();
+  form.value.username = next;
+  if (!next) {
+    usernameError.value = null;
+  } else if (!USERNAME_REGEX.test(next)) {
+    usernameError.value = 'Use only letters, digits, _ or . (no spaces)';
+  } else if (next.length < 3) {
+    usernameError.value = 'Must be at least 3 characters';
+  } else {
+    usernameError.value = null;
+  }
+}
 
 const form = ref({
   fullname: '',
@@ -156,22 +177,13 @@ const hasChanges = computed(() => {
 onMounted(async () => {
   loading.value = true;
   try {
-    // Username is global on the user record; load it from the auth store
-    // so the field stays populated even though we no longer hit /users/me.
-    if (!authStore.user) {
-      await authStore.fetchUser();
-    }
-    // Per-server username field arrives in Step 3 (server_member_profiles.username).
-    // Leave blank until then.
-    form.value.username = '';
-
-    // Display name + bio + avatar come from the per-server profile.
     const sid = activeServerId.value;
     if (sid) {
       const res = await api.get<ServerProfileMeResponse>(
         `/servers/${sid}/profile/me`
       );
       form.value.fullname = res.data.nickname ?? '';
+      form.value.username = res.data.username ?? '';
       form.value.bio = res.data.bio ?? '';
       serverAvatarUrl.value = res.data.avatarUrl ?? null;
     }
@@ -217,31 +229,37 @@ function onAvatarSelected(event: Event) {
 
 async function save() {
   if (!hasChanges.value || isSaving.value) return;
+  const sid = activeServerId.value;
+  if (!sid) {
+    toast.error({ title: 'No active server. Select a server first.' });
+    return;
+  }
+  if (usernameError.value) {
+    toast.error({ title: usernameError.value });
+    return;
+  }
   isSaving.value = true;
   try {
-    const tasks: Promise<unknown>[] = [];
+    const profileChanged =
+      form.value.fullname.trim() !== initial_state.value.fullname ||
+      form.value.username.trim() !== initial_state.value.username ||
+      form.value.bio.trim() !== initial_state.value.bio;
 
-    if (form.value.fullname.trim() !== initial_state.value.fullname) {
-      tasks.push(api.put('/users/fullname', { fullname: form.value.fullname.trim() }));
-    }
-    if (form.value.username.trim() !== initial_state.value.username) {
-      tasks.push(api.put('/users/username', { username: form.value.username.trim() }));
-    }
-    if (form.value.bio.trim() !== initial_state.value.bio) {
-      tasks.push(api.put('/users/bio', { bio: form.value.bio.trim() }));
+    if (profileChanged) {
+      await api.put(`/servers/${sid}/profile`, {
+        nickname: form.value.fullname.trim(),
+        username: form.value.username.trim().toLowerCase(),
+        bio: form.value.bio.trim() || null,
+      });
     }
     if (avatarFile.value) {
       const fd = new FormData();
-      fd.append('avatar', avatarFile.value, avatarFile.value.name);
-      tasks.push(
-        api.put('/users/avatar', fd, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        })
-      );
+      fd.append('profileAvatar', avatarFile.value, avatarFile.value.name);
+      await api.put(`/servers/${sid}/profile/avatar`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
     }
 
-    await Promise.all(tasks);
-    await authStore.fetchUser();
     toast.success({ title: 'Profile updated.' });
     router.back();
   } catch (err) {
