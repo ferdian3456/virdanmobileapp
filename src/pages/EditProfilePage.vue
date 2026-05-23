@@ -240,22 +240,22 @@ async function save() {
   }
   isSaving.value = true;
   try {
+    // Single multipart update covers nickname, username, bio AND avatar
+    // in one transaction on the BE side. Skip the call entirely if nothing
+    // (including avatar) changed.
     const profileChanged =
       form.value.fullname.trim() !== initial_state.value.fullname ||
       form.value.username.trim() !== initial_state.value.username ||
       form.value.bio.trim() !== initial_state.value.bio;
-
-    if (profileChanged) {
-      await api.put(`/servers/${sid}/profile`, {
-        nickname: form.value.fullname.trim(),
-        username: form.value.username.trim().toLowerCase(),
-        bio: form.value.bio.trim() || null,
-      });
-    }
-    if (avatarFile.value) {
+    if (profileChanged || avatarFile.value) {
       const fd = new FormData();
-      fd.append('profileAvatar', avatarFile.value, avatarFile.value.name);
-      await api.put(`/servers/${sid}/profile/avatar`, fd, {
+      fd.append('nickname', form.value.fullname.trim());
+      fd.append('username', form.value.username.trim().toLowerCase());
+      fd.append('bio', form.value.bio.trim());
+      if (avatarFile.value) {
+        fd.append('profileAvatar', avatarFile.value, avatarFile.value.name);
+      }
+      await api.put(`/servers/${sid}/profile`, fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
     }
