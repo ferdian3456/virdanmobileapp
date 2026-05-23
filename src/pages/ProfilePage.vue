@@ -206,8 +206,7 @@ async function goSettings() {
 }
 
 function onEditProfile() {
-  // Phase 6 / Settings page handles profile fields editing.
-  void router.push({ name: 'settings' });
+  void router.push({ name: 'edit-profile' });
 }
 </script>
 
