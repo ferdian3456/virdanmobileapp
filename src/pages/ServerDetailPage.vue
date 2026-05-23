@@ -212,10 +212,12 @@ async function loadPosts(reset: boolean) {
     const list = res.data?.data ?? [];
     if (reset) posts.value = list;
     else posts.value.push(...list);
-    nextCursor.value = res.data?.page?.nextCursor ?? null;
+    nextCursor.value = res.data?.page?.nextCursor || null;
     hasMore.value = !!nextCursor.value;
   } catch {
-    // Quiet fail — empty state shown instead.
+    // Freeze pagination on fail so q-infinite-scroll doesn't hammer the
+    // endpoint when BE is down / CORS rejects.
+    hasMore.value = false;
   } finally {
     loadingPosts.value = false;
   }

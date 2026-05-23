@@ -287,9 +287,12 @@ async function loadPosts(cursor: string | null = null) {
     const newPosts = (res.data?.data ?? []).map((p) => ({ ...p, liked: !!p.userLiked }));
     if (cursor) posts.value.push(...newPosts);
     else posts.value = newPosts;
-    nextCursor.value = res.data?.page?.nextCursor ?? null;
+    nextCursor.value = res.data?.page?.nextCursor || null;
     hasMore.value = !!nextCursor.value;
   } catch (error) {
+    // Freeze pagination so q-infinite-scroll stops re-firing when BE is
+    // down / CORS rejects — otherwise the feed hammers /posts forever.
+    hasMore.value = false;
     console.error('Failed to load posts:', error);
   } finally {
     loadingPosts.value = false;

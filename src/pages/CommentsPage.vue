@@ -418,11 +418,14 @@ async function loadComments(reset: boolean) {
     const list = res.data?.data ?? [];
     if (reset) comments.value = list;
     else comments.value.push(...list);
-    nextCursor.value = res.data?.page?.nextCursor ?? null;
+    nextCursor.value = res.data?.page?.nextCursor || null;
     hasMore.value = !!nextCursor.value;
     if (totalCount.value === null) totalCount.value = comments.value.length;
   } catch (err) {
-    toast.error(apiErrorToast(err, () => void loadComments(reset)));
+    // Freeze pagination so q-infinite-scroll stops re-firing on fail.
+    // Retry button on the toast does a full reload from page 1.
+    hasMore.value = false;
+    toast.error(apiErrorToast(err, () => void loadComments(true)));
   } finally {
     loading.value = false;
   }

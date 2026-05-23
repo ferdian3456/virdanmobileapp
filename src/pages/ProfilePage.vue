@@ -209,10 +209,12 @@ async function loadPosts(reset: boolean) {
     const list = res.data?.data ?? [];
     if (reset) posts.value = list;
     else posts.value.push(...list);
-    nextCursor.value = res.data?.page?.nextCursor ?? null;
+    nextCursor.value = res.data?.page?.nextCursor || null;
     hasMore.value = !!nextCursor.value;
   } catch {
-    // Quiet fail; empty state handles it.
+    // Freeze pagination on fail — q-infinite-scroll would otherwise loop
+    // forever against a down BE.
+    hasMore.value = false;
   } finally {
     loadingPosts.value = false;
   }
