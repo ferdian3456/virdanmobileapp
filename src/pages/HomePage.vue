@@ -555,6 +555,9 @@ function formatDate(dateStr: string): string {
   border: 0;
   height: 40px;
   width: auto;
+  // Reserve space for icon + single-digit count so the icon doesn't
+  // shift when likeCount/commentCount transitions between 0 and 1.
+  min-width: 48px;
   padding: 0 6px;
   border-radius: 12px;
   display: inline-flex;
