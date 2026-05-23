@@ -17,9 +17,6 @@
           <img v-if="avatarPreview" :src="avatarPreview" alt="" />
           <img v-else-if="user?.avatarImage" :src="user.avatarImage" alt="" />
           <span v-else class="avatar-fallback">{{ initial }}</span>
-          <span class="avatar-edit">
-            <Camera :size="14" :stroke-width="2.2" />
-          </span>
         </button>
         <input
           ref="avatarInput"
@@ -117,7 +114,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, defineComponent, h, type PropType } from 'vue';
 import { useRouter } from 'vue-router';
-import { ChevronLeft, Camera } from 'lucide-vue-next';
+import { ChevronLeft } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useToast } from 'src/composables/useToast';
@@ -385,20 +382,6 @@ const FieldRow = defineComponent({
     letter-spacing: -0.02em;
   }
 
-  .avatar-edit {
-    position: absolute;
-    right: 4px;
-    bottom: 4px;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: #007BFF;
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid #fff;
-  }
 }
 
 .hidden-input {
