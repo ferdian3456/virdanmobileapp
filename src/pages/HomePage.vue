@@ -547,7 +547,7 @@ function formatDate(dateStr: string): string {
 .feed-actions-left {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 0;
 }
 
 .feed-action-btn {
@@ -555,7 +555,7 @@ function formatDate(dateStr: string): string {
   border: 0;
   height: 40px;
   width: auto;
-  padding: 0 8px;
+  padding: 0 6px;
   border-radius: 12px;
   display: inline-flex;
   align-items: center;
