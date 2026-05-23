@@ -95,11 +95,12 @@
         </div>
         <button
           class="join-btn"
+          :class="{ 'join-btn-joined': srv.isMember }"
           type="button"
-          :disabled="joiningId === srv.id"
+          :disabled="srv.isMember || joiningId === srv.id"
           @click="join(srv)"
         >
-          {{ joiningId === srv.id ? '…' : 'Join' }}
+          {{ srv.isMember ? 'Joined' : joiningId === srv.id ? '…' : 'Join' }}
         </button>
       </article>
 
@@ -144,6 +145,7 @@ interface DiscoveryServer {
   description: string | null;
   createdAt: string;
   memberCount: number;
+  isMember: boolean;
 }
 
 interface PaginatedResponse<T> {
@@ -542,6 +544,20 @@ function goBack() {
   &:disabled {
     opacity: 0.6;
     cursor: default;
+  }
+}
+
+.join-btn-joined {
+  background: transparent;
+  color: #6C757D;
+  border: 1px solid #DEE2E6;
+
+  &:hover {
+    background: transparent;
+  }
+
+  &:disabled {
+    opacity: 1;
   }
 }
 
