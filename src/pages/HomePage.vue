@@ -547,19 +547,19 @@ function formatDate(dateStr: string): string {
 .feed-actions-left {
   display: flex;
   align-items: center;
-  gap: 0;
+  gap: 4px;
 }
 
 .feed-action-btn {
   background: transparent;
   border: 0;
   height: 40px;
-  width: 56px;
-  padding: 0 0 0 8px;
+  width: auto;
+  padding: 0 8px;
   border-radius: 12px;
   display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   gap: 4px;
   cursor: pointer;
   color: #212529;
@@ -572,10 +572,6 @@ function formatDate(dateStr: string): string {
     color: #DC3545;
     fill: #DC3545;
   }
-}
-
-.feed-action-with-count {
-  /* keeps fixed 56px width; icon + count center inside */
 }
 
 .action-count {
