@@ -67,6 +67,7 @@
           class="cp-input"
           hide-bottom-space
           :error="!!errors.new"
+          @keyup.enter="updatePassword"
         >
           <template #append>
             <component

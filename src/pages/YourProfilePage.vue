@@ -76,6 +76,7 @@
         placeholder="How you appear on this server"
         class="yp-input"
         hide-bottom-space
+        @keyup.enter="submit"
       />
       <p class="field-help">How other members see you</p>
 
@@ -93,6 +94,7 @@
         :error="!!usernameError"
         :error-message="usernameError ?? undefined"
         @update:model-value="onUsernameInput"
+        @keyup.enter="submit"
       />
       <p class="field-help">Letters, digits, underscores and dots. No spaces. Unique within this server.</p>
 

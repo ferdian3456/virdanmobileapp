@@ -39,6 +39,7 @@
           maxlength="30"
           hide-bottom-space
           class="ep-input"
+          @keyup.enter="save"
         />
       </FieldRow>
 
@@ -55,6 +56,7 @@
           :error="!!usernameError"
           :error-message="usernameError ?? undefined"
           @update:model-value="onUsernameInput"
+          @keyup.enter="save"
         />
         <p class="field-help">Letters, digits, _ or . (no spaces). Unique within this server.</p>
       </FieldRow>

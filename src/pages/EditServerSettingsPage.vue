@@ -47,6 +47,7 @@
           maxlength="40"
           class="ess-input"
           hide-bottom-space
+          @keyup.enter="save"
         />
       </section>
 

@@ -41,6 +41,7 @@
         :rules="[(v: string) => !!v?.trim() || 'Server name is required']"
         lazy-rules="ondemand"
         hide-bottom-space
+        @keyup.enter="goToProfileStep"
       />
 
       <!-- Short name -->
@@ -55,6 +56,7 @@
         :rules="[(v: string) => !!v?.trim() || 'Short name is required']"
         lazy-rules="ondemand"
         hide-bottom-space
+        @keyup.enter="goToProfileStep"
       />
       <p class="field-help">Server abbreviation for display</p>
 
