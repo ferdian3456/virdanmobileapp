@@ -40,38 +40,59 @@
       >
         All
       </button>
-      <button
-        v-for="cat in categories"
-        :key="cat.id"
-        type="button"
-        class="chip"
-        :class="{ active: activeCategoryId === cat.id }"
-        @click="setCategory(cat.id)"
-      >
-        {{ cat.categoryName }}
-      </button>
+      <template v-if="categoriesLoading">
+        <VSkeleton
+          v-for="(w, i) in CHIP_SKELETON_WIDTHS"
+          :key="i"
+          variant="box"
+          :width="`${w}px`"
+          height="32px"
+          radius="999px"
+        />
+      </template>
+      <template v-else>
+        <button
+          v-for="cat in categories"
+          :key="cat.id"
+          type="button"
+          class="chip"
+          :class="{ active: activeCategoryId === cat.id }"
+          @click="setCategory(cat.id)"
+        >
+          {{ cat.categoryName }}
+        </button>
+      </template>
     </div>
 
     <!-- Server list -->
     <div class="server-list">
       <ServerListSkeleton v-if="loading && servers.length === 0" />
 
-      <div v-else-if="filteredServers.length === 0" class="state-block">
+      <div v-else-if="filteredServers.length === 0" class="empty-state">
+        <img src="/assets/illustrator/empty.svg" alt="" class="empty-illustration" />
         <p class="empty-text">No servers match your search.</p>
       </div>
 
       <article
         v-for="srv in filteredServers"
         :key="srv.id"
-        class="server-card"
+        class="server-row"
       >
-        <ServerAvatar :name="srv.name" :short="srv.shortName" :url="srv.avatarUrl" />
-
-        <div class="server-meta">
-          <div class="server-name">{{ srv.name }}</div>
-          <div class="server-desc">{{ srv.description || 'No description provided' }}</div>
+        <div class="srv-avatar" :style="{ background: srvAvatarColor(srv.shortName ?? srv.name) }">
+          <img v-if="srv.avatarUrl" :src="srv.avatarUrl" :alt="srv.name" />
+          <span v-else>{{ (srv.shortName ?? srv.name).charAt(0).toUpperCase() }}</span>
         </div>
-
+        <div class="srv-meta">
+          <div class="srv-name-row">
+            <span class="srv-name">{{ srv.name }}</span>
+          </div>
+          <div class="srv-desc">{{ srv.description || 'No description provided' }}</div>
+          <div class="srv-stats">
+            <span class="srv-stat">
+              <Users :size="12" /> {{ formatStat(srv.memberCount) }}
+            </span>
+          </div>
+        </div>
         <button
           class="join-btn"
           type="button"
@@ -98,14 +119,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, h, defineComponent } from 'vue';
-import type { PropType } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { ChevronLeft, Search } from 'lucide-vue-next';
+import { ChevronLeft, Search, Users } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
 import { useServerCreateStore } from 'src/stores/server-create.store';
 import { useToast } from 'src/composables/useToast';
 import { apiErrorToast } from 'src/composables/useApiError';
+import VSkeleton from 'src/components/feedback/VSkeleton.vue';
 import ServerListSkeleton from 'src/components/feedback/skeletons/ServerListSkeleton.vue';
 
 interface CategoryItem {
@@ -122,6 +143,7 @@ interface DiscoveryServer {
   bannerUrl: string | null;
   description: string | null;
   createdAt: string;
+  memberCount: number;
 }
 
 interface PaginatedResponse<T> {
@@ -137,6 +159,8 @@ const toast = useToast();
 const isOnboarding = computed(() => route.meta.onboardingFlow === true);
 
 const categories = ref<CategoryItem[]>([]);
+const categoriesLoading = ref(false);
+const CHIP_SKELETON_WIDTHS = [56, 72, 60, 80, 64, 68];
 const servers = ref<DiscoveryServer[]>([]);
 const activeCategoryId = ref<number | null>(null);
 const searchQuery = ref('');
@@ -144,6 +168,26 @@ const loading = ref(false);
 const joiningId = ref<string | null>(null);
 const nextCursor = ref<string | null>(null);
 const hasMore = ref(true);
+
+const AVATAR_COLORS = [
+  '#8B5CF6', '#EC4899', '#F59E0B', '#10B981',
+  '#06B6D4', '#3B82F6', '#EF4444', '#7C3AED',
+];
+
+function srvAvatarColor(seed: string): string {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) & 0x7fffffff;
+  }
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length]!;
+}
+
+function formatStat(value: number | undefined): string {
+  if (value === undefined || value === null) return '0';
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(value >= 10_000 ? 0 : 1)}k`.replace('.0k', 'k');
+  return String(value);
+}
 
 const filteredServers = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
@@ -155,46 +199,34 @@ const filteredServers = computed(() => {
   );
 });
 
-/* ─── Mini avatar component ─────────────────────────────────── */
-const ServerAvatar = defineComponent({
-  name: 'ServerAvatar',
-  props: {
-    name: { type: String, required: true },
-    short: { type: String, required: true },
-    url: { type: String as PropType<string | null>, default: null },
-  },
-  setup(props) {
-    return () => {
-      if (props.url) {
-        return h('div', { class: 'srv-avatar' }, [
-          h('img', { src: props.url, alt: props.name, class: 'srv-avatar-img' }),
-        ]);
-      }
-      const initial = (props.short || props.name || '?').slice(0, 1).toUpperCase();
-      return h('div', { class: 'srv-avatar srv-avatar-fallback' }, initial);
-    };
-  },
-});
-
 /* ─── Lifecycle ─────────────────────────────────────────────── */
 onMounted(async () => {
   await Promise.all([loadCategories(), loadServers(true)]);
 });
 
 async function loadCategories() {
+  categoriesLoading.value = true;
   try {
     const res = await api.get<PaginatedResponse<CategoryItem>>('/servers/categories', {
       params: { limit: 20 },
     });
     categories.value = res.data?.data ?? [];
   } catch {
-    // Keep silent — chips simply won't render.
+    // Silent — chips simply won't render.
+  } finally {
+    categoriesLoading.value = false;
   }
 }
 
 async function loadServers(reset: boolean) {
   if (loading.value) return;
   loading.value = true;
+  if (reset) {
+    // Clear list so the skeleton (v-if loading && servers.length === 0)
+    // takes over instead of stale rows from the previous category.
+    servers.value = [];
+    nextCursor.value = null;
+  }
   try {
     const params: Record<string, string | number> = { limit: 12 };
     if (activeCategoryId.value !== null) params.categoryId = activeCategoryId.value;
@@ -207,7 +239,9 @@ async function loadServers(reset: boolean) {
     } else {
       servers.value.push(...list);
     }
-    nextCursor.value = res.data?.page?.nextCursor ?? null;
+    // BE returns "" for "no more pages"; treat falsy as null so the
+    // infinite-scroll guard short-circuits.
+    nextCursor.value = res.data?.page?.nextCursor || null;
     hasMore.value = !!nextCursor.value;
   } catch (err) {
     toast.error(apiErrorToast(err, () => void loadServers(reset)));
@@ -390,13 +424,13 @@ function goBack() {
   padding: 0 14px;
   border-radius: 999px;
   background: transparent;
+  border: 1px solid #E9ECEF;
   color: #495057;
   font-size: 13px;
   font-weight: 500;
-  border: 0;
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 
   &:hover {
     background: #F1F3F5;
@@ -405,6 +439,7 @@ function goBack() {
   &.active {
     background: #007BFF;
     color: #fff;
+    border-color: #007BFF;
   }
 }
 
@@ -412,59 +447,79 @@ function goBack() {
   padding: 8px 20px 24px;
 }
 
-.server-card {
+.server-row {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 12px 0;
   border-bottom: 1px solid #F1F3F5;
+
+  &:last-child {
+    border-bottom: 0;
+  }
 }
 
-:deep(.srv-avatar) {
+.srv-avatar {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: 50%;
   flex-shrink: 0;
-  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-:deep(.srv-avatar-img) {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-:deep(.srv-avatar-fallback) {
-  background: #E7F1FF;
-  color: #007BFF;
+  color: #fff;
   font-weight: 700;
   font-size: 18px;
   letter-spacing: -0.02em;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 }
 
-.server-meta {
+.srv-meta {
   flex: 1;
   min-width: 0;
 }
 
-.server-name {
-  font-size: 15px;
+.srv-name-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.srv-name {
+  font-size: 14px;
   font-weight: 600;
-  color: #212529;
+  color: #0F172A;
   letter-spacing: -0.01em;
 }
 
-.server-desc {
-  font-size: 13px;
+.srv-desc {
+  font-size: 12px;
   color: #6C757D;
   line-height: 1.4;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   margin-top: 2px;
+}
+
+.srv-stats {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #6C757D;
+}
+
+.srv-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .join-btn {
@@ -497,8 +552,21 @@ function goBack() {
   padding: 32px 0;
 }
 
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 0 32px;
+}
+
+.empty-illustration {
+  width: 220px;
+  max-width: 60%;
+}
+
 .empty-text {
   color: #6C757D;
   font-size: 14px;
+  margin-top: 24px;
 }
 </style>
