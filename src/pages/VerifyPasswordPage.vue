@@ -3,7 +3,7 @@
     <ArrowLeft
       :size="24"
       class="back-btn q-mb-md cursor-pointer"
-      @click="router.push('/auth/verify-username')"
+      @click="router.push('/auth/verify-otp')"
     />
 
     <div class="text-left q-mb-lg">

@@ -3,15 +3,15 @@
     <div class="text-left q-mb-lg">
       <h1 class="text-h4 text-weight-bold text-dark q-my-none">Welcome To Virdan</h1>
       <p class="text-body2 text-grey-6 q-mt-sm">
-        Good to see you. Enter your username and password to continue.
+        Good to see you. Enter your email and password to continue.
       </p>
     </div>
 
     <q-form class="column q-gutter-y-md" @submit="login">
-      <!-- Username -->
-      <VInput v-model="username" label="Username" :error="!!errors.username" @keyup.enter="login" />
-      <div v-if="errors.username" class="text-negative text-caption q-mt-xs q-ml-sm">
-        {{ errors.username }}
+      <!-- Email -->
+      <VInput v-model="email" label="Email" type="email" :error="!!errors.email" @keyup.enter="login" />
+      <div v-if="errors.email" class="text-negative text-caption q-mt-xs q-ml-sm">
+        {{ errors.email }}
       </div>
 
       <!-- Password -->
@@ -125,7 +125,7 @@ import { api } from 'src/boot/axios';
 import VInput from 'src/components/VInput.vue';
 import VButton from 'src/components/VButton.vue';
 
-const username = ref('');
+const email = ref('');
 const password = ref('');
 const isLoading = ref(false);
 const showPassword = ref(false);
@@ -161,9 +161,6 @@ async function continueRegistration() {
       await router.push('/auth/verify-otp');
       break;
     case 'otp_verified':
-      await router.push('/auth/verify-username');
-      break;
-    case 'username_set':
       await router.push('/auth/verify-password');
       break;
   }
@@ -176,8 +173,8 @@ async function startOver() {
 
 async function login() {
   errors.value = {};
-  if (!username.value) {
-    errors.value.username = 'Username is required to not be empty.';
+  if (!email.value) {
+    errors.value.email = 'Email is required to not be empty.';
     return;
   }
   if (!password.value) {
@@ -188,7 +185,7 @@ async function login() {
   isLoading.value = true;
   try {
     await authStore.login({
-      username: username.value.toLowerCase(),
+      email: email.value.trim().toLowerCase(),
       password: password.value,
     });
 

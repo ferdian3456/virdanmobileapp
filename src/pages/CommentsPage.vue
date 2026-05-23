@@ -217,8 +217,8 @@ const deletingId = ref<string | null>(null);
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 
 const currentUserId = computed(() => authStore.user?.id ?? '');
-const currentUserName = computed(() => authStore.user?.username ?? authStore.user?.fullname ?? '');
-const meAvatar = computed(() => authStore.user?.avatarImage ?? null);
+const currentUserName = computed(() => authStore.user?.email ?? '');
+const meAvatar = computed<string | null>(() => null);
 const meInitial = computed(
   () => (currentUserName.value || '?').charAt(0).toUpperCase()
 );

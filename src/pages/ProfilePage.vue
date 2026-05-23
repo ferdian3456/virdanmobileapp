@@ -3,7 +3,7 @@
     <!-- Header -->
     <header class="pf-header">
       <button class="username-trigger" type="button">
-        <span class="username">{{ user?.username ?? '—' }}</span>
+        <span class="username">{{ profile?.nickname || user?.email || '—' }}</span>
         <ChevronDown :size="18" class="dropdown-chevron" />
       </button>
       <button class="icon-btn" type="button" @click="goSettings" aria-label="Settings">
@@ -22,8 +22,8 @@
         </div>
 
         <div class="identity-meta">
-          <div class="identity-name">{{ profile?.nickname || user?.username || '—' }}</div>
-          <div class="identity-handle">@{{ user?.username ?? '—' }}</div>
+          <div class="identity-name">{{ profile?.nickname || user?.email || '—' }}</div>
+          <!-- TODO Step 3: render @{{ profile.username }} once per-server username column lands -->
         </div>
       </section>
 
@@ -148,7 +148,7 @@ const nextCursor = ref<string | null>(null);
 const hasMore = ref(true);
 
 const identityInitial = computed(() => {
-  const src = profile.value?.nickname || user.value?.username || '?';
+  const src = profile.value?.nickname || user.value?.email || '?';
   return src.charAt(0).toUpperCase();
 });
 

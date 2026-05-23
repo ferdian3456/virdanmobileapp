@@ -121,7 +121,7 @@ const toast = useToast();
 
 const user = computed(() => authStore.user);
 const initial = computed(
-  () => (form.value.fullname || user.value?.username || '?').charAt(0).toUpperCase()
+  () => (form.value.fullname || user.value?.email || '?').charAt(0).toUpperCase()
 );
 
 const loading = ref(false);
@@ -161,7 +161,9 @@ onMounted(async () => {
     if (!authStore.user) {
       await authStore.fetchUser();
     }
-    form.value.username = authStore.user?.username ?? '';
+    // Per-server username field arrives in Step 3 (server_member_profiles.username).
+    // Leave blank until then.
+    form.value.username = '';
 
     // Display name + bio + avatar come from the per-server profile.
     const sid = activeServerId.value;

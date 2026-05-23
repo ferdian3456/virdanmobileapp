@@ -161,7 +161,7 @@ async function verifyOtp() {
     });
     
     await authStore.clearOtpExpiresAt();
-    await router.push('/auth/verify-username');
+    await router.push('/auth/verify-password');
   } catch (error) {
     if (error instanceof AxiosError) {
       const respError = error.response?.data?.error || error.response?.data;

@@ -165,12 +165,6 @@ const routes: RouteRecordRaw[] = [
         meta: { guestOnly: true },
       },
       {
-        path: 'verify-username',
-        name: 'verify-username',
-        component: () => import('pages/VerifyUsernamePage.vue'),
-        meta: { guestOnly: true },
-      },
-      {
         path: 'verify-password',
         name: 'verify-password',
         component: () => import('pages/VerifyPasswordPage.vue'),

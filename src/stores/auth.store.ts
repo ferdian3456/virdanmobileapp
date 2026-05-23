@@ -7,11 +7,7 @@ import { useAppStore } from 'src/stores/app.store';
 
 export interface UserData {
   id: string;
-  username: string;
   email: string;
-  fullname: string;
-  bio: string | null;
-  avatarImage: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -77,7 +73,7 @@ export const useAuthStore = defineStore('auth', () => {
     return response.data;
   }
 
-  async function login(payload: { username: string; password: string }): Promise<UserData> {
+  async function login(payload: { email: string; password: string }): Promise<UserData> {
     const response = await api.post<TokenResponse>('/auth/login', payload);
     await setTokens({
       accessToken: response.data.accessToken,
