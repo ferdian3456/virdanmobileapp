@@ -15,7 +15,7 @@
       <section class="avatar-section">
         <button class="avatar-btn" type="button" @click="pickAvatar">
           <img v-if="avatarPreview" :src="avatarPreview" alt="" />
-          <img v-else-if="user?.avatarImage" :src="user.avatarImage" alt="" />
+          <img v-else-if="serverAvatarUrl" :src="serverAvatarUrl" alt="" />
           <span v-else class="avatar-fallback">{{ initial }}</span>
         </button>
         <input
@@ -69,30 +69,6 @@
         />
       </FieldRow>
 
-      <!-- Email (read-only — BE doesn't expose update endpoint yet) -->
-      <FieldRow label="Email">
-        <q-input
-          v-model="form.email"
-          outlined
-          dense
-          readonly
-          hide-bottom-space
-          class="ep-input ep-input-disabled"
-        />
-      </FieldRow>
-
-      <!-- Phone number (mock — BE doesn't store phone) -->
-      <FieldRow label="Phone number">
-        <q-input
-          v-model="form.phone"
-          outlined
-          dense
-          readonly
-          hide-bottom-space
-          placeholder="—"
-          class="ep-input ep-input-disabled"
-        />
-      </FieldRow>
     </template>
 
     <!-- Floating save button -->
@@ -116,32 +92,46 @@ import { ref, computed, onMounted, defineComponent, h, type PropType } from 'vue
 import { useRouter } from 'vue-router';
 import { ChevronLeft } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
+import { storeToRefs } from 'pinia';
 import { useAuthStore } from 'src/stores/auth.store';
+import { useAppStore } from 'src/stores/app.store';
 import { useToast } from 'src/composables/useToast';
 import { apiErrorToast } from 'src/composables/useApiError';
 import SettingsFormSkeleton from 'src/components/feedback/skeletons/SettingsFormSkeleton.vue';
+
+interface ServerProfileMeResponse {
+  profileId: string;
+  serverId: string;
+  nickname: string;
+  bio: string | null;
+  avatarImageId: string | null;
+  avatarUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const MAX_AVATAR_MB = 5;
 
 const router = useRouter();
 const authStore = useAuthStore();
+const appStore = useAppStore();
+const { activeServerId } = storeToRefs(appStore);
 const toast = useToast();
 
 const user = computed(() => authStore.user);
 const initial = computed(
-  () => (user.value?.username ?? user.value?.fullname ?? '?').charAt(0).toUpperCase()
+  () => (form.value.fullname || user.value?.username || '?').charAt(0).toUpperCase()
 );
 
 const loading = ref(false);
 const isSaving = ref(false);
+const serverAvatarUrl = ref<string | null>(null);
 
 const form = ref({
   fullname: '',
   username: '',
   bio: '',
-  email: '',
-  phone: '',
 });
 
 const initial_state = ref({
@@ -166,21 +156,29 @@ const hasChanges = computed(() => {
 onMounted(async () => {
   loading.value = true;
   try {
+    // Username is global on the user record; load it from the auth store
+    // so the field stays populated even though we no longer hit /users/me.
     if (!authStore.user) {
       await authStore.fetchUser();
     }
-    if (authStore.user) {
-      form.value.fullname = authStore.user.fullname ?? '';
-      form.value.username = authStore.user.username ?? '';
-      form.value.bio = authStore.user.bio ?? '';
-      form.value.email = authStore.user.email ?? '';
-      form.value.phone = '';
-      initial_state.value = {
-        fullname: form.value.fullname,
-        username: form.value.username,
-        bio: form.value.bio,
-      };
+    form.value.username = authStore.user?.username ?? '';
+
+    // Display name + bio + avatar come from the per-server profile.
+    const sid = activeServerId.value;
+    if (sid) {
+      const res = await api.get<ServerProfileMeResponse>(
+        `/servers/${sid}/profile/me`
+      );
+      form.value.fullname = res.data.nickname ?? '';
+      form.value.bio = res.data.bio ?? '';
+      serverAvatarUrl.value = res.data.avatarUrl ?? null;
     }
+
+    initial_state.value = {
+      fullname: form.value.fullname,
+      username: form.value.username,
+      bio: form.value.bio,
+    };
   } catch {
     toast.error({ title: 'Failed to load profile.' });
   } finally {
