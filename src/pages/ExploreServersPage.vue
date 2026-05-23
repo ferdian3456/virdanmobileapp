@@ -228,6 +228,8 @@ async function loadServers(reset: boolean) {
     // takes over instead of stale rows from the previous category.
     servers.value = [];
     nextCursor.value = null;
+    // Re-open the infinite-scroll gate when the user explicitly retries.
+    hasMore.value = true;
   }
   try {
     const params: Record<string, string | number> = { limit: 12 };
@@ -246,7 +248,11 @@ async function loadServers(reset: boolean) {
     nextCursor.value = res.data?.page?.nextCursor || null;
     hasMore.value = !!nextCursor.value;
   } catch (err) {
-    toast.error(apiErrorToast(err, () => void loadServers(reset)));
+    // BE down / network / CORS → freeze the infinite scroll so q-infinite-scroll
+    // stops re-firing on every sentinel intersect (otherwise the page hammers
+    // the failing endpoint forever). User can recover via the retry toast.
+    hasMore.value = false;
+    toast.error(apiErrorToast(err, () => void loadServers(true)));
   } finally {
     loading.value = false;
   }

@@ -268,7 +268,12 @@ async function loadServers(reset = true) {
     servers.value = reset ? pageData : [...servers.value, ...pageData];
     nextCursor.value = pageCursor;
   } catch (err) {
-    toast.error(apiErrorToast(err, () => void loadServers(reset)));
+    // BE down / network / CORS → freeze pagination so the IntersectionObserver
+    // sentinel stops re-firing loadServers on every scroll/render and hammering
+    // the failing endpoint. Force nextCursor=null which the load-more guard
+    // (`nextCursor.value === null`) already short-circuits on.
+    nextCursor.value = null;
+    toast.error(apiErrorToast(err, () => void loadServers(true)));
   } finally {
     if (reset) loading.value = false;
     else loadingMore.value = false;
