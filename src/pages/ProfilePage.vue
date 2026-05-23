@@ -11,23 +11,23 @@
       </button>
     </header>
 
-    <ProfileHeaderSkeleton v-if="loadingUser" />
+    <ProfileHeaderSkeleton v-if="loadingProfile" />
 
-    <template v-else-if="user">
-      <!-- Identity row: avatar + name + handle -->
+    <template v-else>
+      <!-- Identity row: avatar + name + handle (per-server profile) -->
       <section class="identity-row">
         <div class="pf-avatar">
-          <img v-if="user.avatarImage" :src="user.avatarImage" :alt="user.username" />
-          <span v-else>{{ (user.username ?? '?').charAt(0).toUpperCase() }}</span>
+          <img v-if="profile?.avatarUrl" :src="profile.avatarUrl" :alt="profile.nickname" />
+          <span v-else>{{ identityInitial }}</span>
         </div>
 
         <div class="identity-meta">
-          <div class="identity-name">{{ user.fullname || user.username }}</div>
-          <div class="identity-handle">@{{ user.username }}</div>
+          <div class="identity-name">{{ profile?.nickname || user?.username || '—' }}</div>
+          <div class="identity-handle">@{{ user?.username ?? '—' }}</div>
         </div>
       </section>
 
-      <p v-if="user.bio" class="bio">{{ user.bio }}</p>
+      <p v-if="profile?.bio" class="bio">{{ profile.bio }}</p>
 
       <button class="edit-btn" type="button" @click="onEditProfile">
         Edit Profile
@@ -128,12 +128,29 @@ const toast = useToast();
 
 const { activeServerId } = storeToRefs(appStore);
 
+interface ServerProfileMeResponse {
+  profileId: string;
+  serverId: string;
+  nickname: string;
+  bio: string | null;
+  avatarImageId: string | null;
+  avatarUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const user = computed(() => authStore.user);
-const loadingUser = ref(false);
+const profile = ref<ServerProfileMeResponse | null>(null);
+const loadingProfile = ref(false);
 const loadingPosts = ref(false);
 const posts = ref<ProfilePost[]>([]);
 const nextCursor = ref<string | null>(null);
 const hasMore = ref(true);
+
+const identityInitial = computed(() => {
+  const src = profile.value?.nickname || user.value?.username || '?';
+  return src.charAt(0).toUpperCase();
+});
 
 type TabId = 'grid' | 'reels' | 'saved';
 const activeTab = ref<TabId>('grid');
@@ -144,16 +161,7 @@ const tabs = [
 ];
 
 onMounted(async () => {
-  if (!authStore.user) {
-    loadingUser.value = true;
-    try {
-      await authStore.fetchUser();
-    } catch {
-      toast.error({ title: 'Failed to load profile.' });
-    } finally {
-      loadingUser.value = false;
-    }
-  }
+  await loadProfile();
   if (activeServerId.value) {
     await loadPosts(true);
   }
@@ -163,8 +171,29 @@ watch(activeServerId, () => {
   posts.value = [];
   nextCursor.value = null;
   hasMore.value = true;
+  void loadProfile();
   if (activeServerId.value) void loadPosts(true);
 });
+
+async function loadProfile() {
+  const sid = activeServerId.value;
+  if (!sid) {
+    profile.value = null;
+    return;
+  }
+  loadingProfile.value = true;
+  try {
+    const res = await api.get<ServerProfileMeResponse>(
+      `/servers/${sid}/profile/me`
+    );
+    profile.value = res.data;
+  } catch {
+    profile.value = null;
+    toast.error({ title: 'Failed to load profile.' });
+  } finally {
+    loadingProfile.value = false;
+  }
+}
 
 async function loadPosts(reset: boolean) {
   if (!activeServerId.value || loadingPosts.value) return;
