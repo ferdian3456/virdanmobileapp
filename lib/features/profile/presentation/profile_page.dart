@@ -107,7 +107,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   bio: profile?.bio,
                   avatarUrl: profile?.avatarUrl,
                   initial: initial,
-                  onEdit: () => context.push('/app/create-server/profile'),
+                  onEdit: () => context.push(Routes.appEditProfile),
                 ),
               ),
             SliverToBoxAdapter(
