@@ -11,12 +11,12 @@ sealed class AppError implements Exception {
 }
 
 class NetworkError extends AppError {
-  const NetworkError({super.message = 'Tidak ada koneksi internet', super.cause})
+  const NetworkError({super.message = 'No internet connection', super.cause})
       : super(code: 'NETWORK');
 }
 
 class TimeoutError extends AppError {
-  const TimeoutError({super.message = 'Permintaan terlalu lama. Coba lagi', super.cause})
+  const TimeoutError({super.message = 'Request timed out. Please try again', super.cause})
       : super(code: 'TIMEOUT');
 }
 
@@ -43,6 +43,6 @@ class ValidationError extends AppError {
 }
 
 class UnknownError extends AppError {
-  const UnknownError({super.message = 'Terjadi kesalahan. Coba lagi nanti', super.cause})
+  const UnknownError({super.message = 'Something went wrong. Please try again later', super.cause})
       : super(code: 'UNKNOWN');
 }

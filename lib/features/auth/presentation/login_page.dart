@@ -60,10 +60,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       child: ListView(
         children: [
           const SizedBox(height: AppSpacing.xxxl),
-          Text('Masuk ke Virdan', style: AppTextStyles.h1),
+          Text('Sign in to Virdan', style: AppTextStyles.h1),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Lanjutkan dengan email dan password kamu.',
+            'Continue with your email and password.',
             style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: AppSpacing.xxl),
@@ -74,7 +74,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 VInput(
                   controller: _emailCtrl,
                   label: 'Email',
-                  hint: 'kamu@example.com',
+                  hint: 'you@example.com',
                   keyboardType: TextInputType.emailAddress,
                   autofillHints: const [AutofillHints.email, AutofillHints.username],
                   validator: _emailValidator,
@@ -93,8 +93,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 VButton(
-                  label: 'Masuk',
-                  loadingLabel: 'Masuk...',
+                  label: 'Sign in',
+                  loadingLabel: 'Signing in...',
                   loading: _submitting,
                   size: VButtonSize.lg,
                   fullWidth: true,
@@ -108,13 +108,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'Belum punya akun? ',
+                "Don't have an account? ",
                 style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
               ),
               GestureDetector(
                 onTap: _submitting ? null : () => context.go(Routes.authRegister),
                 child: Text(
-                  'Daftar',
+                  'Sign up',
                   style: AppTextStyles.bodyStrong.copyWith(color: AppColors.primary),
                 ),
               ),
@@ -127,17 +127,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 }
 
 String? _emailValidator(String? v) {
-  if (v == null || v.trim().isEmpty) return 'Email wajib diisi';
-  if (v.length < 5) return 'Email minimal 5 karakter';
-  if (v.length > 255) return 'Email maksimal 255 karakter';
-  if (!_emailRegex.hasMatch(v.trim())) return 'Format email tidak valid';
+  if (v == null || v.trim().isEmpty) return 'Email is required';
+  if (v.length < 5) return 'Email must be at least 5 characters';
+  if (v.length > 255) return 'Email must be at most 255 characters';
+  if (!_emailRegex.hasMatch(v.trim())) return 'Invalid email format';
   return null;
 }
 
 String? _passwordValidator(String? v) {
-  if (v == null || v.isEmpty) return 'Password wajib diisi';
-  if (v.length < 5) return 'Password minimal 5 karakter';
-  if (v.length > 20) return 'Password maksimal 20 karakter';
+  if (v == null || v.isEmpty) return 'Password is required';
+  if (v.length < 5) return 'Password must be at least 5 characters';
+  if (v.length > 20) return 'Password must be at most 20 characters';
   return null;
 }
 

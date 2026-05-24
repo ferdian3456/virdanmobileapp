@@ -65,10 +65,10 @@ class _VerifyPasswordPageState extends ConsumerState<VerifyPasswordPage> {
           child: ListView(
             children: [
               const SizedBox(height: AppSpacing.lg),
-              Text('Buat password', style: AppTextStyles.h1),
+              Text('Create a password', style: AppTextStyles.h1),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                'Password antara 5 sampai 20 karakter. Simpan baik-baik.',
+                'Between 5 and 20 characters. Keep it safe.',
                 style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
               ),
               const SizedBox(height: AppSpacing.xxl),
@@ -91,13 +91,13 @@ class _VerifyPasswordPageState extends ConsumerState<VerifyPasswordPage> {
                     const SizedBox(height: AppSpacing.md),
                     VInput(
                       controller: _confirmCtrl,
-                      label: 'Ulangi password',
+                      label: 'Confirm password',
                       obscure: true,
                       textInputAction: TextInputAction.done,
                       validator: (v) {
                         final p = _passwordValidator(v);
                         if (p != null) return p;
-                        if (v != _passwordCtrl.text) return 'Password tidak cocok';
+                        if (v != _passwordCtrl.text) return 'Passwords do not match';
                         return null;
                       },
                       enabled: !_submitting,
@@ -105,8 +105,8 @@ class _VerifyPasswordPageState extends ConsumerState<VerifyPasswordPage> {
                     ),
                     const SizedBox(height: AppSpacing.xl),
                     VButton(
-                      label: 'Selesai daftar',
-                      loadingLabel: 'Menyelesaikan...',
+                      label: 'Complete sign up',
+                      loadingLabel: 'Finishing...',
                       loading: _submitting,
                       size: VButtonSize.lg,
                       fullWidth: true,
@@ -124,8 +124,8 @@ class _VerifyPasswordPageState extends ConsumerState<VerifyPasswordPage> {
 }
 
 String? _passwordValidator(String? v) {
-  if (v == null || v.isEmpty) return 'Password wajib diisi';
-  if (v.length < 5) return 'Password minimal 5 karakter';
-  if (v.length > 20) return 'Password maksimal 20 karakter';
+  if (v == null || v.isEmpty) return 'Password is required';
+  if (v.length < 5) return 'Password must be at least 5 characters';
+  if (v.length > 20) return 'Password must be at most 20 characters';
   return null;
 }

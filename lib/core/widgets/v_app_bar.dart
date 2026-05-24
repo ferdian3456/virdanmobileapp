@@ -43,13 +43,13 @@ class VAppBar extends StatelessWidget implements PreferredSizeWidget {
       case VAppBarLeading.back:
         return IconButton(
           icon: const Icon(LucideIcons.arrowLeft),
-          tooltip: 'Kembali',
+          tooltip: 'Back',
           onPressed: onLeadingTap ?? () => Navigator.maybeOf(context)?.maybePop(),
         );
       case VAppBarLeading.close:
         return IconButton(
           icon: const Icon(LucideIcons.x),
-          tooltip: 'Tutup',
+          tooltip: 'Close',
           onPressed: onLeadingTap ?? () => Navigator.maybeOf(context)?.maybePop(),
         );
     }

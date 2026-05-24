@@ -206,7 +206,7 @@ class _RetryPill extends StatelessWidget {
         child: const Padding(
           padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           child: Text(
-            'Coba lagi',
+            'Try again',
             style: TextStyle(
               fontSize: 11.5,
               fontWeight: FontWeight.w700,

@@ -50,10 +50,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       child: ListView(
         children: [
           const SizedBox(height: AppSpacing.xxxl),
-          Text('Buat akun Virdan', style: AppTextStyles.h1),
+          Text('Create your Virdan account', style: AppTextStyles.h1),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Mulai dengan email kamu — kode OTP akan dikirim untuk verifikasi.',
+            "Start with your email — we'll send a verification code.",
             style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: AppSpacing.xxl),
@@ -64,7 +64,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 VInput(
                   controller: _emailCtrl,
                   label: 'Email',
-                  hint: 'kamu@example.com',
+                  hint: 'you@example.com',
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.done,
                   autofillHints: const [AutofillHints.email],
@@ -74,8 +74,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 VButton(
-                  label: 'Kirim kode OTP',
-                  loadingLabel: 'Mengirim...',
+                  label: 'Send verification code',
+                  loadingLabel: 'Sending...',
                   loading: _submitting,
                   size: VButtonSize.lg,
                   fullWidth: true,
@@ -89,13 +89,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'Sudah punya akun? ',
+                'Already have an account? ',
                 style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
               ),
               GestureDetector(
                 onTap: _submitting ? null : () => context.go(Routes.authLogin),
                 child: Text(
-                  'Masuk',
+                  'Sign in',
                   style: AppTextStyles.bodyStrong.copyWith(color: AppColors.primary),
                 ),
               ),
@@ -108,10 +108,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 }
 
 String? _emailValidator(String? v) {
-  if (v == null || v.trim().isEmpty) return 'Email wajib diisi';
-  if (v.length < 5) return 'Email minimal 5 karakter';
-  if (v.length > 255) return 'Email maksimal 255 karakter';
-  if (!_emailRegex.hasMatch(v.trim())) return 'Format email tidak valid';
+  if (v == null || v.trim().isEmpty) return 'Email is required';
+  if (v.length < 5) return 'Email must be at least 5 characters';
+  if (v.length > 255) return 'Email must be at most 255 characters';
+  if (!_emailRegex.hasMatch(v.trim())) return 'Invalid email format';
   return null;
 }
 

@@ -90,7 +90,7 @@ class _VInputState extends State<VInput> {
     if (widget.obscure) {
       return IconButton(
         icon: Icon(_obscured ? LucideIcons.eye : LucideIcons.eyeOff, size: 20),
-        tooltip: _obscured ? 'Tampilkan' : 'Sembunyikan',
+        tooltip: _obscured ? 'Show' : 'Hide',
         onPressed: () => setState(() => _obscured = !_obscured),
       );
     }

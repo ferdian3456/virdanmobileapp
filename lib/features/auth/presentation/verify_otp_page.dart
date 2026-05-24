@@ -54,7 +54,7 @@ class _VerifyOtpPageState extends ConsumerState<VerifyOtpPage> {
       if (!mounted) return;
       ref
           .read(toastControllerProvider.notifier)
-          .success(title: 'Kode OTP baru terkirim');
+          .success(title: 'A new code has been sent');
     } catch (e) {
       if (!mounted) return;
       showApiErrorToast(ref, e);
@@ -84,10 +84,10 @@ class _VerifyOtpPageState extends ConsumerState<VerifyOtpPage> {
           child: ListView(
             children: [
               const SizedBox(height: AppSpacing.lg),
-              Text('Masukkan kode OTP', style: AppTextStyles.h1),
+              Text('Enter the verification code', style: AppTextStyles.h1),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                'Kami sudah kirim kode 6 digit ke ',
+                "We've sent a 6-digit code to ",
                 style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
               ),
               Text(email, style: AppTextStyles.bodyStrong),
@@ -98,15 +98,15 @@ class _VerifyOtpPageState extends ConsumerState<VerifyOtpPage> {
                   children: [
                     VInput(
                       controller: _otpCtrl,
-                      label: 'Kode OTP',
-                      hint: '6 digit angka',
+                      label: 'Verification code',
+                      hint: '6-digit code',
                       keyboardType: TextInputType.number,
                       textInputAction: TextInputAction.done,
                       maxLength: 6,
                       autofillHints: const [AutofillHints.oneTimeCode],
                       validator: (v) {
-                        if (v == null || v.isEmpty) return 'Kode OTP wajib diisi';
-                        if (v.length != 6) return 'Kode OTP harus 6 digit';
+                        if (v == null || v.isEmpty) return 'Code is required';
+                        if (v.length != 6) return 'Code must be 6 digits';
                         return null;
                       },
                       enabled: !_submitting,
@@ -114,8 +114,8 @@ class _VerifyOtpPageState extends ConsumerState<VerifyOtpPage> {
                     ),
                     const SizedBox(height: AppSpacing.xl),
                     VButton(
-                      label: 'Verifikasi',
-                      loadingLabel: 'Memverifikasi...',
+                      label: 'Verify',
+                      loadingLabel: 'Verifying...',
                       loading: _submitting,
                       size: VButtonSize.lg,
                       fullWidth: true,
@@ -129,13 +129,13 @@ class _VerifyOtpPageState extends ConsumerState<VerifyOtpPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Tidak menerima kode? ',
+                    "Didn't receive the code? ",
                     style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
                   ),
                   GestureDetector(
                     onTap: (_submitting || _resending) ? null : _resend,
                     child: Text(
-                      _resending ? 'Mengirim...' : 'Kirim ulang',
+                      _resending ? 'Sending...' : 'Resend',
                       style: AppTextStyles.bodyStrong.copyWith(color: AppColors.primary),
                     ),
                   ),

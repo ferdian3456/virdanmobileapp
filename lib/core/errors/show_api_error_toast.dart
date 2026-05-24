@@ -17,18 +17,18 @@ void showApiErrorToast(WidgetRef ref, Object error, {VoidCallback? onRetry}) {
 
   switch (mapped) {
     case NetworkError():
-      title = 'Tidak ada koneksi';
-      caption = 'Periksa internet kamu lalu coba lagi.';
+      title = 'No internet connection';
+      caption = 'Check your network and try again.';
     case TimeoutError():
-      title = 'Permintaan terlalu lama';
-      caption = 'Coba lagi sebentar.';
+      title = 'Request timed out';
+      caption = 'Please try again shortly.';
     case ApiError(:final message):
-      title = message.isEmpty ? 'Permintaan gagal' : message;
+      title = message.isEmpty ? 'Request failed' : message;
     case ValidationError(:final message):
       title = message;
     case UnknownError():
-      title = 'Terjadi kesalahan';
-      caption = 'Coba lagi nanti.';
+      title = 'Something went wrong';
+      caption = 'Please try again later.';
   }
 
   ref

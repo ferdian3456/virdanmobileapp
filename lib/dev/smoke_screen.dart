@@ -42,7 +42,7 @@ class _SmokeScreenState extends ConsumerState<SmokeScreen> {
     if (!mounted) return;
     setState(() => _submitting = false);
     ref.read(toastControllerProvider.notifier).success(
-          title: 'Email tersimpan',
+          title: 'Email saved',
           caption: _emailCtrl.text,
         );
   }
@@ -128,7 +128,7 @@ class _SmokeScreenState extends ConsumerState<SmokeScreen> {
                       label: 'Success',
                       size: VButtonSize.sm,
                       onPressed: () => toast.success(
-                        title: 'Post berhasil dibuat',
+                        title: 'Post created',
                       ),
                     ),
                     VButton(
@@ -136,8 +136,8 @@ class _SmokeScreenState extends ConsumerState<SmokeScreen> {
                       size: VButtonSize.sm,
                       variant: VButtonVariant.destructive,
                       onPressed: () => toast.error(
-                        title: 'Gagal memuat feed',
-                        caption: 'Periksa koneksi',
+                        title: 'Failed to load feed',
+                        caption: 'Check your connection',
                         onRetry: () => toast.info(title: 'Retry tapped'),
                       ),
                     ),
@@ -145,13 +145,13 @@ class _SmokeScreenState extends ConsumerState<SmokeScreen> {
                       label: 'Warning',
                       size: VButtonSize.sm,
                       variant: VButtonVariant.outline,
-                      onPressed: () => toast.warning(title: 'Koneksi lambat'),
+                      onPressed: () => toast.warning(title: 'Slow connection'),
                     ),
                     VButton(
                       label: 'Info',
                       size: VButtonSize.sm,
                       variant: VButtonVariant.ghost,
-                      onPressed: () => toast.info(title: 'Tip: tarik untuk refresh'),
+                      onPressed: () => toast.info(title: 'Tip: pull to refresh'),
                     ),
                   ],
                 ),
@@ -191,12 +191,12 @@ class _SmokeScreenState extends ConsumerState<SmokeScreen> {
                       VInput(
                         controller: _emailCtrl,
                         label: 'Email',
-                        hint: 'kamu@example.com',
+                        hint: 'you@example.com',
                         keyboardType: TextInputType.emailAddress,
                         autofillHints: const [AutofillHints.email],
                         validator: (v) {
-                          if (v == null || v.isEmpty) return 'Email wajib diisi';
-                          if (!v.contains('@')) return 'Format email tidak valid';
+                          if (v == null || v.isEmpty) return 'Email is required';
+                          if (!v.contains('@')) return 'Invalid email format';
                           return null;
                         },
                       ),
@@ -209,7 +209,7 @@ class _SmokeScreenState extends ConsumerState<SmokeScreen> {
                       ),
                       const SizedBox(height: AppSpacing.lg),
                       VButton(
-                        label: 'Simpan',
+                        label: 'Save',
                         loadingLabel: 'Menyimpan...',
                         loading: _submitting,
                         fullWidth: true,
@@ -221,7 +221,7 @@ class _SmokeScreenState extends ConsumerState<SmokeScreen> {
                 ),
               ]),
               _Section('VFieldError (inline)', [
-                const VFieldError(message: 'Username sudah dipakai. Coba yang lain.'),
+                const VFieldError(message: 'Username already taken. Try a different one.'),
               ]),
               _Section('Skeleton', [
                 const VSkeleton(height: 16, width: 200),
@@ -250,7 +250,7 @@ class _SmokeScreenState extends ConsumerState<SmokeScreen> {
               _Section('VProgressRing', [
                 Row(
                   children: [
-                    VProgressRing(progress: _progress, label: 'Mengunggah'),
+                    VProgressRing(progress: _progress, label: 'Uploading'),
                     const SizedBox(width: AppSpacing.lg),
                     VButton(label: 'Start fake upload', size: VButtonSize.sm, onPressed: _fakeUpload),
                   ],
@@ -261,9 +261,9 @@ class _SmokeScreenState extends ConsumerState<SmokeScreen> {
                   height: 240,
                   child: VEmptyState(
                     icon: LucideIcons.fileText,
-                    title: 'Belum ada post',
-                    subtitle: 'Jadi yang pertama posting di server ini!',
-                    cta: VButton(label: 'Buat post', onPressed: () {}),
+                    title: 'No posts yet',
+                    subtitle: 'Be the first to post in this server!',
+                    cta: VButton(label: 'Create post', onPressed: () {}),
                   ),
                 ),
               ]),
