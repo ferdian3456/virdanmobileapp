@@ -1,20 +1,23 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../../../core/errors/parse_field_errors.dart';
 import '../../../core/errors/show_api_error_toast.dart';
 import '../../../core/feedback/toast/toast_controller.dart';
-import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
-import '../../../core/theme/typography.dart';
 import '../../../core/widgets/v_button.dart';
 import '../data/server_api.dart';
-import '../data/server_repository.dart';
+import '../data/server_create_draft.dart';
 import '../domain/server.dart';
 
+/// Step 1 of the create-server flow. Matches Quasar CreateServerPage.vue:
+/// server fields only + Next button. Identity (nickname / username / bio /
+/// profile avatar) is captured in step 2 (YourProfilePage) which submits the
+/// combined multipart payload.
 class CreateServerPage extends ConsumerStatefulWidget {
   const CreateServerPage({super.key});
 
@@ -27,21 +30,27 @@ class _CreateServerPageState extends ConsumerState<CreateServerPage> {
   final _name = TextEditingController();
   final _shortName = TextEditingController();
   final _description = TextEditingController();
-  final _nickname = TextEditingController();
-  final _username = TextEditingController();
-  final _bio = TextEditingController();
   int? _categoryId;
   bool _isPrivate = false;
+  XFile? _avatar;
 
   List<ServerCategory> _categories = const [];
   bool _categoriesLoading = false;
-  bool _submitting = false;
-  Map<String, String> _fieldErrors = {};
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadCategories());
+    // Hydrate from any previously-saved draft (back-nav from YourProfilePage).
+    final draft = ref.read(serverCreateDraftProvider);
+    if (draft != null) {
+      _name.text = draft.name;
+      _shortName.text = draft.shortName;
+      _description.text = draft.description;
+      _categoryId = draft.categoryId;
+      _isPrivate = draft.isPrivate;
+      _avatar = draft.avatarFile;
+    }
   }
 
   @override
@@ -49,9 +58,6 @@ class _CreateServerPageState extends ConsumerState<CreateServerPage> {
     _name.dispose();
     _shortName.dispose();
     _description.dispose();
-    _nickname.dispose();
-    _username.dispose();
-    _bio.dispose();
     super.dispose();
   }
 
@@ -71,51 +77,132 @@ class _CreateServerPageState extends ConsumerState<CreateServerPage> {
     }
   }
 
-  Future<void> _submit() async {
-    setState(() => _fieldErrors = {});
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-    if (_categoryId == null) {
-      setState(() => _fieldErrors = {'categoryId': 'Category is required'});
-      return;
-    }
-    setState(() => _submitting = true);
+  Future<void> _pickAvatar() async {
     try {
-      await ref.read(serverApiProvider).createServer(
-            name: _name.text.trim(),
-            shortName: _shortName.text.trim(),
-            categoryId: _categoryId!,
-            isPrivate: _isPrivate,
-            nickname: _nickname.text.trim(),
-            username: _username.text.trim().toLowerCase(),
-            description: _description.text.trim(),
-            bio: _bio.text.trim(),
-          );
-      if (!mounted) return;
-      await ref.read(myServersProvider.notifier).fetch(force: true);
-      if (!mounted) return;
-      ref.read(toastControllerProvider.notifier).success(
-            title: 'Server created successfully',
-          );
-      context.go(Routes.appHome);
+      final picker = ImagePicker();
+      final file = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 90,
+        maxWidth: 1024,
+      );
+      if (file == null || !mounted) return;
+      setState(() => _avatar = file);
     } catch (e) {
       if (!mounted) return;
-      final errs = tryParseFieldErrors(e);
-      if (errs != null) {
-        setState(() => _fieldErrors = errs);
-      } else {
-        showApiErrorToast(ref, e);
-      }
-    } finally {
-      if (mounted) setState(() => _submitting = false);
+      showApiErrorToast(ref, e);
     }
   }
 
+  Future<void> _openCategoryPicker() async {
+    if (_categoriesLoading) return;
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xxl)),
+      ),
+      builder: (_) => SafeArea(
+        top: false,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Choose category',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _categories.length,
+                  itemBuilder: (_, i) {
+                    final c = _categories[i];
+                    final active = c.id == _categoryId;
+                    return ListTile(
+                      title: Text(
+                        c.categoryName,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 15,
+                          fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                          color: active ? AppColors.primary : AppColors.textPrimary,
+                        ),
+                      ),
+                      trailing: active
+                          ? const Icon(LucideIcons.check, color: AppColors.primary)
+                          : null,
+                      onTap: () => Navigator.pop(context, c.id),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked != null && mounted) setState(() => _categoryId = picked);
+  }
+
+  void _next() {
+    final canSubmit = _name.text.trim().isNotEmpty &&
+        _shortName.text.trim().isNotEmpty &&
+        _categoryId != null;
+    if (!canSubmit) {
+      _formKey.currentState?.validate();
+      if (_categoryId == null) {
+        ref
+            .read(toastControllerProvider.notifier)
+            .warning(title: 'Pick a category');
+      }
+      return;
+    }
+    ref.read(serverCreateDraftProvider.notifier).setDraft(
+          ServerCreateDraft(
+            name: _name.text.trim(),
+            shortName: _shortName.text.trim(),
+            categoryId: _categoryId!,
+            description: _description.text.trim(),
+            isPrivate: _isPrivate,
+            avatarPath: _avatar?.path,
+            avatarName: _avatar?.name,
+          ),
+        );
+
+    final loc = GoRouterState.of(context).matchedLocation;
+    final target = loc.startsWith('/onboarding')
+        ? '/onboarding/create-server/profile'
+        : '/app/create-server/profile';
+    context.push(target);
+  }
+
   void _goBack() {
+    ref.read(serverCreateDraftProvider.notifier).clear();
     if (context.canPop()) {
       context.pop();
     } else {
-      context.go(Routes.onboardingServerChoice);
+      context.go('/onboarding/server-choice');
     }
+  }
+
+  String? get _selectedCategoryLabel {
+    if (_categoryId == null) return null;
+    for (final c in _categories) {
+      if (c.id == _categoryId) return c.categoryName;
+    }
+    return null;
   }
 
   @override
@@ -131,9 +218,14 @@ class _CreateServerPageState extends ConsumerState<CreateServerPage> {
               child: Form(
                 key: _formKey,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _AvatarUploader(onTap: _showAvatarTodoToast),
+                    Center(
+                      child: _AvatarUploader(
+                        avatar: _avatar,
+                        onTap: _pickAvatar,
+                      ),
+                    ),
                     const SizedBox(height: AppSpacing.xxl),
 
                     _FieldLabel(
@@ -145,9 +237,9 @@ class _CreateServerPageState extends ConsumerState<CreateServerPage> {
                       controller: _name,
                       hint: 'Enter server name…',
                       maxLength: 40,
-                      errorText: _fieldErrors['name'],
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Server name is required' : null,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Server name is required'
+                          : null,
                       onChanged: (_) => setState(() {}),
                     ),
 
@@ -161,9 +253,9 @@ class _CreateServerPageState extends ConsumerState<CreateServerPage> {
                       controller: _shortName,
                       hint: 'Server abbreviation',
                       maxLength: 10,
-                      errorText: _fieldErrors['shortName'],
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Short name is required' : null,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Short name is required'
+                          : null,
                       onChanged: (_) => setState(() {}),
                     ),
                     const Padding(
@@ -180,12 +272,12 @@ class _CreateServerPageState extends ConsumerState<CreateServerPage> {
 
                     const SizedBox(height: AppSpacing.lg),
                     _FieldLabel(label: 'CATEGORY', required: true),
-                    _CategorySelect(
-                      categories: _categories,
-                      loading: _categoriesLoading,
-                      value: _categoryId,
-                      onChanged: (id) => setState(() => _categoryId = id),
-                      errorText: _fieldErrors['categoryId'],
+                    _CategoryPickerField(
+                      label: _categoriesLoading
+                          ? 'Loading categories…'
+                          : (_selectedCategoryLabel ?? 'Select category…'),
+                      isPlaceholder: _selectedCategoryLabel == null,
+                      onTap: _openCategoryPicker,
                     ),
 
                     const SizedBox(height: AppSpacing.lg),
@@ -199,7 +291,6 @@ class _CreateServerPageState extends ConsumerState<CreateServerPage> {
                       hint: 'Tell us a bit about this server…',
                       maxLength: 150,
                       maxLines: 3,
-                      errorText: _fieldErrors['description'],
                       onChanged: (_) => setState(() {}),
                     ),
 
@@ -209,86 +300,7 @@ class _CreateServerPageState extends ConsumerState<CreateServerPage> {
                       isPrivate: _isPrivate,
                       onChanged: (v) => setState(() => _isPrivate = v),
                     ),
-
                     const SizedBox(height: AppSpacing.xxxl),
-                    Container(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFE9ECEF)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Your identity in this server',
-                              style: AppTextStyles.bodyStrong),
-                          const SizedBox(height: 4),
-                          Text(
-                            "Choose how you'll be known here. You can use a different name and bio than your other servers.",
-                            style: AppTextStyles.caption
-                                .copyWith(color: AppColors.textSecondary),
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          _FieldLabel(
-                            label: 'NICKNAME',
-                            required: true,
-                            counter: '${_nickname.text.length}/50',
-                          ),
-                          _ThemedField(
-                            controller: _nickname,
-                            hint: 'How others see you',
-                            maxLength: 50,
-                            errorText: _fieldErrors['nickname'],
-                            validator: (v) {
-                              if (v == null || v.trim().length < 3) {
-                                return 'Nickname must be at least 3 characters';
-                              }
-                              return null;
-                            },
-                            onChanged: (_) => setState(() {}),
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          _FieldLabel(
-                            label: 'USERNAME',
-                            required: true,
-                            counter: '${_username.text.length}/22',
-                          ),
-                          _ThemedField(
-                            controller: _username,
-                            hint: 'unique handle (a-z, 0-9, _ .)',
-                            maxLength: 22,
-                            errorText: _fieldErrors['username'],
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_.]')),
-                            ],
-                            validator: (v) {
-                              final s = (v ?? '').trim();
-                              if (s.length < 3) return 'Username must be at least 3 characters';
-                              if (!RegExp(r'^[a-zA-Z0-9_.]+$').hasMatch(s)) {
-                                return 'Only letters, numbers, _ and . allowed';
-                              }
-                              return null;
-                            },
-                            onChanged: (_) => setState(() {}),
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          _FieldLabel(
-                            label: 'BIO',
-                            optionalTag: true,
-                            counter: '${_bio.text.length}/150',
-                          ),
-                          _ThemedField(
-                            controller: _bio,
-                            hint: 'Short bio for this server (optional)',
-                            maxLength: 150,
-                            maxLines: 2,
-                            errorText: _fieldErrors['bio'],
-                            onChanged: (_) => setState(() {}),
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -303,24 +315,16 @@ class _CreateServerPageState extends ConsumerState<CreateServerPage> {
             child: SafeArea(
               top: false,
               child: VButton(
-                label: 'Create Server',
-                loadingLabel: 'Creating...',
-                loading: _submitting,
+                label: 'Next',
                 size: VButtonSize.lg,
                 fullWidth: true,
-                onPressed: _submitting ? null : _submit,
+                onPressed: _next,
               ),
             ),
           ),
         ],
       ),
     );
-  }
-
-  void _showAvatarTodoToast() {
-    ref.read(toastControllerProvider.notifier).info(
-          title: 'Image upload lands in Phase 4',
-        );
   }
 }
 
@@ -450,20 +454,16 @@ class _ThemedField extends StatelessWidget {
     this.hint,
     this.maxLength,
     this.maxLines = 1,
-    this.errorText,
     this.validator,
     this.onChanged,
-    this.inputFormatters,
   });
 
   final TextEditingController controller;
   final String? hint;
   final int? maxLength;
   final int maxLines;
-  final String? errorText;
   final FormFieldValidator<String>? validator;
   final ValueChanged<String>? onChanged;
-  final List<TextInputFormatter>? inputFormatters;
 
   @override
   Widget build(BuildContext context) {
@@ -473,11 +473,13 @@ class _ThemedField extends StatelessWidget {
       maxLines: maxLines,
       validator: validator,
       onChanged: onChanged,
-      inputFormatters: inputFormatters,
-      style: const TextStyle(fontFamily: 'Inter', fontSize: 15, color: AppColors.textPrimary),
+      style: const TextStyle(
+        fontFamily: 'Inter',
+        fontSize: 15,
+        color: AppColors.textPrimary,
+      ),
       decoration: InputDecoration(
         hintText: hint,
-        errorText: errorText,
         filled: true,
         fillColor: Colors.white,
         isDense: true,
@@ -499,66 +501,54 @@ class _ThemedField extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.error, width: 1.5),
         ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.error, width: 1.5),
-        ),
       ),
     );
   }
 }
 
-class _CategorySelect extends StatelessWidget {
-  const _CategorySelect({
-    required this.categories,
-    required this.loading,
-    required this.value,
-    required this.onChanged,
-    this.errorText,
+class _CategoryPickerField extends StatelessWidget {
+  const _CategoryPickerField({
+    required this.label,
+    required this.isPlaceholder,
+    required this.onTap,
   });
 
-  final List<ServerCategory> categories;
-  final bool loading;
-  final int? value;
-  final ValueChanged<int?> onChanged;
-  final String? errorText;
+  final String label;
+  final bool isPlaceholder;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<int>(
-      initialValue: value,
-      isExpanded: true,
-      icon: const Icon(LucideIcons.chevronDown, size: 18, color: AppColors.textSecondary),
-      style: const TextStyle(fontFamily: 'Inter', fontSize: 15, color: AppColors.textPrimary),
-      hint: Text(
-        loading ? 'Loading categories…' : 'Select category…',
-        style: const TextStyle(
-          fontFamily: 'Inter',
-          fontSize: 15,
-          color: AppColors.textTertiary,
-        ),
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFE9ECEF)),
       ),
-      items: categories
-          .map((c) => DropdownMenuItem(value: c.id, child: Text(c.categoryName)))
-          .toList(growable: false),
-      onChanged: loading ? null : onChanged,
-      decoration: InputDecoration(
-        errorText: errorText,
-        filled: true,
-        fillColor: Colors.white,
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE9ECEF)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE9ECEF)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 15,
+                    color: isPlaceholder
+                        ? AppColors.textTertiary
+                        : AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              const Icon(LucideIcons.chevronDown,
+                  size: 18, color: AppColors.textSecondary),
+            ],
+          ),
         ),
       ),
     );
@@ -686,44 +676,50 @@ class _PrivacyCard extends StatelessWidget {
 }
 
 class _AvatarUploader extends StatelessWidget {
-  const _AvatarUploader({required this.onTap});
+  const _AvatarUploader({required this.avatar, required this.onTap});
 
+  final XFile? avatar;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Material(
           color: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
-            side: const BorderSide(
-              color: AppColors.textTertiary,
-              width: 1.5,
-              style: BorderStyle.solid,
-            ),
+            side: const BorderSide(color: AppColors.textTertiary, width: 1.5),
           ),
           child: InkWell(
             borderRadius: BorderRadius.circular(18),
             onTap: onTap,
-            child: const SizedBox(
+            child: SizedBox(
               width: 96,
               height: 96,
-              child: Center(
-                child: Icon(LucideIcons.image, size: 36, color: AppColors.textTertiary),
-              ),
+              child: avatar == null
+                  ? const Center(
+                      child: Icon(LucideIcons.image,
+                          size: 36, color: AppColors.textTertiary),
+                    )
+                  : ClipRRect(
+                      borderRadius: BorderRadius.circular(18),
+                      child: Image.file(File(avatar!.path), fit: BoxFit.cover),
+                    ),
             ),
           ),
         ),
         const SizedBox(height: 12),
         const Text(
           'Server Icon (optional)',
+          textAlign: TextAlign.center,
           style: TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 2),
         const Text(
-          'PNG, JPG min 512px — image upload lands in Phase 4',
+          'PNG, JPG min 512px',
+          textAlign: TextAlign.center,
           style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: AppColors.textTertiary),
         ),
       ],

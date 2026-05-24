@@ -14,8 +14,11 @@ import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/util/avatar_color.dart';
 import '../../../core/widgets/v_button.dart';
+import '../../../core/router/routes.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_state.dart';
+import '../../server/data/server_api.dart';
+import '../../server/data/server_create_draft.dart';
 import '../../server/data/server_repository.dart';
 import '../data/profile_api.dart';
 
@@ -103,15 +106,6 @@ class _YourProfilePageState extends ConsumerState<YourProfilePage> {
   }
 
   Future<void> _submit() async {
-    final serverId =
-        widget.targetServerId ?? ref.read(myServersProvider).activeServerId;
-    if (serverId == null) {
-      ref.read(toastControllerProvider.notifier).warning(
-            title: 'No active server',
-            caption: 'Join a server first.',
-          );
-      return;
-    }
     if (_nickname.text.trim().length < 3) {
       ref.read(toastControllerProvider.notifier).warning(
             title: 'Nickname must be at least 3 characters',
@@ -126,16 +120,75 @@ class _YourProfilePageState extends ConsumerState<YourProfilePage> {
       _submitting = true;
       _usernameError = null;
     });
+
+    final nickname = _nickname.text.trim();
+    final username = _username.text.trim().toLowerCase();
+    final bio = _bio.text.trim();
+
     try {
-      await ref.read(profileApiProvider).upsert(
-            serverId: serverId,
-            nickname: _nickname.text.trim(),
-            username: _username.text.trim().toLowerCase(),
-            bio: _bio.text.trim(),
-          );
-      if (!mounted) return;
-      ref.read(toastControllerProvider.notifier).success(title: 'Profile saved');
-      context.pop();
+      final draft = ref.read(serverCreateDraftProvider);
+      final joinTarget = ref.read(joinTargetProvider);
+
+      if (draft != null) {
+        // Create-server flow — submit combined multipart.
+        final newId = await ref.read(serverApiProvider).createServer(
+              name: draft.name,
+              shortName: draft.shortName,
+              categoryId: draft.categoryId,
+              isPrivate: draft.isPrivate,
+              description: draft.description,
+              nickname: nickname,
+              username: username,
+              bio: bio,
+              serverAvatar: draft.avatarFile,
+              profileAvatar: _avatar,
+            );
+        ref.read(serverCreateDraftProvider.notifier).clear();
+        await ref.read(myServersProvider.notifier).fetch(force: true);
+        if (!mounted) return;
+        ref.read(myServersProvider.notifier).setActive(newId);
+        ref.read(toastControllerProvider.notifier).success(
+              title: 'Server created successfully',
+            );
+        context.go(Routes.appHome);
+      } else if (joinTarget != null) {
+        // Join-flow — multipart join with per-server identity.
+        await ref.read(serverApiProvider).joinWithProfile(
+              serverId: joinTarget.serverId,
+              nickname: nickname,
+              username: username,
+              bio: bio,
+              profileAvatar: _avatar,
+            );
+        ref.read(joinTargetProvider.notifier).clear();
+        await ref.read(myServersProvider.notifier).fetch(force: true);
+        if (!mounted) return;
+        ref.read(myServersProvider.notifier).setActive(joinTarget.serverId);
+        ref.read(toastControllerProvider.notifier).success(
+              title: 'Joined ${joinTarget.serverName}',
+            );
+        context.go(Routes.appHome);
+      } else {
+        // Edit existing per-server profile (PUT /servers/:id/profile).
+        final serverId =
+            widget.targetServerId ?? ref.read(myServersProvider).activeServerId;
+        if (serverId == null) {
+          ref.read(toastControllerProvider.notifier).warning(
+                title: 'No active server',
+                caption: 'Join a server first.',
+              );
+          return;
+        }
+        await ref.read(profileApiProvider).upsert(
+              serverId: serverId,
+              nickname: nickname,
+              username: username,
+              bio: bio,
+            );
+        if (!mounted) return;
+        ref.read(toastControllerProvider.notifier).success(title: 'Profile saved');
+        context.pop();
+      }
     } catch (e) {
       if (!mounted) return;
       final errs = tryParseFieldErrors(e);

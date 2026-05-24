@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/http/dio_client.dart';
 import '../domain/server.dart';
@@ -59,8 +60,9 @@ class ServerApi {
     required String username,
     String description = '',
     String bio = '',
-    // TODO(VIR-90 Phase 4): avatar uploads (serverAvatar, profileAvatar) once
-    // image_picker lands.
+    XFile? serverAvatar,
+    XFile? profileAvatar,
+    String? avatarImageId,
   }) async {
     final form = FormData.fromMap({
       'name': name,
@@ -71,6 +73,13 @@ class ServerApi {
       'nickname': nickname,
       'username': username,
       'bio': bio,
+      if (serverAvatar != null)
+        'serverAvatar':
+            await MultipartFile.fromFile(serverAvatar.path, filename: serverAvatar.name),
+      if (profileAvatar != null)
+        'profileAvatar':
+            await MultipartFile.fromFile(profileAvatar.path, filename: profileAvatar.name),
+      if (avatarImageId != null) 'avatarImageId': avatarImageId,
     });
     final res = await _dio.post<Map<String, dynamic>>(
       '/servers/create',
@@ -82,6 +91,32 @@ class ServerApi {
       throw StateError('createServer: malformed response');
     }
     return server['id'] as String;
+  }
+
+  /// `POST /api/servers/:serverId/join` — multipart. Sets the per-server
+  /// profile during join (multi-identity copy-on-join).
+  Future<void> joinWithProfile({
+    required String serverId,
+    required String nickname,
+    required String username,
+    String bio = '',
+    XFile? profileAvatar,
+    String? avatarImageId,
+  }) async {
+    final form = FormData.fromMap({
+      'nickname': nickname,
+      'username': username,
+      'bio': bio,
+      if (profileAvatar != null)
+        'profileAvatar':
+            await MultipartFile.fromFile(profileAvatar.path, filename: profileAvatar.name),
+      if (avatarImageId != null) 'avatarImageId': avatarImageId,
+    });
+    await _dio.post<Map<String, dynamic>>(
+      '/servers/$serverId/join',
+      data: form,
+      options: Options(contentType: 'multipart/form-data'),
+    );
   }
 }
 

@@ -7,7 +7,7 @@ import 'auth_interceptor.dart';
 /// Default API base URL. Override via `--dart-define=API_URL=...` at build time.
 const _defaultApiUrl = String.fromEnvironment(
   'API_URL',
-  defaultValue: 'http://10.0.2.2:8081/api',
+  defaultValue: 'https://ungrating-bo-argumentatively.ngrok-free.dev/api',
 );
 
 /// Bare Dio used only by the refresh call itself — no auth interceptor to
