@@ -19,10 +19,12 @@ import '../../features/post/presentation/home_page.dart';
 import '../../features/post/presentation/post_detail_page.dart';
 import '../../features/profile/presentation/edit_profile_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
+import '../../features/profile/presentation/user_profile_page.dart';
 import '../../features/profile/presentation/your_profile_page.dart';
 import '../../features/server/data/server_repository.dart';
 import '../../features/server/presentation/create_server_page.dart';
 import '../../features/server/presentation/edit_server_settings_page.dart';
+import '../../features/server/presentation/explore_servers_page.dart';
 import '../../features/server/presentation/join_by_invite_page.dart';
 import '../../features/server/presentation/server_detail_page.dart';
 import '../../features/settings/presentation/change_email_page.dart';
@@ -110,12 +112,28 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: Routes.appNotifications,
             builder: (_, _) => const NotificationsPage(),
           ),
-          GoRoute(path: Routes.appProfile, builder: (_, _) => const YourProfilePage()),
+          GoRoute(path: Routes.appProfile, builder: (_, _) => const ProfilePage()),
         ],
       ),
 
       // Standalone protected pages (no bottom nav).
       GoRoute(path: Routes.appCreateServer, builder: (_, _) => const CreateServerPage()),
+      GoRoute(
+        path: '/onboarding/create-server/profile',
+        builder: (_, _) => const YourProfilePage(),
+      ),
+      GoRoute(
+        path: '/app/create-server/profile',
+        builder: (_, _) => const YourProfilePage(),
+      ),
+      GoRoute(
+        path: '/onboarding/explore-servers',
+        builder: (_, _) => const ExploreServersPage(),
+      ),
+      GoRoute(
+        path: '/app/explore-servers',
+        builder: (_, _) => const ExploreServersPage(),
+      ),
       GoRoute(path: Routes.appJoin, builder: (_, _) => const JoinByInvitePage()),
       GoRoute(path: Routes.appChat, builder: (_, _) => const ChatPage()),
       GoRoute(path: Routes.appEditProfile, builder: (_, _) => const EditProfilePage()),
@@ -139,7 +157,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/profile/:userId',
-        builder: (_, state) => ProfilePage(userId: state.pathParameters['userId']!),
+        builder: (_, state) => UserProfilePage(userId: state.pathParameters['userId']!),
       ),
 
       GoRoute(path: Routes.settings, builder: (_, _) => const SettingsPage()),
