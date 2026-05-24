@@ -110,8 +110,12 @@ class _SmokeScreenState extends ConsumerState<SmokeScreen> {
                     const SizedBox(width: AppSpacing.md),
                     const VAvatar(fallbackInitial: 'A', size: VAvatarSize.lg),
                     const SizedBox(width: AppSpacing.md),
-                    Text('URL · error fallback · no URL',
-                        style: AppTextStyles.caption),
+                    Expanded(
+                      child: Text(
+                        'URL · error fallback · no URL',
+                        style: AppTextStyles.caption,
+                      ),
+                    ),
                   ],
                 ),
               ]),
