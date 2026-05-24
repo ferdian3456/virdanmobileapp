@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../core/errors/parse_field_errors.dart';
 import '../../../core/errors/show_api_error_toast.dart';
 import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
@@ -22,6 +24,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
   bool _submitting = false;
+  String? _emailError;
 
   @override
   void dispose() {
@@ -30,6 +33,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   }
 
   Future<void> _submit() async {
+    setState(() => _emailError = null);
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _submitting = true);
     try {
@@ -38,7 +42,12 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       context.push(Routes.authVerifyOtp);
     } catch (e) {
       if (!mounted) return;
-      showApiErrorToast(ref, e);
+      final fieldErrors = tryParseFieldErrors(e);
+      if (fieldErrors != null && fieldErrors['email'] != null) {
+        setState(() => _emailError = fieldErrors['email']);
+      } else {
+        showApiErrorToast(ref, e);
+      }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -49,14 +58,24 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     return BlankLayout(
       child: ListView(
         children: [
-          const SizedBox(height: AppSpacing.xxxl),
-          Text('Create your Virdan account', style: AppTextStyles.h1),
+          GestureDetector(
+            onTap: _submitting ? null : () => context.go(Routes.authLogin),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+              child: Icon(LucideIcons.arrowLeft, size: 24, color: AppColors.textPrimary),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            "What's your email?",
+            style: AppTextStyles.h1.copyWith(fontSize: 30, fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            "Start with your email — we'll send a verification code.",
-            style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+            'Enter the email where you can be contacted. No one will see this on your profile.',
+            style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
           ),
-          const SizedBox(height: AppSpacing.xxl),
+          const SizedBox(height: AppSpacing.xl),
           Form(
             key: _formKey,
             child: Column(
@@ -64,17 +83,18 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 VInput(
                   controller: _emailCtrl,
                   label: 'Email',
-                  hint: 'you@example.com',
+                  hint: 'johndoe@gmail.com',
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.done,
                   autofillHints: const [AutofillHints.email],
-                  validator: _emailValidator,
+                  errorText: _emailError,
+                  validator: (v) => _emailError ?? _emailValidator(v),
                   enabled: !_submitting,
                   onFieldSubmitted: (_) => _submit(),
                 ),
-                const SizedBox(height: AppSpacing.xl),
+                const SizedBox(height: AppSpacing.lg),
                 VButton(
-                  label: 'Send verification code',
+                  label: 'Next',
                   loadingLabel: 'Sending...',
                   loading: _submitting,
                   size: VButtonSize.lg,
@@ -90,13 +110,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             children: [
               Text(
                 'Already have an account? ',
-                style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+                style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
               ),
               GestureDetector(
                 onTap: _submitting ? null : () => context.go(Routes.authLogin),
                 child: Text(
-                  'Sign in',
-                  style: AppTextStyles.bodyStrong.copyWith(color: AppColors.primary),
+                  'Sign In',
+                  style: AppTextStyles.captionStrong.copyWith(color: AppColors.primary),
                 ),
               ),
             ],

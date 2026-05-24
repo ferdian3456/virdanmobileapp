@@ -10,6 +10,6 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('Sign in to Virdan'), findsOneWidget);
+    expect(find.text('Welcome To Virdan'), findsOneWidget);
   });
 }

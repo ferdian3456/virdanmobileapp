@@ -31,11 +31,21 @@ class AuthApi {
     );
   }
 
-  Future<void> resendOtp(String sessionId) async {
-    await _dio.post<Map<String, dynamic>>(
+  Future<({int otpExpiresAt})> resendOtp(String sessionId) async {
+    final res = await _dio.post<Map<String, dynamic>>(
       '/auth/signup/resend-otp',
       data: {'sessionId': sessionId},
     );
+    final data = res.data ?? const <String, dynamic>{};
+    final expires = data['otpExpiresAt'];
+    return (otpExpiresAt: expires is num ? expires.toInt() : 0);
+  }
+
+  /// Returns the current step value: `start_signup`, `otp_verified`,
+  /// `password_set`, or throws on 404 / expired session.
+  Future<String> getSignupStatus(String sessionId) async {
+    final res = await _dio.get<Map<String, dynamic>>('/auth/signup/$sessionId/status');
+    return (res.data?['step'] as String?) ?? '';
   }
 
   Future<SessionTokens> setPassword({
