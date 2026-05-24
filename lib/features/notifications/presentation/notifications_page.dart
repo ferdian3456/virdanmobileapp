@@ -7,9 +7,10 @@ import '../../../core/util/app_assets.dart';
 import '../../../core/util/avatar_color.dart';
 import '../../../mocks/notifications_mock.dart';
 
-/// Mirrors Quasar NotificationsPage.vue: header + tabs (All/Mentions),
-/// grouped sections (New / Today / Earlier), each row = avatar with kind-
-/// badge + actor + text + time + optional thumbnail or Follow button.
+/// Mirrors Quasar NotificationsPage.vue: centered title header, 2 full-width
+/// tab pills (All / Mentions), grouped sections (New / Today / Earlier),
+/// row = 40px avatar with kind badge + text (username bold inline) + time
+/// on separate line + trailing Follow rect button OR 40px thumbnail.
 /// Empty state uses notification.svg.
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
@@ -20,7 +21,8 @@ class NotificationsPage extends StatefulWidget {
 
 class _NotificationsPageState extends State<NotificationsPage> {
   int _tab = 0;
-  late final List<NotificationItem> _items = List<NotificationItem>.of(mockNotifications);
+  late final List<NotificationItem> _items =
+      List<NotificationItem>.of(mockNotifications);
 
   List<NotificationItem> get _filtered {
     if (_tab == 1) {
@@ -50,7 +52,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     final groups = _grouped;
     final isEmpty = _filtered.isEmpty;
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -94,18 +96,17 @@ class _Header extends StatelessWidget {
     return Container(
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      alignment: Alignment.centerLeft,
+      alignment: Alignment.center,
       decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: AppColors.divider)),
+        border: Border(bottom: BorderSide(color: Color(0xFFF1F3F5))),
       ),
       child: const Text(
         'Notifications',
         style: TextStyle(
           fontFamily: 'Inter',
-          fontSize: 20,
+          fontSize: 17,
           fontWeight: FontWeight.w700,
-          letterSpacing: -0.4,
+          letterSpacing: -0.17,
           color: Color(0xFF0F172A),
         ),
       ),
@@ -124,28 +125,34 @@ class _Tabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFF1F3F5))),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Row(
         children: List.generate(_labels.length, (i) {
           final selected = i == active;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Material(
-              color: selected ? AppColors.primary : const Color(0xFFF1F3F5),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(999),
-                onTap: () => onTap(i),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Text(
-                    _labels[i],
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: selected ? Colors.white : const Color(0xFF495057),
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: i == _labels.length - 1 ? 0 : 8),
+              child: Material(
+                color: selected ? AppColors.primarySoft : const Color(0xFFF1F3F5),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(999),
+                  onTap: () => onTap(i),
+                  child: SizedBox(
+                    height: 36,
+                    child: Center(
+                      child: Text(
+                        _labels[i],
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: selected ? AppColors.primary : const Color(0xFF495057),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -172,24 +179,27 @@ class _Section extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.13,
-              color: Color(0xFF0F172A),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.15,
+                color: Color(0xFF0F172A),
+              ),
             ),
           ),
-        ),
-        ...items.map((n) => _Row(item: n, onFollow: () => onFollow(n))),
-      ],
+          ...items.map((n) => _Row(item: n, onFollow: () => onFollow(n))),
+        ],
+      ),
     );
   }
 }
@@ -232,133 +242,142 @@ class _Row extends StatelessWidget {
         ? item.actor.username.characters.first.toUpperCase()
         : '?';
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Avatar + badge
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: avatarColorFor(item.actor.username),
-                  shape: BoxShape.circle,
-                ),
-                child: item.actor.avatarUrl != null && item.actor.avatarUrl!.isNotEmpty
-                    ? ClipOval(
-                        child: Image.network(item.actor.avatarUrl!, fit: BoxFit.cover))
-                    : Text(
-                        initial,
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-              ),
-              Positioned(
-                right: -2,
-                bottom: -2,
-                child: Container(
-                  width: 20,
-                  height: 20,
+          SizedBox(
+            width: 40,
+            height: 40,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: _badgeColor,
+                    color: avatarColorFor(item.actor.username),
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
                   ),
-                  child: Icon(_kindIcon,
-                      size: 10,
-                      color: Colors.white),
+                  child: item.actor.avatarUrl != null && item.actor.avatarUrl!.isNotEmpty
+                      ? ClipOval(
+                          child: Image.network(item.actor.avatarUrl!, fit: BoxFit.cover))
+                      : Text(
+                          initial,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 12),
-          // Text
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 13,
-                  color: Color(0xFF212529),
-                  height: 1.4,
+                Positioned(
+                  right: -2,
+                  bottom: -2,
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: _badgeColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: Icon(_kindIcon, size: 11, color: Colors.white),
+                  ),
                 ),
-                children: [
-                  TextSpan(
-                    text: item.actor.username,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  TextSpan(text: ' ${item.text} '),
-                  TextSpan(
-                    text: item.timeLabel,
-                    style: const TextStyle(color: AppColors.textTertiary),
-                  ),
-                ],
-              ),
+              ],
             ),
           ),
           const SizedBox(width: 12),
-          // Trailing — thumbnail or follow button
-          if (item.thumbnailUrl != null && item.thumbnailUrl!.isNotEmpty)
+          // Text (username + body) inline; time on its own line below.
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                RichText(
+                  text: TextSpan(
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 14,
+                      color: Color(0xFF212529),
+                      height: 1.4,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: item.actor.username,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      TextSpan(text: ' ${item.text}'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  item.timeLabel,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    color: Color(0xFFADB5BD),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Trailing — follow button OR thumbnail.
+          if (item.showFollowAction)
+            _FollowButton(active: item.isFollowing, onTap: onFollow)
+          else if (item.thumbnailUrl != null && item.thumbnailUrl!.isNotEmpty)
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.network(
                 item.thumbnailUrl!,
-                width: 44,
-                height: 44,
+                width: 40,
+                height: 40,
                 fit: BoxFit.cover,
                 errorBuilder: (_, _, _) => Container(
-                  width: 44,
-                  height: 44,
-                  color: AppColors.surface,
+                  width: 40,
+                  height: 40,
+                  color: const Color(0xFFF1F3F5),
                 ),
               ),
-            )
-          else if (item.showFollowAction)
-            _FollowPill(active: item.isFollowing, onTap: onFollow),
+            ),
         ],
       ),
     );
   }
 }
 
-class _FollowPill extends StatelessWidget {
-  const _FollowPill({required this.active, required this.onTap});
+class _FollowButton extends StatelessWidget {
+  const _FollowButton({required this.active, required this.onTap});
 
   final bool active;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final bg = active ? Colors.transparent : AppColors.primary;
+    final bg = active ? const Color(0xFFF1F3F5) : AppColors.primary;
     final fg = active ? const Color(0xFF495057) : Colors.white;
-    final border = active ? const Color(0xFFDEE2E6) : AppColors.primary;
     return Material(
       color: bg,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(999),
-        side: BorderSide(color: border),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: InkWell(
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(8),
         onTap: onTap,
         child: Container(
-          height: 30,
+          height: 32,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           alignment: Alignment.center,
           child: Text(
             active ? 'Following' : 'Follow',
             style: TextStyle(
               fontFamily: 'Inter',
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
               color: fg,
             ),
@@ -399,7 +418,7 @@ class _EmptyState extends StatelessWidget {
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 14,
-                color: AppColors.textSecondary,
+                color: Color(0xFF6C757D),
                 height: 1.5,
               ),
             ),
