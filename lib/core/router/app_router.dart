@@ -11,6 +11,7 @@ import '../../features/auth/presentation/verify_otp_page.dart';
 import '../../features/auth/presentation/verify_password_page.dart';
 import '../../features/onboarding/presentation/onboarding_server_choice_page.dart';
 import '../../features/server/data/server_repository.dart';
+import '../../features/server/presentation/create_server_page.dart';
 import 'routes.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -63,6 +64,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.onboardingServerChoice,
         builder: (_, _) => const OnboardingServerChoicePage(),
+      ),
+      GoRoute(
+        path: Routes.onboardingCreateServer,
+        builder: (_, _) => const CreateServerPage(),
+      ),
+      GoRoute(
+        path: Routes.appCreateServer,
+        builder: (_, _) => const CreateServerPage(),
       ),
 
       // Phase 0 dev screen — keep accessible until Phase 6 cleanup.

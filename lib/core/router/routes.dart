@@ -8,8 +8,10 @@ abstract final class Routes {
   static const authVerifyPassword = '/auth/verify-password';
 
   static const onboardingServerChoice = '/onboarding/server-choice';
+  static const onboardingCreateServer = '/onboarding/create-server';
 
   static const appHome = '/app/home';
+  static const appCreateServer = '/app/create-server';
   static const appExplore = '/app/explore';
   static const appCreate = '/app/create';
   static const appNotifications = '/app/notifications';

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/errors/show_api_error_toast.dart';
 import '../../../core/feedback/toast/toast_controller.dart';
 import '../../../core/feedback/v_skeleton.dart';
+import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/util/avatar_color.dart';
@@ -143,10 +145,7 @@ class _OnboardingServerChoicePageState extends ConsumerState<OnboardingServerCho
   }
 
   void _onCreate() {
-    // TODO(VIR-90 Phase 3): wire to /onboarding/create-server.
-    ref.read(toastControllerProvider.notifier).info(
-          title: 'Create server flow lands in Phase 3',
-        );
+    context.push(Routes.onboardingCreateServer);
   }
 
   List<DiscoveryServer> get _filtered {
