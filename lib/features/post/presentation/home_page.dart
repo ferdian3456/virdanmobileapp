@@ -1,23 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/errors/show_api_error_toast.dart';
-import '../../../core/feedback/toast/toast_controller.dart';
-import '../../../core/feedback/v_skeleton.dart';
 import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
-import '../../../core/util/avatar_color.dart';
+import '../../../core/util/app_assets.dart';
+import '../../../core/util/relative_time.dart';
 import '../../../core/widgets/v_button.dart';
-import '../../auth/data/auth_repository.dart';
 import '../../server/data/server_repository.dart';
 import '../../server/domain/server.dart';
 import '../data/server_feed_provider.dart';
-import 'widgets/post_card.dart';
+import '../domain/post.dart';
 
+/// Matches Quasar HomePage.vue closely:
+/// - No-servers state: community.svg + "No servers yet" + Explore + Create.
+/// - No-posts state: posting_photo.svg + "No posts yet" + Create a Post.
+/// - Header: uppercase server name + chevron menu + send (DM) icon.
+/// - Feed card: 36px avatar, name + relative time, 1:1 image, action row
+///   (heart/comment/share + bookmark right), caption rich text.
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
@@ -27,6 +32,7 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   final _scroll = ScrollController();
+  bool _bootDone = false;
 
   @override
   void initState() {
@@ -36,8 +42,9 @@ class _HomePageState extends ConsumerState<HomePage> {
       await ref.read(myServersProvider.notifier).fetch();
       final id = ref.read(myServersProvider).activeServerId;
       if (id != null && mounted) {
-        ref.read(serverFeedProvider.notifier).loadFor(id);
+        await ref.read(serverFeedProvider.notifier).loadFor(id);
       }
+      if (mounted) setState(() => _bootDone = true);
     });
   }
 
@@ -55,17 +62,14 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
-  Future<void> _refreshFeed() async {
+  Future<void> _refresh() async {
     HapticFeedback.lightImpact();
     try {
       await ref.read(serverFeedProvider.notifier).refresh();
     } catch (e) {
       if (!mounted) return;
-      showApiErrorToast(
-        ref,
-        e,
-        onRetry: () => ref.read(serverFeedProvider.notifier).refresh(),
-      );
+      showApiErrorToast(ref, e,
+          onRetry: () => ref.read(serverFeedProvider.notifier).refresh());
     }
   }
 
@@ -76,10 +80,6 @@ class _HomePageState extends ConsumerState<HomePage> {
       if (!mounted) return;
       showApiErrorToast(ref, e);
     }
-  }
-
-  void _logout() {
-    ref.read(authRepositoryProvider.notifier).logout();
   }
 
   void _openServerSwitcher(List<Server> servers, String? activeId) {
@@ -96,7 +96,6 @@ class _HomePageState extends ConsumerState<HomePage> {
           children: [
             for (final s in servers)
               ListTile(
-                leading: _AvatarTile(server: s),
                 title: Text(s.name, style: AppTextStyles.bodyStrong),
                 trailing: s.id == activeId
                     ? const Icon(LucideIcons.check, color: AppColors.primary)
@@ -107,43 +106,27 @@ class _HomePageState extends ConsumerState<HomePage> {
                   Navigator.pop(context);
                 },
               ),
-            const Divider(),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: AppColors.primarySoft,
-                child: Icon(LucideIcons.plus, color: AppColors.primary),
-              ),
-              title: const Text(
-                'Create a server',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.primary,
-                ),
-              ),
+            const Divider(height: 1),
+            _MenuItem(
+              iconBg: AppColors.primarySoft,
+              iconColor: AppColors.primary,
+              icon: LucideIcons.plus,
+              label: 'Create a server',
+              labelColor: AppColors.primary,
               onTap: () {
                 Navigator.pop(context);
                 context.push(Routes.appCreateServer);
               },
             ),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: AppColors.primarySoft,
-                child: Icon(LucideIcons.compass, color: AppColors.primary),
-              ),
-              title: const Text(
-                'Explore servers',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.primary,
-                ),
-              ),
+            _MenuItem(
+              iconBg: const Color(0xFFF1F3F5),
+              iconColor: const Color(0xFF495057),
+              icon: LucideIcons.compass,
+              label: 'Explore servers',
+              labelColor: const Color(0xFF495057),
               onTap: () {
                 Navigator.pop(context);
-                context.go(Routes.appExplore);
+                context.push('/app/explore-servers');
               },
             ),
           ],
@@ -155,28 +138,98 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(myServersProvider);
+    final servers = state.servers;
     final active = state.activeServer;
-    final activeId = active?.id;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
+        child: !_bootDone && servers.isEmpty
+            ? const _FeedSkeleton()
+            : servers.isEmpty
+                ? _EmptyServersState(
+                    onExplore: () => context.push('/app/explore-servers'),
+                    onCreate: () => context.push(Routes.appCreateServer),
+                  )
+                : Column(
+                    children: [
+                      _HomeHeader(
+                        active: active,
+                        onTapName: () =>
+                            _openServerSwitcher(servers, state.activeServerId),
+                        onMessages: () => context.push(Routes.appChat),
+                      ),
+                      Expanded(child: _FeedBody(
+                        scroll: _scroll,
+                        onRefresh: _refresh,
+                        onLikeTap: _toggleLike,
+                        onCreatePost: () => context.go(Routes.appCreate),
+                      )),
+                    ],
+                  ),
+      ),
+    );
+  }
+}
+
+class _EmptyServersState extends StatelessWidget {
+  const _EmptyServersState({required this.onExplore, required this.onCreate});
+
+  final VoidCallback onExplore;
+  final VoidCallback onCreate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 160),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            _HomeHeader(
-              active: active,
-              onTapName: () => _openServerSwitcher(state.servers, state.activeServerId),
-              onLogout: _logout,
+            SvgPicture.asset(AppAssets.illustrationCommunity, width: 240),
+            const SizedBox(height: 24),
+            const Text(
+              'No servers yet',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.36,
+                color: Color(0xFF0F172A),
+              ),
             ),
-            Expanded(
-              child: activeId == null
-                  ? const _NoServerState()
-                  : _FeedBody(
-                      scroll: _scroll,
-                      onRefresh: _refreshFeed,
-                      onLikeTap: _toggleLike,
-                    ),
+            const SizedBox(height: 8),
+            const Text(
+              'Join a community or create your own to start seeing posts here.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                color: AppColors.textSecondary,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: VButton(
+                label: 'Explore Servers',
+                size: VButtonSize.lg,
+                fullWidth: true,
+                onPressed: onExplore,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: VButton(
+                label: 'Create a Server',
+                variant: VButtonVariant.outline,
+                size: VButtonSize.lg,
+                fullWidth: true,
+                onPressed: onCreate,
+              ),
             ),
           ],
         ),
@@ -189,21 +242,21 @@ class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
     required this.active,
     required this.onTapName,
-    required this.onLogout,
+    required this.onMessages,
   });
 
   final Server? active;
   final VoidCallback onTapName;
-  final VoidCallback onLogout;
+  final VoidCallback onMessages;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.fromLTRB(16, 0, 12, 0),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(bottom: BorderSide(color: AppColors.divider)),
+        border: Border(bottom: BorderSide(color: Color(0xFFE9ECEF))),
       ),
       child: Row(
         children: [
@@ -211,44 +264,37 @@ class _HomeHeader extends StatelessWidget {
             child: InkWell(
               onTap: onTapName,
               borderRadius: BorderRadius.circular(8),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Text(
-                      (active?.name ?? 'SELECT SERVER').toUpperCase(),
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.16,
-                        color: AppColors.textPrimary,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        (active?.name ?? 'SELECT SERVER').toUpperCase(),
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.34,
+                          color: Color(0xFF0F172A),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(
-                    LucideIcons.chevronDown,
-                    size: 20,
-                    color: AppColors.textPrimary,
-                  ),
-                ],
+                    const SizedBox(width: 4),
+                    const Icon(LucideIcons.chevronDown,
+                        size: 20, color: AppColors.textSecondary),
+                  ],
+                ),
               ),
             ),
           ),
           IconButton(
-            icon: const Icon(LucideIcons.send, size: 24),
-            tooltip: 'Direct messages',
-            onPressed: () {
-              // TODO(Phase 6 mock): chat list.
-            },
-          ),
-          IconButton(
-            icon: const Icon(LucideIcons.logOut, size: 22, color: AppColors.textSecondary),
-            tooltip: 'Logout',
-            onPressed: onLogout,
+            icon: const Icon(LucideIcons.send, size: 22),
+            tooltip: 'Messages',
+            onPressed: onMessages,
           ),
         ],
       ),
@@ -261,84 +307,26 @@ class _FeedBody extends ConsumerWidget {
     required this.scroll,
     required this.onRefresh,
     required this.onLikeTap,
+    required this.onCreatePost,
   });
 
   final ScrollController scroll;
   final Future<void> Function() onRefresh;
   final ValueChanged<String> onLikeTap;
+  final VoidCallback onCreatePost;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final feed = ref.watch(serverFeedProvider);
-
-    if (feed.isLoading && feed.posts.isEmpty) {
-      return const _FeedSkeleton();
-    }
-    if (feed.hasError && feed.posts.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xxl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(LucideIcons.wifiOff, size: 48, color: AppColors.error),
-              const SizedBox(height: AppSpacing.md),
-              const Text(
-                'Failed to load posts',
-                style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              VButton(label: 'Try again', onPressed: onRefresh),
-            ],
-          ),
-        ),
-      );
-    }
+    if (feed.isLoading && feed.posts.isEmpty) return const _FeedSkeleton();
     if (feed.posts.isEmpty) {
-      return RefreshIndicator.adaptive(
-        onRefresh: onRefresh,
-        child: ListView(
-          children: [
-            const SizedBox(height: 80),
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xxl),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(LucideIcons.image, size: 56, color: AppColors.textTertiary),
-                    SizedBox(height: AppSpacing.lg),
-                    Text(
-                      'No posts yet',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(height: AppSpacing.sm),
-                    Text(
-                      'Be the first to post in this server!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
+      return _EmptyFeedState(onCreate: onCreatePost);
     }
     return RefreshIndicator.adaptive(
       onRefresh: onRefresh,
       child: ListView.builder(
         controller: scroll,
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        padding: EdgeInsets.zero,
         itemCount: feed.posts.length + (feed.hasMore ? 1 : 0),
         itemBuilder: (_, i) {
           if (i == feed.posts.length) {
@@ -353,18 +341,280 @@ class _FeedBody extends ConsumerWidget {
               ),
             );
           }
-          final post = feed.posts[i];
-          return PostCard(
-            post: post,
-            onLikeTap: () => onLikeTap(post.id),
-            onCommentTap: () {
-              // TODO(Phase 4): push comments page.
-              ref
-                  .read(toastControllerProvider.notifier)
-                  .info(title: 'Comments page lands in Phase 4');
-            },
+          final p = feed.posts[i];
+          return _FeedCard(
+            post: p,
+            onLike: () => onLikeTap(p.id),
+            onComment: () => GoRouter.of(context).push('/posts/${p.id}/comments'),
           );
         },
+      ),
+    );
+  }
+}
+
+class _EmptyFeedState extends StatelessWidget {
+  const _EmptyFeedState({required this.onCreate});
+
+  final VoidCallback onCreate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 160),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SvgPicture.asset(AppAssets.illustrationPostingPhoto, width: 320),
+            const SizedBox(height: 24),
+            const Text(
+              'No posts yet',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.36,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Be the first to share something in this server.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                color: AppColors.textSecondary,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 320),
+              child: VButton(
+                label: 'Create a Post',
+                size: VButtonSize.lg,
+                fullWidth: true,
+                onPressed: onCreate,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FeedCard extends StatelessWidget {
+  const _FeedCard({required this.post, required this.onLike, required this.onComment});
+
+  final Post post;
+  final VoidCallback onLike;
+  final VoidCallback onComment;
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = post.authorNickname.isNotEmpty
+        ? post.authorNickname.characters.first.toUpperCase()
+        : '?';
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFF1F3F5))),
+      ),
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+            child: Row(
+              children: [
+                ClipOval(
+                  child: post.authorAvatarUrl != null && post.authorAvatarUrl!.isNotEmpty
+                      ? Image.network(
+                          post.authorAvatarUrl!,
+                          width: 36,
+                          height: 36,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => _fallback(initial),
+                        )
+                      : _fallback(initial),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        post.authorNickname,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0F172A),
+                          letterSpacing: -0.14,
+                        ),
+                      ),
+                      Text(
+                        formatRelativeTime(post.createdAt),
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(LucideIcons.ellipsis, size: 20),
+                  onPressed: () {},
+                  tooltip: 'More',
+                ),
+              ],
+            ),
+          ),
+          // Image
+          if (post.imageUrl != null && post.imageUrl!.isNotEmpty)
+            AspectRatio(
+              aspectRatio: 1,
+              child: ColoredBox(
+                color: const Color(0xFFF1F3F5),
+                child: Image.network(
+                  post.imageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => const Center(
+                    child: Icon(LucideIcons.imageOff, color: AppColors.textTertiary),
+                  ),
+                ),
+              ),
+            ),
+          // Actions
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Row(
+              children: [
+                _ActionButton(
+                  icon: LucideIcons.heart,
+                  count: post.likeCount,
+                  active: post.isLiked,
+                  activeColor: AppColors.error,
+                  onTap: onLike,
+                ),
+                _ActionButton(
+                  icon: LucideIcons.messageCircle,
+                  count: post.commentCount,
+                  onTap: onComment,
+                ),
+                _ActionButton(
+                  icon: LucideIcons.send,
+                  onTap: () {},
+                ),
+                const Spacer(),
+                _ActionButton(
+                  icon: LucideIcons.bookmark,
+                  iconSize: 22,
+                  onTap: () {},
+                ),
+              ],
+            ),
+          ),
+          // Caption
+          if (post.caption.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: RichText(
+                text: TextSpan(
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 14,
+                    color: Color(0xFF212529),
+                    height: 1.4,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: '${post.authorNickname} ',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    TextSpan(text: post.caption),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _fallback(String initial) {
+    return Container(
+      width: 36,
+      height: 36,
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(
+        color: AppColors.primary,
+        shape: BoxShape.circle,
+      ),
+      child: Text(
+        initial,
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.icon,
+    this.count = 0,
+    this.active = false,
+    this.activeColor,
+    this.iconSize = 24,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final int count;
+  final bool active;
+  final Color? activeColor;
+  final double iconSize;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active ? (activeColor ?? AppColors.error) : const Color(0xFF212529);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 40),
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: iconSize, color: color, fill: active ? 1.0 : 0.0),
+            if (count > 0) ...[
+              const SizedBox(width: 4),
+              Text(
+                '$count',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF0F172A),
+                  letterSpacing: -0.14,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -375,130 +625,50 @@ class _FeedSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-      children: List.generate(3, (_) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                child: Row(
-                  children: [
-                    const VSkeleton.circle(size: 32),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          VSkeleton(width: 120, height: 12),
-                          SizedBox(height: 4),
-                          VSkeleton(width: 80, height: 10),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const AspectRatio(
-                aspectRatio: 1,
-                child: VSkeleton(height: double.infinity, radius: 0),
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                child: VSkeleton(width: 180, height: 14),
-              ),
-            ],
-          ),
-        );
-      }),
-    );
+    return const Center(child: CircularProgressIndicator());
   }
 }
 
-class _NoServerState extends StatelessWidget {
-  const _NoServerState();
+class _MenuItem extends StatelessWidget {
+  const _MenuItem({
+    required this.iconBg,
+    required this.iconColor,
+    required this.icon,
+    required this.label,
+    required this.labelColor,
+    required this.onTap,
+  });
+
+  final Color iconBg;
+  final Color iconColor;
+  final IconData icon;
+  final String label;
+  final Color labelColor;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xxl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(LucideIcons.users, size: 56, color: AppColors.textTertiary),
-            SizedBox(height: AppSpacing.lg),
-            Text(
-              'No servers yet',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: AppSpacing.sm),
-            Text(
-              'Create or join a server to see posts here.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
+    return ListTile(
+      leading: Container(
+        width: 32,
+        height: 32,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: iconBg,
+          borderRadius: BorderRadius.circular(10),
         ),
+        child: Icon(icon, size: 18, color: iconColor),
       ),
-    );
-  }
-}
-
-class _AvatarTile extends StatelessWidget {
-  const _AvatarTile({required this.server});
-
-  final Server server;
-
-  @override
-  Widget build(BuildContext context) {
-    final initial = (server.shortName.isNotEmpty ? server.shortName : server.name)
-        .characters
-        .first
-        .toUpperCase();
-    if (server.avatarUrl != null && server.avatarUrl!.isNotEmpty) {
-      return ClipOval(
-        child: Image.network(
-          server.avatarUrl!,
-          width: 40,
-          height: 40,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _placeholder(initial),
-        ),
-      );
-    }
-    return _placeholder(initial);
-  }
-
-  Widget _placeholder(String initial) {
-    return Container(
-      width: 40,
-      height: 40,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: avatarColorFor(server.shortName.isNotEmpty ? server.shortName : server.name),
-        shape: BoxShape.circle,
-      ),
-      child: Text(
-        initial,
-        style: const TextStyle(
+      title: Text(
+        label,
+        style: TextStyle(
           fontFamily: 'Inter',
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
-          color: Colors.white,
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+          color: labelColor,
         ),
       ),
+      onTap: onTap,
     );
   }
 }

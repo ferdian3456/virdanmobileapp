@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import 'package:flutter_svg/flutter_svg.dart';
+
 import '../../../core/errors/show_api_error_toast.dart';
 import '../../../core/feedback/toast/toast_controller.dart';
 import '../../../core/feedback/v_skeleton.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../core/util/app_assets.dart';
 import '../../../core/util/avatar_color.dart';
 import '../data/server_api.dart';
 import '../data/server_repository.dart';
@@ -554,14 +557,14 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.fromLTRB(20, 32, 20, 24),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
       child: Center(
         child: Column(
           children: [
-            Icon(LucideIcons.searchX, size: 56, color: AppColors.textTertiary),
-            SizedBox(height: 16),
-            Text(
+            SvgPicture.asset(AppAssets.illustrationEmpty, width: 220),
+            const SizedBox(height: 16),
+            const Text(
               'No servers match your search.',
               style: TextStyle(
                 fontFamily: 'Inter',

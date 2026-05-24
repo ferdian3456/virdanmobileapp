@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../../../core/feedback/toast/toast_controller.dart';
+import '../../../core/errors/show_api_error_toast.dart';
+import '../../../core/feedback/v_skeleton.dart';
 import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
-import '../../../core/theme/typography.dart';
+import '../../../core/util/app_assets.dart';
+import '../../../core/widgets/v_button.dart';
+import '../../post/data/post_api.dart';
+import '../../post/domain/post.dart';
+import '../../server/data/server_repository.dart';
 
+/// Matches Quasar ExplorePage.vue: search bar + 3-column post grid from the
+/// active server's feed. Empty state uses social.svg.
 class ExplorePage extends ConsumerStatefulWidget {
   const ExplorePage({super.key});
 
@@ -17,71 +25,235 @@ class ExplorePage extends ConsumerStatefulWidget {
 
 class _ExplorePageState extends ConsumerState<ExplorePage> {
   final _search = TextEditingController();
+  final _scroll = ScrollController();
+  List<Post> _posts = const [];
+  bool _loading = false;
+  String? _nextCursor;
+  bool _hasMore = true;
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _search.addListener(() => setState(() => _query = _search.text));
+    _scroll.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await ref.read(myServersProvider.notifier).fetch();
+      if (mounted) _load(reset: true);
+    });
+  }
 
   @override
   void dispose() {
     _search.dispose();
+    _scroll.removeListener(_onScroll);
+    _scroll.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_loading || !_hasMore) return;
+    final pos = _scroll.position;
+    if (pos.pixels >= pos.maxScrollExtent - 400) _load(reset: false);
+  }
+
+  Future<void> _load({required bool reset}) async {
+    final serverId = ref.read(myServersProvider).activeServerId;
+    if (serverId == null) {
+      setState(() {
+        _posts = const [];
+        _hasMore = false;
+      });
+      return;
+    }
+    if (reset) {
+      setState(() {
+        _posts = const [];
+        _nextCursor = null;
+        _hasMore = true;
+      });
+    } else if (!_hasMore || _nextCursor == null) {
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final page = await ref.read(postApiProvider).listForServer(
+            serverId: serverId,
+            cursor: reset ? null : _nextCursor,
+          );
+      if (!mounted) return;
+      setState(() {
+        _posts = reset ? page.data : [..._posts, ...page.data];
+        _nextCursor = page.nextCursor;
+        _hasMore = page.nextCursor != null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _hasMore = false);
+      showApiErrorToast(ref, e);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  List<Post> get _filtered {
+    final q = _query.trim().toLowerCase();
+    if (q.isEmpty) return _posts;
+    return _posts
+        .where((p) =>
+            p.authorNickname.toLowerCase().contains(q) ||
+            p.caption.toLowerCase().contains(q))
+        .toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    final showSkeleton = _loading && _posts.isEmpty;
+    final filtered = _filtered;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: TextField(
-                controller: _search,
-                onSubmitted: (_) {
-                  ref.read(toastControllerProvider.notifier).info(
-                        title: 'User search arrives in Phase 5',
-                      );
-                },
-                decoration: InputDecoration(
-                  hintText: 'Search users, servers, posts…',
-                  prefixIcon: const Icon(LucideIcons.search,
-                      size: 20, color: AppColors.textTertiary),
-                  filled: true,
-                  fillColor: AppColors.surface,
-                  isDense: true,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+            _Search(controller: _search),
+            Expanded(
+              child: showSkeleton
+                  ? const _GridSkeleton()
+                  : filtered.isEmpty
+                      ? _EmptyState(
+                          onCreate: () => context.go(Routes.appCreate),
+                        )
+                      : GridView.builder(
+                          controller: _scroll,
+                          padding: const EdgeInsets.all(2),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            mainAxisSpacing: 2,
+                            crossAxisSpacing: 2,
+                          ),
+                          itemCount: filtered.length + (_hasMore ? 1 : 0),
+                          itemBuilder: (_, i) {
+                            if (i == filtered.length) {
+                              return const Center(
+                                  child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child:
+                                          CircularProgressIndicator(strokeWidth: 2)));
+                            }
+                            final p = filtered[i];
+                            return GestureDetector(
+                              onTap: () => context.push('/posts/${p.id}'),
+                              child: p.imageUrl != null && p.imageUrl!.isNotEmpty
+                                  ? Image.network(p.imageUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => Container(
+                                          color: AppColors.surface))
+                                  : Container(
+                                      color: AppColors.surface,
+                                      padding: const EdgeInsets.all(8),
+                                      child: Text(
+                                        p.caption,
+                                        maxLines: 6,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontFamily: 'Inter',
+                                          fontSize: 11,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Search extends StatelessWidget {
+  const _Search({required this.controller});
+
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: SizedBox(
+        height: 44,
+        child: TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: 'Search people, tags, places…',
+            hintStyle: const TextStyle(
+                fontFamily: 'Inter', color: AppColors.textTertiary, fontSize: 14),
+            prefixIcon: const Icon(LucideIcons.search,
+                size: 18, color: AppColors.textTertiary),
+            filled: true,
+            fillColor: const Color(0xFFF1F3F5),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(vertical: 8),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.onCreate});
+
+  final VoidCallback onCreate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SvgPicture.asset(AppAssets.illustrationSocial, width: 240),
+            const SizedBox(height: 24),
+            const Text(
+              'No posts yet',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.36,
+                color: Color(0xFF0F172A),
               ),
             ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _SectionTitle('Discover servers'),
-                  const SizedBox(height: 12),
-                  _BigCard(
-                    icon: LucideIcons.compass,
-                    title: 'Browse public servers',
-                    subtitle: 'Find communities to join across categories.',
-                    onTap: () => context.push(Routes.onboardingServerChoice),
-                  ),
-                  const SizedBox(height: 12),
-                  _BigCard(
-                    icon: LucideIcons.userPlus,
-                    title: 'Join via invite code',
-                    subtitle: 'Got an 8-character code from a friend?',
-                    onTap: () => context.push('/join'),
-                  ),
-                  const SizedBox(height: 24),
-                  _SectionTitle('Trending posts'),
-                  const SizedBox(height: 12),
-                  const _PlaceholderTile(
-                    icon: LucideIcons.flame,
-                    text: 'Trending feed lands in Phase 5.',
-                  ),
-                ],
+            const SizedBox(height: 8),
+            const Text(
+              'Be the first to share something in your servers.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                color: AppColors.textSecondary,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 320),
+              child: VButton(
+                label: 'Create a Post',
+                size: VButtonSize.lg,
+                fullWidth: true,
+                onPressed: onCreate,
               ),
             ),
           ],
@@ -91,118 +263,20 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
-
-  final String text;
+class _GridSkeleton extends StatelessWidget {
+  const _GridSkeleton();
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text.toUpperCase(),
-      style: const TextStyle(
-        fontFamily: 'Inter',
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0.7,
-        color: AppColors.textTertiary,
+    return GridView.builder(
+      padding: const EdgeInsets.all(2),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 2,
+        crossAxisSpacing: 2,
       ),
-    );
-  }
-}
-
-class _BigCard extends StatelessWidget {
-  const _BigCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: AppColors.divider),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, size: 20, color: AppColors.primary),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: AppTextStyles.bodyStrong),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(LucideIcons.chevronRight,
-                  size: 20, color: AppColors.textTertiary),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PlaceholderTile extends StatelessWidget {
-  const _PlaceholderTile({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 22, color: AppColors.textTertiary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-        ],
-      ),
+      itemCount: 12,
+      itemBuilder: (_, _) => const VSkeleton(height: 120, radius: 0),
     );
   }
 }

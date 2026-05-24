@@ -1,84 +1,410 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/theme/tokens.dart';
-import '../../../core/theme/typography.dart';
+import '../../../core/util/app_assets.dart';
 import '../../../core/util/avatar_color.dart';
 import '../../../mocks/notifications_mock.dart';
 
-/// Phase 6 mock (BE-09 — backend notifications endpoint pending).
-class NotificationsPage extends StatelessWidget {
+/// Mirrors Quasar NotificationsPage.vue: header + tabs (All/Mentions),
+/// grouped sections (New / Today / Earlier), each row = avatar with kind-
+/// badge + actor + text + time + optional thumbnail or Follow button.
+/// Empty state uses notification.svg.
+class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
 
   @override
+  State<NotificationsPage> createState() => _NotificationsPageState();
+}
+
+class _NotificationsPageState extends State<NotificationsPage> {
+  int _tab = 0;
+  late final List<NotificationItem> _items = List<NotificationItem>.of(mockNotifications);
+
+  List<NotificationItem> get _filtered {
+    if (_tab == 1) {
+      return _items.where((n) => n.kind == NotificationKind.mention).toList();
+    }
+    return _items;
+  }
+
+  Map<NotificationGroup, List<NotificationItem>> get _grouped {
+    final out = <NotificationGroup, List<NotificationItem>>{
+      NotificationGroup.newer: [],
+      NotificationGroup.today: [],
+      NotificationGroup.earlier: [],
+    };
+    for (final n in _filtered) {
+      out[n.group]!.add(n);
+    }
+    return out;
+  }
+
+  void _toggleFollow(NotificationItem item) {
+    setState(() => item.isFollowing = !item.isFollowing);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final groups = _grouped;
+    final isEmpty = _filtered.isEmpty;
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Activity'),
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.textPrimary,
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(height: 1, color: AppColors.divider),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            _Header(),
+            _Tabs(active: _tab, onTap: (i) => setState(() => _tab = i)),
+            Expanded(
+              child: isEmpty
+                  ? const _EmptyState()
+                  : ListView(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      children: [
+                        _Section(
+                          title: 'New',
+                          items: groups[NotificationGroup.newer]!,
+                          onFollow: _toggleFollow,
+                        ),
+                        _Section(
+                          title: 'Today',
+                          items: groups[NotificationGroup.today]!,
+                          onFollow: _toggleFollow,
+                        ),
+                        _Section(
+                          title: 'Earlier',
+                          items: groups[NotificationGroup.earlier]!,
+                          onFollow: _toggleFollow,
+                        ),
+                      ],
+                    ),
+            ),
+          ],
         ),
       ),
-      body: ListView.separated(
-        itemCount: mockNotifications.length,
-        separatorBuilder: (_, _) => const Divider(height: 1, color: AppColors.divider),
-        itemBuilder: (_, i) {
-          final n = mockNotifications[i];
-          final initial = n.actorNickname.isNotEmpty
-              ? n.actorNickname.characters.first.toUpperCase()
-              : '?';
-          return ListTile(
-            leading: Container(
-              width: 44,
-              height: 44,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: avatarColorFor(n.actorNickname),
-                shape: BoxShape.circle,
-              ),
-              child: Text(
-                initial,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      alignment: Alignment.centerLeft,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: AppColors.divider)),
+      ),
+      child: const Text(
+        'Notifications',
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.4,
+          color: Color(0xFF0F172A),
+        ),
+      ),
+    );
+  }
+}
+
+class _Tabs extends StatelessWidget {
+  const _Tabs({required this.active, required this.onTap});
+
+  final int active;
+  final ValueChanged<int> onTap;
+
+  static const _labels = ['All', 'Mentions'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      child: Row(
+        children: List.generate(_labels.length, (i) {
+          final selected = i == active;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Material(
+              color: selected ? AppColors.primary : const Color(0xFFF1F3F5),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(999),
+                onTap: () => onTap(i),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Text(
+                    _labels[i],
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: selected ? Colors.white : const Color(0xFF495057),
+                    ),
+                  ),
                 ),
               ),
             ),
-            title: RichText(
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class _Section extends StatelessWidget {
+  const _Section({
+    required this.title,
+    required this.items,
+    required this.onFollow,
+  });
+
+  final String title;
+  final List<NotificationItem> items;
+  final ValueChanged<NotificationItem> onFollow;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.13,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+        ),
+        ...items.map((n) => _Row(item: n, onFollow: () => onFollow(n))),
+      ],
+    );
+  }
+}
+
+class _Row extends StatelessWidget {
+  const _Row({required this.item, required this.onFollow});
+
+  final NotificationItem item;
+  final VoidCallback onFollow;
+
+  Color get _badgeColor {
+    switch (item.kind) {
+      case NotificationKind.like:
+        return AppColors.error;
+      case NotificationKind.comment:
+        return AppColors.primary;
+      case NotificationKind.mention:
+        return const Color(0xFF10B981);
+      case NotificationKind.follow:
+        return AppColors.primary;
+    }
+  }
+
+  IconData get _kindIcon {
+    switch (item.kind) {
+      case NotificationKind.like:
+        return LucideIcons.heart;
+      case NotificationKind.comment:
+        return LucideIcons.messageCircle;
+      case NotificationKind.mention:
+        return LucideIcons.atSign;
+      case NotificationKind.follow:
+        return LucideIcons.userPlus;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = item.actor.username.isNotEmpty
+        ? item.actor.username.characters.first.toUpperCase()
+        : '?';
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Avatar + badge
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: avatarColorFor(item.actor.username),
+                  shape: BoxShape.circle,
+                ),
+                child: item.actor.avatarUrl != null && item.actor.avatarUrl!.isNotEmpty
+                    ? ClipOval(
+                        child: Image.network(item.actor.avatarUrl!, fit: BoxFit.cover))
+                    : Text(
+                        initial,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+              ),
+              Positioned(
+                right: -2,
+                bottom: -2,
+                child: Container(
+                  width: 20,
+                  height: 20,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: _badgeColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: Icon(_kindIcon,
+                      size: 10,
+                      color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          // Text
+          Expanded(
+            child: RichText(
               text: TextSpan(
-                style: AppTextStyles.body
-                    .copyWith(fontSize: 14, color: AppColors.textPrimary, height: 1.4),
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 13,
+                  color: Color(0xFF212529),
+                  height: 1.4,
+                ),
                 children: [
                   TextSpan(
-                    text: '${n.actorNickname} ',
+                    text: item.actor.username,
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  TextSpan(text: n.action),
-                  if (n.target.isNotEmpty) ...[
-                    const TextSpan(text: ' '),
-                    TextSpan(
-                      text: n.target,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                  ],
+                  TextSpan(text: ' ${item.text} '),
+                  TextSpan(
+                    text: item.timeLabel,
+                    style: const TextStyle(color: AppColors.textTertiary),
+                  ),
                 ],
               ),
             ),
-            subtitle: Text(
-              n.timeAgo,
-              style: AppTextStyles.caption.copyWith(color: AppColors.textTertiary),
+          ),
+          const SizedBox(width: 12),
+          // Trailing — thumbnail or follow button
+          if (item.thumbnailUrl != null && item.thumbnailUrl!.isNotEmpty)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                item.thumbnailUrl!,
+                width: 44,
+                height: 44,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => Container(
+                  width: 44,
+                  height: 44,
+                  color: AppColors.surface,
+                ),
+              ),
+            )
+          else if (item.showFollowAction)
+            _FollowPill(active: item.isFollowing, onTap: onFollow),
+        ],
+      ),
+    );
+  }
+}
+
+class _FollowPill extends StatelessWidget {
+  const _FollowPill({required this.active, required this.onTap});
+
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = active ? Colors.transparent : AppColors.primary;
+    final fg = active ? const Color(0xFF495057) : Colors.white;
+    final border = active ? const Color(0xFFDEE2E6) : AppColors.primary;
+    return Material(
+      color: bg,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(999),
+        side: BorderSide(color: border),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: Container(
+          height: 30,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          alignment: Alignment.center,
+          child: Text(
+            active ? 'Following' : 'Follow',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: fg,
             ),
-            trailing: const Icon(LucideIcons.heart,
-                size: 18, color: AppColors.textTertiary),
-          );
-        },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SvgPicture.asset(AppAssets.illustrationNotification, width: 240),
+            const SizedBox(height: 24),
+            const Text(
+              'No notifications yet',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.36,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "When someone likes or comments on your post, you'll see it here.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                color: AppColors.textSecondary,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
