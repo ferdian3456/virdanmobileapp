@@ -4,10 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:virdanmobileapp/app.dart';
 
 void main() {
-  testWidgets('App boots and renders smoke screen', (tester) async {
+  testWidgets('App boots and renders login page', (tester) async {
     await tester.pumpWidget(const ProviderScope(child: VirdanApp()));
-    await tester.pumpAndSettle();
+    // initial frame may show splash while auth boot probe runs; let it settle.
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('Smoke Test (dev)'), findsOneWidget);
+    expect(find.text('Masuk ke Virdan'), findsOneWidget);
   });
 }
