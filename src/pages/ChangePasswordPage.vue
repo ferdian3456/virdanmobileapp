@@ -23,7 +23,7 @@
           outlined
           dense
           :type="showCurrent ? 'text' : 'password'"
-          placeholder="••••••••"
+          placeholder="Enter your current password"
           class="cp-input"
           hide-bottom-space
           :error="!!errors.current"
@@ -63,10 +63,11 @@
           outlined
           dense
           :type="showNew ? 'text' : 'password'"
-          placeholder="••••••••"
+          placeholder="Enter your new password"
           class="cp-input"
           hide-bottom-space
           :error="!!errors.new"
+          @keyup.enter="updatePassword"
         >
           <template #append>
             <component
@@ -85,7 +86,7 @@
           outlined
           dense
           :type="showConfirm ? 'text' : 'password'"
-          placeholder="••••••••"
+          placeholder="Re-enter your new password"
           class="cp-input"
           hide-bottom-space
           :error="!!errors.confirm"
@@ -137,7 +138,9 @@
 import { ref, computed, defineComponent, h } from 'vue';
 import { useRouter } from 'vue-router';
 import { ChevronLeft, Eye, EyeOff, Check, Circle } from 'lucide-vue-next';
+import { api } from 'src/boot/axios';
 import { useToast } from 'src/composables/useToast';
+import { normalizeError } from 'src/composables/useApiError';
 
 type Step = 'verify' | 'set';
 
@@ -170,12 +173,11 @@ async function verifyCurrent() {
   errors.value = {};
   isProcessing.value = true;
   try {
-    // BE has no "verify password" endpoint yet. Mock success.
-    // When BE adds POST /api/users/password/verify, swap this for a real call.
-    await new Promise((r) => setTimeout(r, 400));
+    await api.post('/users/password/verify', { password: currentPassword.value });
     step.value = 'set';
-  } catch {
-    errors.value.current = 'Current password is incorrect.';
+  } catch (err) {
+    const normalized = normalizeError(err);
+    errors.value.current = normalized.message || 'Current password is incorrect.';
   } finally {
     isProcessing.value = false;
   }
@@ -192,21 +194,28 @@ async function updatePassword() {
 
   isProcessing.value = true;
   try {
-    // BE has no "change password" endpoint yet. Mock success.
-    // When BE adds PUT /api/users/password, swap for:
-    // await api.put('/users/password', { current: currentPassword.value, new: newPassword.value });
-    await new Promise((r) => setTimeout(r, 600));
-    toast.success('Password updated.');
+    await api.put('/users/password', {
+      currentPassword: currentPassword.value,
+      newPassword: newPassword.value,
+    });
+    toast.success({ title: 'Password updated.' });
     await router.push({ name: 'settings' });
-  } catch {
-    errors.value.new = 'Failed to update password. Try again.';
+  } catch (err) {
+    const normalized = normalizeError(err);
+    if (normalized.param === 'currentPassword') {
+      errors.value.new = '';
+      errors.value.current = normalized.message;
+      step.value = 'verify';
+    } else {
+      errors.value.new = normalized.message || 'Failed to update password. Try again.';
+    }
   } finally {
     isProcessing.value = false;
   }
 }
 
 function onForgot() {
-  toast.info('Password reset flow is coming soon.');
+  toast.info({ title: 'Password reset flow is coming soon.' });
 }
 
 function onBack() {

@@ -25,6 +25,12 @@ const routes: RouteRecordRaw[] = [
         meta: { onboardingFlow: true },
       },
       {
+        path: 'create-server/profile',
+        name: 'onboarding-create-server-profile',
+        component: () => import('pages/YourProfilePage.vue'),
+        meta: { onboardingFlow: true },
+      },
+      {
         path: 'explore-servers',
         name: 'onboarding-explore-servers',
         component: () => import('pages/ExploreServersPage.vue'),
@@ -60,6 +66,12 @@ const routes: RouteRecordRaw[] = [
         path: 'create-server',
         name: 'create-server',
         component: () => import('pages/CreateServerPage.vue'),
+        meta: { hideBottomNav: true },
+      },
+      {
+        path: 'create-server/profile',
+        name: 'create-server-profile',
+        component: () => import('pages/YourProfilePage.vue'),
         meta: { hideBottomNav: true },
       },
       {
@@ -120,9 +132,39 @@ const routes: RouteRecordRaw[] = [
         meta: { hideBottomNav: true },
       },
       {
+        path: 'change-email',
+        name: 'change-email',
+        component: () => import('pages/ChangeEmailPage.vue'),
+        meta: { hideBottomNav: true },
+      },
+      {
         path: 'notification-settings',
         name: 'notification-settings',
         component: () => import('pages/NotificationSettingsPage.vue'),
+        meta: { hideBottomNav: true },
+      },
+      {
+        path: 'privacy-security',
+        name: 'privacy-security',
+        component: () => import('pages/PrivacySecurityPage.vue'),
+        meta: { hideBottomNav: true },
+      },
+      {
+        path: 'help-center',
+        name: 'help-center',
+        component: () => import('pages/HelpCenterPage.vue'),
+        meta: { hideBottomNav: true },
+      },
+      {
+        path: 'terms-of-service',
+        name: 'terms-of-service',
+        component: () => import('pages/TermsOfServicePage.vue'),
+        meta: { hideBottomNav: true },
+      },
+      {
+        path: 'privacy-policy',
+        name: 'privacy-policy',
+        component: () => import('pages/PrivacyPolicyPage.vue'),
         meta: { hideBottomNav: true },
       },
     ],
@@ -150,12 +192,6 @@ const routes: RouteRecordRaw[] = [
         path: 'verify-otp',
         name: 'verify-otp',
         component: () => import('pages/VerifyOtpPage.vue'),
-        meta: { guestOnly: true },
-      },
-      {
-        path: 'verify-username',
-        name: 'verify-username',
-        component: () => import('pages/VerifyUsernamePage.vue'),
         meta: { guestOnly: true },
       },
       {

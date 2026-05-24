@@ -69,6 +69,7 @@ export default defineConfig((/* ctx */) => {
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#devserver
     devServer: {
       // https: true,
+      port: 9002,
       open: true // opens browser window automatically
     },
 
@@ -77,19 +78,13 @@ export default defineConfig((/* ctx */) => {
       // Light theme only; locked per project design system.
       config: {
         dark: false,
-        notify: {
-          position: 'top',
-          timeout: 3000,
-          progress: false,
-          textColor: 'white',
-        },
       },
 
       iconSet: 'material-icons',
       lang: 'en-US',
 
       // Quasar plugins
-      plugins: ['Notify', 'Dialog', 'BottomSheet'],
+      plugins: ['Dialog', 'BottomSheet'],
     },
 
     // animations: 'all', // --- includes all animations

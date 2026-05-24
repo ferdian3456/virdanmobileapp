@@ -15,15 +15,15 @@
     <!-- Post context snippet -->
     <div v-if="post" class="post-context">
       <div class="post-context-thumb">
-        <img v-if="post.postImageUrl" :src="post.postImageUrl" alt="" />
+        <img v-if="post.imageUrl" :src="post.imageUrl" alt="" />
       </div>
       <div class="post-context-meta">
         <div class="post-context-line1">
-          <span class="post-context-author">{{ post.ownerName }}</span>
+          <span class="post-context-author">{{ post.author.nickname }}</span>
           <span class="post-context-caption">{{ post.caption }}</span>
         </div>
         <div class="post-context-line2">
-          <span>{{ formatRelative(post.createDatetime) }}</span>
+          <span>{{ formatRelative(post.createdAt) }}</span>
           <span v-if="post.likeCount > 0" class="dot">·</span>
           <span v-if="post.likeCount > 0">{{ post.likeCount }} likes</span>
         </div>
@@ -41,9 +41,7 @@
 
     <!-- Comments list -->
     <div class="cm-list">
-      <div v-if="loading && comments.length === 0" class="state-block">
-        <q-spinner-dots color="primary" size="32px" />
-      </div>
+      <CommentListSkeleton v-if="loading && comments.length === 0" />
 
       <div v-else-if="visibleComments.length === 0" class="empty-block">
         <p class="empty-text">No comments yet. Be the first to share your thoughts.</p>
@@ -141,7 +139,8 @@ import { useQuasar } from 'quasar';
 import { api } from 'src/boot/axios';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useToast } from 'src/composables/useToast';
-import { normalizeError } from 'src/composables/useApiError';
+import { apiErrorToast } from 'src/composables/useApiError';
+import CommentListSkeleton from 'src/components/feedback/skeletons/CommentListSkeleton.vue';
 
 interface CommentItem {
   id: string;
@@ -150,22 +149,29 @@ interface CommentItem {
   authorAvatar: string | null;
   parentId: string | null;
   content: string;
-  createDatetime: string;
-  updateDatetime: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface CommentTreeNode extends CommentItem {
   replies: CommentTreeNode[];
 }
 
+interface PostContextAuthor {
+  userId: string;
+  nickname: string;
+  avatarUrl: string | null;
+  status: string;
+}
+
 interface PostContext {
-  postId: string;
-  ownerName: string;
-  postImageUrl: string;
+  id: string;
+  author: PostContextAuthor;
+  imageUrl: string | null;
   caption: string;
   likeCount: number;
   commentCount: number;
-  createDatetime: string;
+  createdAt: string;
 }
 
 interface PaginatedResponse<T> {
@@ -211,8 +217,8 @@ const deletingId = ref<string | null>(null);
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 
 const currentUserId = computed(() => authStore.user?.id ?? '');
-const currentUserName = computed(() => authStore.user?.username ?? authStore.user?.fullname ?? '');
-const meAvatar = computed(() => authStore.user?.avatarImage ?? null);
+const currentUserName = computed(() => authStore.user?.email ?? '');
+const meAvatar = computed<string | null>(() => null);
 const meInitial = computed(
   () => (currentUserName.value || '?').charAt(0).toUpperCase()
 );
@@ -252,7 +258,7 @@ const visibleComments = computed(() => {
   if (sort.value === 'recent') {
     arr.sort(
       (a, b) =>
-        new Date(b.createDatetime).getTime() - new Date(a.createDatetime).getTime()
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
   // 'relevant' / 'liked' fall back to API order — BE has no like-per-comment yet.
@@ -321,7 +327,7 @@ const CommentNode: Component = markRaw(defineComponent({
                 h('span', { class: 'cm-content' }, node.content),
               ]),
               h('div', { class: 'cm-line2' }, [
-                h('span', { class: 'cm-time' }, fmt(node.createDatetime)),
+                h('span', { class: 'cm-time' }, fmt(node.createdAt)),
                 h(
                   'button',
                   {
@@ -412,12 +418,14 @@ async function loadComments(reset: boolean) {
     const list = res.data?.data ?? [];
     if (reset) comments.value = list;
     else comments.value.push(...list);
-    nextCursor.value = res.data?.page?.nextCursor ?? null;
+    nextCursor.value = res.data?.page?.nextCursor || null;
     hasMore.value = !!nextCursor.value;
     if (totalCount.value === null) totalCount.value = comments.value.length;
   } catch (err) {
-    const norm = normalizeError(err);
-    toast.error(norm.message);
+    // Freeze pagination so q-infinite-scroll stops re-firing on fail.
+    // Retry button on the toast does a full reload from page 1.
+    hasMore.value = false;
+    toast.error(apiErrorToast(err, () => void loadComments(true)));
   } finally {
     loading.value = false;
   }
@@ -457,8 +465,7 @@ async function sendComment() {
     replyingTo.value = null;
     autoResize();
   } catch (err) {
-    const norm = normalizeError(err);
-    toast.error(norm.message);
+    toast.error(apiErrorToast(err));
   } finally {
     isSubmitting.value = false;
   }
@@ -481,8 +488,7 @@ function deleteComment(c: CommentItem) {
         await api.delete(`/posts/${props.postId}/comments/${c.id}`);
       } catch (err) {
         comments.value = prev;
-        const norm = normalizeError(err);
-        toast.error(norm.message);
+        toast.error(apiErrorToast(err));
       } finally {
         deletingId.value = null;
       }

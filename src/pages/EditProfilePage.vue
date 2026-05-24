@@ -8,20 +8,15 @@
       <span class="icon-btn"></span>
     </header>
 
-    <div v-if="loading" class="state-block">
-      <q-spinner-dots color="primary" size="36px" />
-    </div>
+    <SettingsFormSkeleton v-if="loading" />
 
     <template v-else>
       <!-- Avatar -->
       <section class="avatar-section">
         <button class="avatar-btn" type="button" @click="pickAvatar">
           <img v-if="avatarPreview" :src="avatarPreview" alt="" />
-          <img v-else-if="user?.avatarImage" :src="user.avatarImage" alt="" />
+          <img v-else-if="serverAvatarUrl" :src="serverAvatarUrl" alt="" />
           <span v-else class="avatar-fallback">{{ initial }}</span>
-          <span class="avatar-edit">
-            <Camera :size="14" :stroke-width="2.2" />
-          </span>
         </button>
         <input
           ref="avatarInput"
@@ -44,11 +39,12 @@
           maxlength="30"
           hide-bottom-space
           class="ep-input"
+          @keyup.enter="save"
         />
       </FieldRow>
 
       <!-- Username -->
-      <FieldRow label="Username">
+      <FieldRow label="Username" :count="`${form.username.length}/22`">
         <q-input
           v-model="form.username"
           outlined
@@ -57,8 +53,12 @@
           hide-bottom-space
           class="ep-input"
           prefix="@"
+          :error="!!usernameError"
+          :error-message="usernameError ?? undefined"
+          @update:model-value="onUsernameInput"
+          @keyup.enter="save"
         />
-        <p class="field-help">Unique across all servers</p>
+        <p class="field-help">Letters, digits, _ or . (no spaces). Unique within this server.</p>
       </FieldRow>
 
       <!-- Bio -->
@@ -74,30 +74,6 @@
         />
       </FieldRow>
 
-      <!-- Email (read-only — BE doesn't expose update endpoint yet) -->
-      <FieldRow label="Email">
-        <q-input
-          v-model="form.email"
-          outlined
-          dense
-          readonly
-          hide-bottom-space
-          class="ep-input ep-input-disabled"
-        />
-      </FieldRow>
-
-      <!-- Phone number (mock — BE doesn't store phone) -->
-      <FieldRow label="Phone number">
-        <q-input
-          v-model="form.phone"
-          outlined
-          dense
-          readonly
-          hide-bottom-space
-          placeholder="—"
-          class="ep-input ep-input-disabled"
-        />
-      </FieldRow>
     </template>
 
     <!-- Floating save button -->
@@ -119,33 +95,66 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, defineComponent, h, type PropType } from 'vue';
 import { useRouter } from 'vue-router';
-import { ChevronLeft, Camera } from 'lucide-vue-next';
+import { ChevronLeft } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
+import { storeToRefs } from 'pinia';
 import { useAuthStore } from 'src/stores/auth.store';
+import { useAppStore } from 'src/stores/app.store';
 import { useToast } from 'src/composables/useToast';
-import { normalizeError } from 'src/composables/useApiError';
+import { apiErrorToast } from 'src/composables/useApiError';
+import SettingsFormSkeleton from 'src/components/feedback/skeletons/SettingsFormSkeleton.vue';
+
+interface ServerProfileMeResponse {
+  profileId: string;
+  serverId: string;
+  nickname: string;
+  username: string;
+  bio: string | null;
+  avatarImageId: string | null;
+  avatarUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const USERNAME_REGEX = /^[a-zA-Z0-9_.]+$/;
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const MAX_AVATAR_MB = 5;
 
 const router = useRouter();
 const authStore = useAuthStore();
+const appStore = useAppStore();
+const { activeServerId } = storeToRefs(appStore);
 const toast = useToast();
 
 const user = computed(() => authStore.user);
 const initial = computed(
-  () => (user.value?.username ?? user.value?.fullname ?? '?').charAt(0).toUpperCase()
+  () => (form.value.fullname || user.value?.email || '?').charAt(0).toUpperCase()
 );
 
 const loading = ref(false);
 const isSaving = ref(false);
+const serverAvatarUrl = ref<string | null>(null);
+const usernameError = ref<string | null>(null);
+
+function onUsernameInput(val: string | number | null) {
+  const next = (typeof val === 'string' ? val : String(val ?? '')).toLowerCase();
+  form.value.username = next;
+  if (!next) {
+    usernameError.value = null;
+  } else if (!USERNAME_REGEX.test(next)) {
+    usernameError.value = 'Use only letters, digits, _ or . (no spaces)';
+  } else if (next.length < 3) {
+    usernameError.value = 'Must be at least 3 characters';
+  } else {
+    usernameError.value = null;
+  }
+}
 
 const form = ref({
   fullname: '',
   username: '',
   bio: '',
-  email: '',
-  phone: '',
 });
 
 const initial_state = ref({
@@ -170,23 +179,24 @@ const hasChanges = computed(() => {
 onMounted(async () => {
   loading.value = true;
   try {
-    if (!authStore.user) {
-      await authStore.fetchUser();
+    const sid = activeServerId.value;
+    if (sid) {
+      const res = await api.get<ServerProfileMeResponse>(
+        `/servers/${sid}/profile/me`
+      );
+      form.value.fullname = res.data.nickname ?? '';
+      form.value.username = res.data.username ?? '';
+      form.value.bio = res.data.bio ?? '';
+      serverAvatarUrl.value = res.data.avatarUrl ?? null;
     }
-    if (authStore.user) {
-      form.value.fullname = authStore.user.fullname ?? '';
-      form.value.username = authStore.user.username ?? '';
-      form.value.bio = authStore.user.bio ?? '';
-      form.value.email = authStore.user.email ?? '';
-      form.value.phone = '';
-      initial_state.value = {
-        fullname: form.value.fullname,
-        username: form.value.username,
-        bio: form.value.bio,
-      };
-    }
+
+    initial_state.value = {
+      fullname: form.value.fullname,
+      username: form.value.username,
+      bio: form.value.bio,
+    };
   } catch {
-    toast.error('Failed to load profile.');
+    toast.error({ title: 'Failed to load profile.' });
   } finally {
     loading.value = false;
   }
@@ -202,12 +212,12 @@ function onAvatarSelected(event: Event) {
   if (!file) return;
 
   if (!ALLOWED_TYPES.includes(file.type)) {
-    toast.error('Unsupported format. Use JPEG, PNG, or WebP.');
+    toast.error({ title: 'Unsupported format. Use JPEG, PNG, or WebP.' });
     return;
   }
   const sizeMB = file.size / (1024 * 1024);
   if (sizeMB > MAX_AVATAR_MB) {
-    toast.error(`Avatar must be smaller than ${MAX_AVATAR_MB}MB.`);
+    toast.error({ title: `Avatar must be smaller than ${MAX_AVATAR_MB}MB.` });
     return;
   }
 
@@ -221,36 +231,41 @@ function onAvatarSelected(event: Event) {
 
 async function save() {
   if (!hasChanges.value || isSaving.value) return;
+  const sid = activeServerId.value;
+  if (!sid) {
+    toast.error({ title: 'No active server. Select a server first.' });
+    return;
+  }
+  if (usernameError.value) {
+    toast.error({ title: usernameError.value });
+    return;
+  }
   isSaving.value = true;
   try {
-    const tasks: Promise<unknown>[] = [];
-
-    if (form.value.fullname.trim() !== initial_state.value.fullname) {
-      tasks.push(api.put('/users/fullname', { fullname: form.value.fullname.trim() }));
-    }
-    if (form.value.username.trim() !== initial_state.value.username) {
-      tasks.push(api.put('/users/username', { username: form.value.username.trim() }));
-    }
-    if (form.value.bio.trim() !== initial_state.value.bio) {
-      tasks.push(api.put('/users/bio', { bio: form.value.bio.trim() }));
-    }
-    if (avatarFile.value) {
+    // Single multipart update covers nickname, username, bio AND avatar
+    // in one transaction on the BE side. Skip the call entirely if nothing
+    // (including avatar) changed.
+    const profileChanged =
+      form.value.fullname.trim() !== initial_state.value.fullname ||
+      form.value.username.trim() !== initial_state.value.username ||
+      form.value.bio.trim() !== initial_state.value.bio;
+    if (profileChanged || avatarFile.value) {
       const fd = new FormData();
-      fd.append('avatar', avatarFile.value, avatarFile.value.name);
-      tasks.push(
-        api.put('/users/avatar', fd, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        })
-      );
+      fd.append('nickname', form.value.fullname.trim());
+      fd.append('username', form.value.username.trim().toLowerCase());
+      fd.append('bio', form.value.bio.trim());
+      if (avatarFile.value) {
+        fd.append('profileAvatar', avatarFile.value, avatarFile.value.name);
+      }
+      await api.put(`/servers/${sid}/profile`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
     }
 
-    await Promise.all(tasks);
-    await authStore.fetchUser();
-    toast.success('Profile updated.');
+    toast.success({ title: 'Profile updated.' });
     router.back();
   } catch (err) {
-    const norm = normalizeError(err);
-    toast.error(norm.message);
+    toast.error(apiErrorToast(err));
   } finally {
     isSaving.value = false;
   }
@@ -387,20 +402,6 @@ const FieldRow = defineComponent({
     letter-spacing: -0.02em;
   }
 
-  .avatar-edit {
-    position: absolute;
-    right: 4px;
-    bottom: 4px;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: #007BFF;
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid #fff;
-  }
 }
 
 .hidden-input {

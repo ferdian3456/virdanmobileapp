@@ -178,7 +178,9 @@ const SectionTitle = defineComponent({
 const ToggleRow = defineComponent({
   name: 'ToggleRow',
   props: {
-    icon: { type: Object as PropType<Component | undefined>, default: undefined },
+    // Lucide icons are functional components (Function), not Object. Allow
+    // both so Vue doesn't warn "Expected Object, got Function" on every row.
+    icon: { type: [Object, Function] as PropType<Component | undefined>, default: undefined },
     label: { type: String, required: true },
     subtitle: { type: String as PropType<string | undefined>, default: undefined },
     modelValue: { type: Boolean, required: true },
@@ -354,7 +356,7 @@ const ToggleRow = defineComponent({
   }
 
   &.on {
-    background: #6C63FF;
+    background: #007BFF;
   }
 
   .ns-toggle-knob {

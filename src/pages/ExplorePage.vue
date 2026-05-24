@@ -12,13 +12,11 @@
     </div>
 
     <!-- Loading -->
-    <div v-if="loading && posts.length === 0" class="state-block">
-      <q-spinner-dots color="primary" size="36px" />
-    </div>
+    <PostGridSkeleton v-if="loading && posts.length === 0" />
 
     <!-- Empty state -->
     <div v-else-if="filteredPosts.length === 0" class="empty-section">
-      <q-img src="/assets/illustrator/social.svg" style="width: 240px" class="empty-illustration" />
+      <img src="/assets/illustrator/social.svg" alt="" style="width: 240px" class="empty-illustration" />
       <div class="empty-title">No posts yet</div>
       <p class="empty-help">Be the first to share something in your servers.</p>
       <button class="empty-cta" type="button" @click="goCreatePost">Create a Post</button>
@@ -28,12 +26,12 @@
     <div v-else class="post-grid">
       <button
         v-for="post in filteredPosts"
-        :key="post.postId"
+        :key="post.id"
         class="post-tile"
         type="button"
         @click="openPost(post)"
       >
-        <img :src="post.postImageUrl" alt="" />
+        <img v-if="post.imageUrl" :src="post.imageUrl" alt="" />
       </button>
     </div>
 
@@ -52,21 +50,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { Search } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { api } from 'src/boot/axios';
 import { useAppStore } from 'src/stores/app.store';
+import PostGridSkeleton from 'src/components/feedback/skeletons/PostGridSkeleton.vue';
+
+interface ExplorePostAuthor {
+  userId: string;
+  nickname: string;
+  avatarUrl: string | null;
+  status: string;
+}
 
 interface ExplorePost {
-  postId: string;
-  ownerName: string;
-  postImageUrl: string;
+  id: string;
+  author: ExplorePostAuthor;
+  imageUrl: string | null;
   caption: string;
   likeCount: number;
   commentCount: number;
-  createDatetime: string;
+  createdAt: string;
 }
 
 interface PaginatedResponse<T> {
@@ -76,12 +82,11 @@ interface PaginatedResponse<T> {
 
 const router = useRouter();
 const appStore = useAppStore();
-const { servers } = storeToRefs(appStore);
+const { activeServerId } = storeToRefs(appStore);
 
 const posts = ref<ExplorePost[]>([]);
 const searchQuery = ref('');
 const loading = ref(false);
-const currentServerIdx = ref(0);
 const nextCursor = ref<string | null>(null);
 const hasMore = ref(true);
 
@@ -90,13 +95,13 @@ const filteredPosts = computed(() => {
   if (!q) return posts.value;
   return posts.value.filter(
     (p) =>
-      p.ownerName.toLowerCase().includes(q) ||
+      p.author.nickname.toLowerCase().includes(q) ||
       p.caption.toLowerCase().includes(q)
   );
 });
 
 onMounted(async () => {
-  // Make sure server list is hydrated.
+  // Make sure server list is hydrated so activeServerId is available.
   if (!appStore.isInitialized) {
     try {
       await appStore.fetchMyServers();
@@ -104,40 +109,46 @@ onMounted(async () => {
       // Continue anyway — page shows empty state.
     }
   }
-  await loadFromCurrentServer();
+  await loadPosts(true);
 });
 
-async function loadFromCurrentServer() {
+// Refetch whenever the user switches active server elsewhere (e.g. HomePage).
+watch(activeServerId, () => {
+  void loadPosts(true);
+});
+
+async function loadPosts(reset: boolean) {
   if (loading.value) return;
-  if (currentServerIdx.value >= servers.value.length) {
+  const sid = activeServerId.value;
+  if (!sid) {
+    posts.value = [];
+    nextCursor.value = null;
     hasMore.value = false;
+    return;
+  }
+
+  if (reset) {
+    posts.value = [];
+    nextCursor.value = null;
+    hasMore.value = true;
+  } else if (!hasMore.value || !nextCursor.value) {
     return;
   }
 
   loading.value = true;
   try {
-    const serverId = servers.value[currentServerIdx.value]?.id;
-    if (!serverId) {
-      hasMore.value = false;
-      return;
-    }
     const params: Record<string, string | number> = { limit: 20 };
-    if (nextCursor.value) params.cursor = nextCursor.value;
+    if (!reset && nextCursor.value) params.cursor = nextCursor.value;
     const res = await api.get<PaginatedResponse<ExplorePost>>(
-      `/servers/${serverId}/posts`,
+      `/servers/${sid}/posts`,
       { params }
     );
     const list = res.data?.data ?? [];
-    posts.value.push(...list);
-    nextCursor.value = res.data?.page?.nextCursor ?? null;
-
-    if (!nextCursor.value) {
-      // Move to next server in the list.
-      currentServerIdx.value += 1;
-      hasMore.value = currentServerIdx.value < servers.value.length;
-    } else {
-      hasMore.value = true;
-    }
+    if (reset) posts.value = list;
+    else posts.value.push(...list);
+    // BE returns "" for "no more pages"; normalize to null.
+    nextCursor.value = res.data?.page?.nextCursor || null;
+    hasMore.value = !!nextCursor.value;
   } catch {
     hasMore.value = false;
   } finally {
@@ -150,12 +161,12 @@ async function loadMore(_idx: number, done: (stop?: boolean) => void) {
     done(true);
     return;
   }
-  await loadFromCurrentServer();
+  await loadPosts(false);
   done(!hasMore.value);
 }
 
 async function openPost(post: ExplorePost) {
-  await router.push({ name: 'post-detail', params: { postId: post.postId } });
+  await router.push({ name: 'post-detail', params: { postId: post.id } });
 }
 
 async function goCreatePost() {

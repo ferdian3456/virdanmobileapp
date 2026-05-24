@@ -3,16 +3,13 @@ import { ref, computed } from 'vue';
 import axios from 'axios';
 import { SecureStorage } from '@aparajita/capacitor-secure-storage';
 import { api, baseURL } from 'src/boot/axios';
+import { useAppStore } from 'src/stores/app.store';
 
 export interface UserData {
   id: string;
-  username: string;
   email: string;
-  fullname: string;
-  bio: string | null;
-  avatarImage: string | null;
-  createDatetime?: string;
-  updateDatetime?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TokenResponse {
@@ -65,6 +62,7 @@ export const useAuthStore = defineStore('auth', () => {
     await SecureStorage.remove(KEY_REFRESH);
     token.value = null;
     user.value = null;
+    useAppStore().reset();
   }
 
   /* ─── Auth flows ─────────────────────────────────────────────── */
@@ -75,7 +73,7 @@ export const useAuthStore = defineStore('auth', () => {
     return response.data;
   }
 
-  async function login(payload: { username: string; password: string }): Promise<UserData> {
+  async function login(payload: { email: string; password: string }): Promise<UserData> {
     const response = await api.post<TokenResponse>('/auth/login', payload);
     await setTokens({
       accessToken: response.data.accessToken,

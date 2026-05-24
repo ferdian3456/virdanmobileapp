@@ -1,16 +1,14 @@
 <template>
   <q-page class="bg-grey-1 home-page">
     <!-- Loading servers -->
-    <div v-if="loadingServers" class="state-block">
-      <q-spinner-dots color="primary" size="40px" />
-    </div>
+    <FeedSkeleton v-if="loadingServers" />
 
     <!-- No servers state — fallback (guard normally redirects to onboarding) -->
     <div
       v-else-if="servers.length === 0"
       class="empty-servers"
     >
-      <q-img src="/assets/illustrator/community.svg" style="width: 240px" class="q-mb-lg" />
+      <img src="/assets/illustrator/community.svg" alt="" style="width: 240px" class="q-mb-lg" />
       <div class="empty-title">No servers yet</div>
       <p class="empty-help">
         Join a community or create your own to start seeing posts here.
@@ -103,7 +101,7 @@
         v-if="posts.length === 0 && !loadingPosts"
         class="empty-feed"
       >
-        <q-img src="/assets/illustrator/posting_photo.svg" style="width: 320px" class="q-mt-xl q-mb-lg" />
+        <img src="/assets/illustrator/posting_photo.svg" alt="" style="width: 320px" class="q-mt-xl q-mb-lg" />
         <div class="empty-title">No posts yet</div>
         <p class="empty-help">Be the first to share something in this server.</p>
         <VButton
@@ -120,17 +118,17 @@
         <div class="feed">
           <article
             v-for="post in posts"
-            :key="post.postId"
+            :key="post.id"
             class="feed-card"
           >
             <header class="feed-card-header">
               <div class="feed-avatar">
-                <img v-if="post.ownerImageUrl" :src="post.ownerImageUrl" :alt="post.ownerName" />
-                <span v-else>{{ post.ownerName.charAt(0).toUpperCase() }}</span>
+                <img v-if="post.author.avatarUrl" :src="post.author.avatarUrl" :alt="post.author.nickname" />
+                <span v-else>{{ post.author.nickname.charAt(0).toUpperCase() }}</span>
               </div>
               <div class="feed-meta">
-                <div class="feed-username">{{ post.ownerName }}</div>
-                <div class="feed-time">{{ formatDate(post.createDatetime) }}</div>
+                <div class="feed-username">{{ post.author.nickname }}</div>
+                <div class="feed-time">{{ formatDate(post.createdAt) }}</div>
               </div>
               <button class="header-icon-btn" type="button" aria-label="More">
                 <MoreHorizontal :size="20" />
@@ -138,7 +136,7 @@
             </header>
 
             <div class="feed-image-wrap">
-              <img :src="post.postImageUrl" :alt="post.caption" class="feed-image" />
+              <img v-if="post.imageUrl" :src="post.imageUrl" :alt="post.caption" class="feed-image" />
             </div>
 
             <div class="feed-actions">
@@ -177,7 +175,7 @@
             </div>
 
             <div class="feed-caption">
-              <span class="caption-username">{{ post.ownerName }}</span>
+              <span class="caption-username">{{ post.author.nickname }}</span>
               {{ post.caption }}
             </div>
           </article>
@@ -211,19 +209,28 @@ import {
 import { api } from 'boot/axios';
 import { useAppStore } from 'stores/app.store';
 import VButton from 'src/components/VButton.vue';
+import FeedSkeleton from 'src/components/feedback/skeletons/FeedSkeleton.vue';
+
+interface PostAuthor {
+  userId: string;
+  nickname: string;
+  avatarUrl: string | null;
+  status: string;
+}
 
 interface Post {
-  postId: string;
-  ownerId: string;
-  ownerName: string;
-  ownerImageUrl: string | null;
-  postImageUrl: string;
+  id: string;
+  serverId: string;
+  author: PostAuthor;
+  imageUrl: string | null;
   caption: string;
   likeCount: number;
   commentCount: number;
-  isLiked: boolean;
+  userLiked: boolean;
+  isOwner: boolean;
   liked?: boolean;
-  createDatetime: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface PostsResponse {
@@ -277,12 +284,15 @@ async function loadPosts(cursor: string | null = null) {
       `/servers/${activeServerId.value}/posts`,
       { params }
     );
-    const newPosts = (res.data?.data ?? []).map((p) => ({ ...p, liked: !!p.isLiked }));
+    const newPosts = (res.data?.data ?? []).map((p) => ({ ...p, liked: !!p.userLiked }));
     if (cursor) posts.value.push(...newPosts);
     else posts.value = newPosts;
-    nextCursor.value = res.data?.page?.nextCursor ?? null;
+    nextCursor.value = res.data?.page?.nextCursor || null;
     hasMore.value = !!nextCursor.value;
   } catch (error) {
+    // Freeze pagination so q-infinite-scroll stops re-firing when BE is
+    // down / CORS rejects — otherwise the feed hammers /posts forever.
+    hasMore.value = false;
     console.error('Failed to load posts:', error);
   } finally {
     loadingPosts.value = false;
@@ -312,7 +322,7 @@ async function toggleLike(post: Post) {
   post.likeCount = Math.max(0, post.likeCount + (wasLiked ? -1 : 1));
 
   try {
-    const url = `/posts/${post.postId}/likes`;
+    const url = `/posts/${post.id}/likes`;
     const res = wasLiked
       ? await api.delete<{ likeCount: number }>(url)
       : await api.post<{ likeCount: number }>(url, {});
@@ -325,7 +335,7 @@ async function toggleLike(post: Post) {
 }
 
 async function openComments(post: Post) {
-  await router.push({ name: 'comments', params: { postId: post.postId } });
+  await router.push({ name: 'comments', params: { postId: post.id } });
 }
 
 async function goCreatePost() {
@@ -547,12 +557,15 @@ function formatDate(dateStr: string): string {
   background: transparent;
   border: 0;
   height: 40px;
-  width: 56px;
-  padding: 0 0 0 8px;
+  width: auto;
+  // Reserve space for icon + single-digit count so the icon doesn't
+  // shift when likeCount/commentCount transitions between 0 and 1.
+  min-width: 48px;
+  padding: 0 6px;
   border-radius: 12px;
   display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   gap: 4px;
   cursor: pointer;
   color: #212529;
@@ -565,10 +578,6 @@ function formatDate(dateStr: string): string {
     color: #DC3545;
     fill: #DC3545;
   }
-}
-
-.feed-action-with-count {
-  /* keeps fixed 56px width; icon + count center inside */
 }
 
 .action-count {

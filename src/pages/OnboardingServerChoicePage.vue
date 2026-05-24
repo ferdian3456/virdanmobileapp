@@ -51,30 +51,36 @@
       >
         All
       </button>
-      <button
-        v-for="cat in categories"
-        :key="cat.id"
-        type="button"
-        class="chip"
-        :class="{ active: activeCategoryId === cat.id }"
-        @click="setCategory(cat.id)"
-      >
-        {{ cat.categoryName }}
-      </button>
+      <template v-if="categoriesLoading">
+        <VSkeleton
+          v-for="(w, i) in CHIP_SKELETON_WIDTHS"
+          :key="i"
+          variant="box"
+          :width="`${w}px`"
+          height="32px"
+          radius="999px"
+        />
+      </template>
+      <template v-else>
+        <button
+          v-for="cat in categories"
+          :key="cat.id"
+          type="button"
+          class="chip"
+          :class="{ active: activeCategoryId === cat.id }"
+          @click="setCategory(cat.id)"
+        >
+          {{ cat.categoryName }}
+        </button>
+      </template>
     </div>
 
-    <!-- Popular servers list -->
+    <!-- Server list -->
     <div class="server-list-wrap">
-      <div class="server-list-header">
-        <h2 class="server-list-title">Popular Servers</h2>
-        <span class="server-list-count">{{ filteredServers.length }} servers</span>
-      </div>
+      <ServerListSkeleton v-if="loading && servers.length === 0" />
 
-      <div v-if="loading && servers.length === 0" class="state-block">
-        <q-spinner-dots color="primary" size="36px" />
-      </div>
-
-      <div v-else-if="filteredServers.length === 0" class="state-block">
+      <div v-else-if="filteredServers.length === 0" class="empty-state">
+        <img src="/assets/illustrator/empty.svg" alt="" class="empty-illustration" />
         <p class="empty-text">No servers match your search.</p>
       </div>
 
@@ -84,46 +90,55 @@
         class="server-row"
       >
         <div class="srv-avatar" :style="{ background: srvAvatarColor(srv.shortName ?? srv.name) }">
-          <img v-if="srv.avatarImageUrl" :src="srv.avatarImageUrl" :alt="srv.name" />
+          <img v-if="srv.avatarUrl" :src="srv.avatarUrl" :alt="srv.name" />
           <span v-else>{{ (srv.shortName ?? srv.name).charAt(0).toUpperCase() }}</span>
         </div>
         <div class="srv-meta">
           <div class="srv-name-row">
             <span class="srv-name">{{ srv.name }}</span>
-            <BadgeCheck :size="14" class="srv-verified" />
+            <!-- TODO: server verification badge — BE belum punya field verified -->
           </div>
           <div class="srv-desc">{{ srv.description || 'No description provided' }}</div>
           <div class="srv-stats">
             <span class="srv-stat">
               <Users :size="12" /> {{ formatStat(srv.memberCount) }}
             </span>
-            <span class="srv-online">
-              <span class="online-dot"></span> {{ formatStat(srv.onlineCount) }} online
-            </span>
+            <!-- TODO: online count — BE belum expose onlineCount (perlu presence tracking) -->
           </div>
         </div>
         <button
           class="join-btn"
+          :class="{ 'join-btn-joined': srv.isMember }"
           type="button"
-          :disabled="joiningId === srv.id"
+          :disabled="srv.isMember || joiningId === srv.id"
           @click="join(srv)"
         >
-          {{ joiningId === srv.id ? '…' : 'Join' }}
+          {{ srv.isMember ? 'Joined' : joiningId === srv.id ? '…' : 'Join' }}
         </button>
       </article>
+
+      <!-- Pagination: load-more spinner (not skeleton — list already filled) -->
+      <div v-if="loadingMore" class="load-more">
+        <q-spinner-dots color="primary" size="28px" />
+      </div>
+
+      <!-- Infinite-scroll trigger -->
+      <div ref="sentinelEl" class="sls-sentinel" aria-hidden="true"></div>
     </div>
 
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { ChevronRight, Search, BadgeCheck, Users } from 'lucide-vue-next';
+import { ChevronRight, Search, Users } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
-import { useAppStore } from 'src/stores/app.store';
+import { useServerCreateStore } from 'src/stores/server-create.store';
 import { useToast } from 'src/composables/useToast';
-import { normalizeError } from 'src/composables/useApiError';
+import { apiErrorToast } from 'src/composables/useApiError';
+import VSkeleton from 'src/components/feedback/VSkeleton.vue';
+import ServerListSkeleton from 'src/components/feedback/skeletons/ServerListSkeleton.vue';
 
 interface CategoryItem {
   id: number;
@@ -135,13 +150,13 @@ interface DiscoveryServer {
   name: string;
   shortName: string;
   categoryName: string | null;
-  avatarImageUrl: string | null;
-  bannerImageUrl: string | null;
+  avatarUrl: string | null;
+  bannerUrl: string | null;
   description: string | null;
-  createDatetime: string;
-  // BE doesn't expose memberCount / onlineCount yet — mocked client-side.
-  memberCount?: number;
-  onlineCount?: number;
+  createdAt: string;
+  memberCount: number;
+  isMember: boolean;
+  // TODO: onlineCount — BE belum expose, perlu presence tracking (kompleks).
 }
 
 interface PaginatedResponse<T> {
@@ -150,15 +165,22 @@ interface PaginatedResponse<T> {
 }
 
 const router = useRouter();
-const appStore = useAppStore();
+const serverCreateStore = useServerCreateStore();
 const toast = useToast();
 
 const categories = ref<CategoryItem[]>([]);
+const categoriesLoading = ref(false);
+const CHIP_SKELETON_WIDTHS = [56, 72, 60, 80, 64, 68];
 const servers = ref<DiscoveryServer[]>([]);
 const activeCategoryId = ref<number | null>(null);
 const searchQuery = ref('');
 const loading = ref(false);
+const loadingMore = ref(false);
+const nextCursor = ref<string | null>(null);
+const sentinelEl = ref<HTMLElement | null>(null);
 const joiningId = ref<string | null>(null);
+
+const SERVERS_LIMIT = 20;
 
 const AVATAR_COLORS = [
   '#8B5CF6', '#EC4899', '#F59E0B', '#10B981',
@@ -190,11 +212,24 @@ const filteredServers = computed(() => {
   );
 });
 
+let scrollObserver: IntersectionObserver | null = null;
+
 onMounted(async () => {
-  await Promise.all([loadCategories(), loadServers()]);
+  await Promise.all([loadCategories(), loadServers(true)]);
+
+  // Infinite scroll: load the next page when the bottom sentinel appears.
+  scrollObserver = new IntersectionObserver((entries) => {
+    if (entries[0]?.isIntersecting) void loadServers(false);
+  });
+  if (sentinelEl.value) scrollObserver.observe(sentinelEl.value);
+});
+
+onUnmounted(() => {
+  scrollObserver?.disconnect();
 });
 
 async function loadCategories() {
+  categoriesLoading.value = true;
   try {
     const res = await api.get<PaginatedResponse<CategoryItem>>('/servers/categories', {
       params: { limit: 20 },
@@ -202,59 +237,64 @@ async function loadCategories() {
     categories.value = res.data?.data ?? [];
   } catch {
     // Silent — chips simply won't render.
-  }
-}
-
-async function loadServers() {
-  if (loading.value) return;
-  loading.value = true;
-  try {
-    const params: Record<string, string | number> = { limit: 20 };
-    if (activeCategoryId.value !== null) params.categoryId = activeCategoryId.value;
-    const res = await api.get<PaginatedResponse<DiscoveryServer>>('/servers/', { params });
-    const list = (res.data?.data ?? []).map((s) => ({
-      ...s,
-      // Mock counts until BE exposes them.
-      memberCount: deterministicCount(s.id, 200, 30000),
-      onlineCount: deterministicCount(s.id + ':online', 5, 1500),
-    }));
-    servers.value = list;
-  } catch (err) {
-    const norm = normalizeError(err);
-    toast.error(norm.message);
   } finally {
-    loading.value = false;
+    categoriesLoading.value = false;
   }
 }
 
-function deterministicCount(seed: string, min: number, max: number): number {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = (hash * 31 + seed.charCodeAt(i)) & 0x7fffffff;
+async function loadServers(reset = true) {
+  if (reset) {
+    if (loading.value) return;
+    loading.value = true;
+    nextCursor.value = null;
+    // Clear list so the skeleton (v-if loading && servers.length === 0)
+    // takes over instead of stale rows from the previous category.
+    servers.value = [];
+  } else {
+    if (loadingMore.value || nextCursor.value === null) return;
+    loadingMore.value = true;
   }
-  return min + (hash % (max - min));
+
+  try {
+    const params: Record<string, string | number> = { limit: SERVERS_LIMIT };
+    if (activeCategoryId.value !== null) params.categoryId = activeCategoryId.value;
+    if (!reset && nextCursor.value) params.cursor = nextCursor.value;
+    const res = await api.get<PaginatedResponse<DiscoveryServer>>('/servers/', { params });
+    const pageData = res.data?.data ?? [];
+    // BE returns "" for "no more pages"; treat falsy as null so the
+    // infinite-scroll guard (nextCursor === null) actually short-circuits.
+    const pageCursor = res.data?.page?.nextCursor || null;
+
+    servers.value = reset ? pageData : [...servers.value, ...pageData];
+    nextCursor.value = pageCursor;
+  } catch (err) {
+    // BE down / network / CORS → freeze pagination so the IntersectionObserver
+    // sentinel stops re-firing loadServers on every scroll/render and hammering
+    // the failing endpoint. Force nextCursor=null which the load-more guard
+    // (`nextCursor.value === null`) already short-circuits on.
+    nextCursor.value = null;
+    toast.error(apiErrorToast(err, () => void loadServers(true)));
+  } finally {
+    if (reset) loading.value = false;
+    else loadingMore.value = false;
+  }
 }
 
 function setCategory(id: number | null) {
   activeCategoryId.value = id;
-  void loadServers();
+  void loadServers(true);
 }
 
 async function join(srv: DiscoveryServer) {
   if (joiningId.value) return;
-  joiningId.value = srv.id;
-  try {
-    await api.post(`/servers/${srv.id}/join`);
-    toast.success(`Joined ${srv.name}.`);
-    await appStore.fetchMyServers(true);
-    appStore.setActiveServer(srv.id);
-    await router.push({ name: 'home' });
-  } catch (err) {
-    const norm = normalizeError(err);
-    toast.error(norm.message);
-  } finally {
-    joiningId.value = null;
-  }
+  // Join now requires a per-server profile (nickname + username + bio +
+  // avatar). Stash the target and hand off to YourProfilePage.
+  serverCreateStore.setJoinTarget({
+    serverId: srv.id,
+    serverName: srv.name,
+    serverShortName: srv.shortName,
+  });
+  await router.push({ name: 'onboarding-create-server-profile' });
 }
 
 async function goCreate() {
@@ -286,7 +326,7 @@ async function goCreate() {
 
 .ob-title-accent {
   display: block;
-  color: #6C63FF;
+  color: #007BFF;
 }
 
 .ob-subtitle {
@@ -300,7 +340,7 @@ async function goCreate() {
 .create-card {
   width: calc(100% - 40px);
   margin: 20px 20px 0;
-  background: linear-gradient(135deg, #6C63FF, #5046E5);
+  background: linear-gradient(135deg, #007BFF, #0056CC);
   color: #fff;
   border: 0;
   border-radius: 18px;
@@ -409,7 +449,7 @@ async function goCreate() {
 
   &:focus {
     background: #fff;
-    border-color: #6C63FF;
+    border-color: #007BFF;
   }
 
   &::placeholder {
@@ -450,35 +490,15 @@ async function goCreate() {
   }
 
   &.active {
-    background: #6C63FF;
+    background: #007BFF;
     color: #fff;
-    border-color: #6C63FF;
+    border-color: #007BFF;
   }
 }
 
 /* Server list */
 .server-list-wrap {
   padding: 0 20px;
-}
-
-.server-list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin: 8px 0;
-}
-
-.server-list-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #0F172A;
-  letter-spacing: -0.01em;
-  margin: 0;
-}
-
-.server-list-count {
-  font-size: 12px;
-  color: #6C757D;
 }
 
 .server-row {
@@ -532,10 +552,6 @@ async function goCreate() {
   letter-spacing: -0.01em;
 }
 
-.srv-verified {
-  color: #6C63FF;
-}
-
 .srv-desc {
   font-size: 12px;
   color: #6C757D;
@@ -560,23 +576,8 @@ async function goCreate() {
   gap: 4px;
 }
 
-.srv-online {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: #10B981;
-  font-weight: 500;
-}
-
-.online-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #10B981;
-}
-
 .join-btn {
-  background: #6C63FF;
+  background: #007BFF;
   color: #fff;
   border: 0;
   border-radius: 999px;
@@ -589,7 +590,7 @@ async function goCreate() {
   flex-shrink: 0;
 
   &:hover {
-    background: #5046E5;
+    background: #0056CC;
   }
 
   &:disabled {
@@ -598,17 +599,48 @@ async function goCreate() {
   }
 }
 
-/* States */
-.state-block {
+.join-btn-joined {
+  background: transparent;
+  color: #6C757D;
+  border: 1px solid #DEE2E6;
+
+  &:hover {
+    background: transparent;
+  }
+
+  &:disabled {
+    opacity: 1;
+  }
+}
+
+/* Pagination */
+.load-more {
   display: flex;
-  align-items: center;
   justify-content: center;
-  padding: 32px 0;
+  padding: 16px 0;
+}
+
+.sls-sentinel {
+  height: 1px;
+}
+
+/* States */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 0 32px;
+}
+
+.empty-illustration {
+  width: 220px;
+  max-width: 60%;
 }
 
 .empty-text {
   color: #6C757D;
   font-size: 14px;
+  margin-top: 24px;
 }
 
 </style>

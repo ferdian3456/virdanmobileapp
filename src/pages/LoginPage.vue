@@ -3,15 +3,15 @@
     <div class="text-left q-mb-lg">
       <h1 class="text-h4 text-weight-bold text-dark q-my-none">Welcome To Virdan</h1>
       <p class="text-body2 text-grey-6 q-mt-sm">
-        Good to see you. Enter your username and password to continue.
+        Good to see you. Enter your email and password to continue.
       </p>
     </div>
 
     <q-form class="column q-gutter-y-md" @submit="login">
-      <!-- Username -->
-      <VInput v-model="username" label="Username" :error="!!errors.username" @keyup.enter="login" />
-      <div v-if="errors.username" class="text-negative text-caption q-mt-xs q-ml-sm">
-        {{ errors.username }}
+      <!-- Email -->
+      <VInput v-model="email" label="Email" type="email" :error="!!errors.email" @keyup.enter="login" />
+      <div v-if="errors.email" class="text-negative text-caption q-mt-xs q-ml-sm">
+        {{ errors.email }}
       </div>
 
       <!-- Password -->
@@ -62,14 +62,14 @@
         style="border: 1px solid #e5e7eb; color: #374151"
       >
         <div class="row items-center no-wrap" style="gap: 12px">
-          <q-img src="/assets/icons/google_logo.svg" width="24px" />
+          <img src="/assets/icons/google_logo.svg" alt="" style="width: 24px" />
           <span>Continue with Google</span>
         </div>
       </VButton>
 
       <VButton color="black" class="full-width">
         <div class="row items-center no-wrap" style="gap: 12px">
-          <q-img src="/assets/icons/apple_logo.svg" width="24px" class="invert" />
+          <img src="/assets/icons/apple_logo.svg" alt="" style="width: 24px" class="invert" />
           <span>Continue with Apple</span>
         </div>
       </VButton>
@@ -118,14 +118,14 @@
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useRouter } from 'vue-router';
-import { useQuasar } from 'quasar';
+import { useToast } from 'src/composables/useToast';
 import { AxiosError } from 'axios';
 import { Eye, EyeOff } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
 import VInput from 'src/components/VInput.vue';
 import VButton from 'src/components/VButton.vue';
 
-const username = ref('');
+const email = ref('');
 const password = ref('');
 const isLoading = ref(false);
 const showPassword = ref(false);
@@ -135,7 +135,7 @@ const errors = ref<Record<string, string>>({});
 
 const authStore = useAuthStore();
 const router = useRouter();
-const $q = useQuasar();
+const toast = useToast();
 
 onMounted(async () => {
   const sessionId = await authStore.getSessionId();
@@ -161,9 +161,6 @@ async function continueRegistration() {
       await router.push('/auth/verify-otp');
       break;
     case 'otp_verified':
-      await router.push('/auth/verify-username');
-      break;
-    case 'username_set':
       await router.push('/auth/verify-password');
       break;
   }
@@ -176,8 +173,8 @@ async function startOver() {
 
 async function login() {
   errors.value = {};
-  if (!username.value) {
-    errors.value.username = 'Username is required to not be empty.';
+  if (!email.value) {
+    errors.value.email = 'Email is required to not be empty.';
     return;
   }
   if (!password.value) {
@@ -188,14 +185,11 @@ async function login() {
   isLoading.value = true;
   try {
     await authStore.login({
-      username: username.value.toLowerCase(),
+      email: email.value.trim().toLowerCase(),
       password: password.value,
     });
 
-    $q.notify({
-      type: 'positive',
-      message: 'Login successful',
-    });
+    toast.success({ title: 'Login successful' });
 
     await router.push({ name: 'home' });
   } catch (error) {

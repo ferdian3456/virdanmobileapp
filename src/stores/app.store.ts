@@ -10,8 +10,8 @@ export interface Server {
   id: string;
   name: string;
   shortName: string;
-  avatarImageUrl: string | null;
-  joinedDatetime?: string;
+  avatarUrl: string | null;
+  joinedAt?: string;
 }
 
 export interface ServersMeResponse {

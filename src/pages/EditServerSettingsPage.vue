@@ -14,16 +14,14 @@
       </button>
     </header>
 
-    <div v-if="loading" class="state-block">
-      <q-spinner-dots color="primary" size="36px" />
-    </div>
+    <SettingsFormSkeleton v-if="loading" />
 
     <template v-else-if="server">
       <!-- Avatar -->
       <section class="avatar-section">
         <button class="avatar-btn" type="button" @click="pickAvatar">
           <img v-if="avatarPreview" :src="avatarPreview" alt="" />
-          <img v-else-if="server.avatarImageUrl" :src="server.avatarImageUrl" alt="" />
+          <img v-else-if="server.avatarUrl" :src="server.avatarUrl" alt="" />
           <span v-else class="avatar-fallback">{{ server.shortName?.charAt(0)?.toUpperCase() }}</span>
           <span class="avatar-edit">
             <Pencil :size="14" :stroke-width="2.2" />
@@ -49,6 +47,7 @@
           maxlength="40"
           class="ess-input"
           hide-bottom-space
+          @keyup.enter="save"
         />
       </section>
 
@@ -138,15 +137,16 @@ import {
 import { api } from 'src/boot/axios';
 import { useAppStore } from 'src/stores/app.store';
 import { useToast } from 'src/composables/useToast';
-import { normalizeError } from 'src/composables/useApiError';
+import { apiErrorToast } from 'src/composables/useApiError';
+import SettingsFormSkeleton from 'src/components/feedback/skeletons/SettingsFormSkeleton.vue';
 
 interface ServerDetail {
   id: string;
   name: string;
   shortName: string;
   categoryName?: string | null;
-  avatarImageUrl: string | null;
-  bannerImageUrl: string | null;
+  avatarUrl: string | null;
+  bannerUrl: string | null;
   description: string | null;
   isPrivate?: boolean | null;
 }
@@ -208,8 +208,7 @@ async function loadServer() {
       isPrivate: form.value.isPrivate,
     };
   } catch (err) {
-    const norm = normalizeError(err);
-    toast.error(norm.message);
+    toast.error(apiErrorToast(err, () => void loadServer()));
   } finally {
     loading.value = false;
   }
@@ -225,12 +224,12 @@ function onAvatarSelected(event: Event) {
   if (!file) return;
 
   if (!ALLOWED_TYPES.includes(file.type)) {
-    toast.error('Unsupported format. Use JPEG, PNG, or WebP.');
+    toast.error({ title: 'Unsupported format. Use JPEG, PNG, or WebP.' });
     return;
   }
   const sizeMB = file.size / (1024 * 1024);
   if (sizeMB > MAX_FILE_SIZE_MB) {
-    toast.error(`Icon must be smaller than ${MAX_FILE_SIZE_MB}MB.`);
+    toast.error({ title: `Icon must be smaller than ${MAX_FILE_SIZE_MB}MB.` });
     return;
   }
 
@@ -272,12 +271,11 @@ async function save() {
     }
 
     await Promise.all(tasks);
-    toast.success('Server settings updated.');
+    toast.success({ title: 'Server settings updated.' });
     await appStore.fetchMyServers(true);
     router.back();
   } catch (err) {
-    const norm = normalizeError(err);
-    toast.error(norm.message);
+    toast.error(apiErrorToast(err));
   } finally {
     isSaving.value = false;
   }
@@ -299,12 +297,11 @@ function confirmDelete() {
     void (async () => {
       try {
         await api.delete(`/servers/${props.id}`);
-        toast.success('Server deleted.');
+        toast.success({ title: 'Server deleted.' });
         await appStore.fetchMyServers(true);
         await router.push({ name: 'home' });
       } catch (err) {
-        const norm = normalizeError(err);
-        toast.error(norm.message);
+        toast.error(apiErrorToast(err));
       }
     })();
   });

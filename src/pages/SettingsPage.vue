@@ -8,22 +8,23 @@
       <span class="icon-btn"></span>
     </header>
 
-    <!-- Profile summary -->
+    <!-- Profile summary (per-server identity) -->
     <section class="profile-summary">
       <div class="ps-avatar">
-        <img v-if="user?.avatarImage" :src="user.avatarImage" :alt="user.username" />
-        <span v-else>{{ (user?.username ?? '?').charAt(0).toUpperCase() }}</span>
+        <img v-if="profile?.avatarUrl" :src="profile.avatarUrl" :alt="profile.nickname" />
+        <span v-else>{{ summaryInitial }}</span>
       </div>
       <div class="ps-meta">
-        <div class="ps-name">{{ user?.fullname || user?.username || '—' }}</div>
-        <div class="ps-handle">@{{ user?.username ?? '—' }}</div>
+        <div class="ps-name">{{ profile?.nickname || user?.email || '—' }}</div>
+        <div v-if="profile?.username" class="ps-handle">@{{ profile.username }}</div>
       </div>
     </section>
 
     <SettingsSection title="ACCOUNT">
       <SettingsRow icon="user" label="Edit Profile" @click="goEditProfile" />
+      <SettingsRow icon="mail" label="Change Email" @click="goChangeEmail" />
       <SettingsRow icon="lock" label="Change Password" @click="goChangePassword" />
-      <SettingsRow icon="shield" label="Privacy &amp; Security" disabled />
+      <SettingsRow icon="shield" label="Privacy &amp; Security" @click="goPrivacySecurity" />
       <SettingsRow icon="ban" label="Blocked Users" badge="3" disabled />
     </SettingsSection>
 
@@ -37,9 +38,9 @@
     </SettingsSection>
 
     <SettingsSection title="ABOUT &amp; SUPPORT">
-      <SettingsRow icon="help" label="Help Center" disabled />
-      <SettingsRow icon="file" label="Terms of Service" disabled />
-      <SettingsRow icon="shield-check" label="Privacy Policy" disabled />
+      <SettingsRow icon="help" label="Help Center" @click="goHelpCenter" />
+      <SettingsRow icon="file" label="Terms of Service" @click="goTermsOfService" />
+      <SettingsRow icon="shield-check" label="Privacy Policy" @click="goPrivacyPolicy" />
     </SettingsSection>
 
     <!-- Logout -->
@@ -54,33 +55,66 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, defineComponent, h, type PropType } from 'vue';
+import { ref, computed, onMounted, watch, defineComponent, h, type PropType } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   ChevronLeft, ChevronRight, LogOut,
-  User, Lock, Shield, Ban, Globe, Sun, Bell, CircleHelp, FileText, ShieldCheck,
+  User, Mail, Lock, Shield, Ban, Globe, Sun, Bell, CircleHelp, FileText, ShieldCheck,
 } from 'lucide-vue-next';
+import { storeToRefs } from 'pinia';
+import { api } from 'src/boot/axios';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useAppStore } from 'src/stores/app.store';
 import { useToast } from 'src/composables/useToast';
 
+interface ServerProfileMeResponse {
+  profileId: string;
+  serverId: string;
+  nickname: string;
+  username: string;
+  bio: string | null;
+  avatarImageId: string | null;
+  avatarUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const router = useRouter();
 const authStore = useAuthStore();
 const appStore = useAppStore();
+const { activeServerId } = storeToRefs(appStore);
 const toast = useToast();
 
 const user = computed(() => authStore.user);
+const profile = ref<ServerProfileMeResponse | null>(null);
 const isLoggingOut = ref(false);
 
-onMounted(async () => {
-  if (!authStore.user) {
-    try {
-      await authStore.fetchUser();
-    } catch {
-      // continue silently
-    }
-  }
+const summaryInitial = computed(() => {
+  const src = profile.value?.nickname || user.value?.email || '?';
+  return src.charAt(0).toUpperCase();
 });
+
+onMounted(async () => {
+  await loadProfile();
+});
+
+watch(activeServerId, () => {
+  void loadProfile();
+});
+
+async function loadProfile() {
+  const sid = activeServerId.value;
+  if (!sid) {
+    profile.value = null;
+    return;
+  }
+  try {
+    const res = await api.get<ServerProfileMeResponse>(`/servers/${sid}/profile/me`);
+    profile.value = res.data;
+  } catch {
+    profile.value = null;
+  }
+}
 
 function goEditProfile() {
   void router.push({ name: 'edit-profile' });
@@ -88,6 +122,26 @@ function goEditProfile() {
 
 function goChangePassword() {
   void router.push({ name: 'change-password' });
+}
+
+function goChangeEmail() {
+  void router.push({ name: 'change-email' });
+}
+
+function goPrivacySecurity() {
+  void router.push({ name: 'privacy-security' });
+}
+
+function goHelpCenter() {
+  void router.push({ name: 'help-center' });
+}
+
+function goTermsOfService() {
+  void router.push({ name: 'terms-of-service' });
+}
+
+function goPrivacyPolicy() {
+  void router.push({ name: 'privacy-policy' });
 }
 
 function goNotificationSettings() {
@@ -102,7 +156,7 @@ async function logout() {
     appStore.reset();
     await router.push({ name: 'login' });
   } catch {
-    toast.error('Failed to sign out. Please try again.');
+    toast.error({ title: 'Failed to sign out. Please try again.' });
   } finally {
     isLoggingOut.value = false;
   }
@@ -128,6 +182,7 @@ const SettingsSection = defineComponent({
 
 const ICON_MAP = {
   user: User,
+  mail: Mail,
   lock: Lock,
   shield: Shield,
   ban: Ban,

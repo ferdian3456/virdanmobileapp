@@ -3,7 +3,7 @@
     <!-- Header -->
     <header class="pf-header">
       <button class="username-trigger" type="button">
-        <span class="username">{{ user?.username ?? '—' }}</span>
+        <span class="username">{{ profile?.username || profile?.nickname || user?.email || '—' }}</span>
         <ChevronDown :size="18" class="dropdown-chevron" />
       </button>
       <button class="icon-btn" type="button" @click="goSettings" aria-label="Settings">
@@ -11,25 +11,23 @@
       </button>
     </header>
 
-    <div v-if="loadingUser" class="state-block">
-      <q-spinner-dots color="primary" size="36px" />
-    </div>
+    <ProfileHeaderSkeleton v-if="loadingProfile" />
 
-    <template v-else-if="user">
-      <!-- Identity row: avatar + name + handle -->
+    <template v-else>
+      <!-- Identity row: avatar + name + handle (per-server profile) -->
       <section class="identity-row">
         <div class="pf-avatar">
-          <img v-if="user.avatarImage" :src="user.avatarImage" :alt="user.username" />
-          <span v-else>{{ (user.username ?? '?').charAt(0).toUpperCase() }}</span>
+          <img v-if="profile?.avatarUrl" :src="profile.avatarUrl" :alt="profile.nickname" />
+          <span v-else>{{ identityInitial }}</span>
         </div>
 
         <div class="identity-meta">
-          <div class="identity-name">{{ user.fullname || user.username }}</div>
-          <div class="identity-handle">@{{ user.username }}</div>
+          <div class="identity-name">{{ profile?.nickname || user?.email || '—' }}</div>
+          <div v-if="profile?.username" class="identity-handle">@{{ profile.username }}</div>
         </div>
       </section>
 
-      <p v-if="user.bio" class="bio">{{ user.bio }}</p>
+      <p v-if="profile?.bio" class="bio">{{ profile.bio }}</p>
 
       <button class="edit-btn" type="button" @click="onEditProfile">
         Edit Profile
@@ -52,9 +50,7 @@
       <!-- Tab content -->
       <div class="pf-content">
         <template v-if="activeTab === 'grid'">
-          <div v-if="loadingPosts && posts.length === 0" class="state-block">
-            <q-spinner-dots color="primary" size="36px" />
-          </div>
+          <PostGridSkeleton v-if="loadingPosts && posts.length === 0" />
 
           <div v-else-if="posts.length === 0" class="empty-grid">
             <div class="empty-icon">
@@ -67,12 +63,12 @@
           <div v-else class="post-grid">
             <button
               v-for="post in posts"
-              :key="post.postId"
+              :key="post.id"
               class="post-tile"
               type="button"
               @click="openPost(post)"
             >
-              <img :src="post.postImageUrl" alt="" />
+              <img v-if="post.imageUrl" :src="post.imageUrl" alt="" />
             </button>
           </div>
 
@@ -110,12 +106,14 @@ import { storeToRefs } from 'pinia';
 import { api } from 'src/boot/axios';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useAppStore } from 'src/stores/app.store';
+import ProfileHeaderSkeleton from 'src/components/feedback/skeletons/ProfileHeaderSkeleton.vue';
+import PostGridSkeleton from 'src/components/feedback/skeletons/PostGridSkeleton.vue';
 import { useToast } from 'src/composables/useToast';
 
 interface ProfilePost {
-  postId: string;
-  postImageUrl: string;
-  createDatetime: string;
+  id: string;
+  imageUrl: string | null;
+  createdAt: string;
 }
 
 interface PaginatedResponse<T> {
@@ -130,12 +128,30 @@ const toast = useToast();
 
 const { activeServerId } = storeToRefs(appStore);
 
+interface ServerProfileMeResponse {
+  profileId: string;
+  serverId: string;
+  nickname: string;
+  username: string;
+  bio: string | null;
+  avatarImageId: string | null;
+  avatarUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const user = computed(() => authStore.user);
-const loadingUser = ref(false);
+const profile = ref<ServerProfileMeResponse | null>(null);
+const loadingProfile = ref(false);
 const loadingPosts = ref(false);
 const posts = ref<ProfilePost[]>([]);
 const nextCursor = ref<string | null>(null);
 const hasMore = ref(true);
+
+const identityInitial = computed(() => {
+  const src = profile.value?.nickname || user.value?.email || '?';
+  return src.charAt(0).toUpperCase();
+});
 
 type TabId = 'grid' | 'reels' | 'saved';
 const activeTab = ref<TabId>('grid');
@@ -146,16 +162,7 @@ const tabs = [
 ];
 
 onMounted(async () => {
-  if (!authStore.user) {
-    loadingUser.value = true;
-    try {
-      await authStore.fetchUser();
-    } catch {
-      toast.error('Failed to load profile.');
-    } finally {
-      loadingUser.value = false;
-    }
-  }
+  await loadProfile();
   if (activeServerId.value) {
     await loadPosts(true);
   }
@@ -165,8 +172,29 @@ watch(activeServerId, () => {
   posts.value = [];
   nextCursor.value = null;
   hasMore.value = true;
+  void loadProfile();
   if (activeServerId.value) void loadPosts(true);
 });
+
+async function loadProfile() {
+  const sid = activeServerId.value;
+  if (!sid) {
+    profile.value = null;
+    return;
+  }
+  loadingProfile.value = true;
+  try {
+    const res = await api.get<ServerProfileMeResponse>(
+      `/servers/${sid}/profile/me`
+    );
+    profile.value = res.data;
+  } catch {
+    profile.value = null;
+    toast.error({ title: 'Failed to load profile.' });
+  } finally {
+    loadingProfile.value = false;
+  }
+}
 
 async function loadPosts(reset: boolean) {
   if (!activeServerId.value || loadingPosts.value) return;
@@ -181,10 +209,12 @@ async function loadPosts(reset: boolean) {
     const list = res.data?.data ?? [];
     if (reset) posts.value = list;
     else posts.value.push(...list);
-    nextCursor.value = res.data?.page?.nextCursor ?? null;
+    nextCursor.value = res.data?.page?.nextCursor || null;
     hasMore.value = !!nextCursor.value;
   } catch {
-    // Quiet fail; empty state handles it.
+    // Freeze pagination on fail — q-infinite-scroll would otherwise loop
+    // forever against a down BE.
+    hasMore.value = false;
   } finally {
     loadingPosts.value = false;
   }
@@ -200,7 +230,7 @@ async function loadMore(_idx: number, done: (stop?: boolean) => void) {
 }
 
 async function openPost(post: ProfilePost) {
-  await router.push({ name: 'post-detail', params: { postId: post.postId } });
+  await router.push({ name: 'post-detail', params: { postId: post.id } });
 }
 
 async function goSettings() {
@@ -208,8 +238,7 @@ async function goSettings() {
 }
 
 function onEditProfile() {
-  // Phase 6 / Settings page handles profile fields editing.
-  void router.push({ name: 'settings' });
+  void router.push({ name: 'edit-profile' });
 }
 </script>
 

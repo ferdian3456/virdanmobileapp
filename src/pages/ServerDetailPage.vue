@@ -18,9 +18,7 @@
       <span v-else class="sd-spacer"></span>
     </header>
 
-    <div v-if="loadingServer" class="state-block">
-      <q-spinner-dots color="primary" size="36px" />
-    </div>
+    <ServerHeaderSkeleton v-if="loadingServer" />
 
     <template v-else-if="server">
       <!-- Banner + avatar -->
@@ -28,7 +26,7 @@
         <div class="sd-banner" :style="bannerStyle"></div>
         <div class="sd-avatar-row">
           <div class="sd-avatar">
-            <img v-if="server.avatarImageUrl" :src="server.avatarImageUrl" alt="" />
+            <img v-if="server.avatarUrl" :src="server.avatarUrl" alt="" />
             <span v-else>{{ server.shortName?.charAt(0).toUpperCase() }}</span>
           </div>
         </div>
@@ -62,9 +60,7 @@
       <!-- Tab content -->
       <div class="sd-content">
         <template v-if="activeTab === 'posts'">
-          <div v-if="loadingPosts && posts.length === 0" class="state-block">
-            <q-spinner-dots color="primary" size="36px" />
-          </div>
+          <PostGridSkeleton v-if="loadingPosts && posts.length === 0" />
           <div v-else-if="posts.length === 0" class="state-block">
             <p class="empty-text">No posts in this server yet.</p>
           </div>
@@ -72,12 +68,12 @@
           <div v-else class="post-grid">
             <button
               v-for="post in posts"
-              :key="post.postId"
+              :key="post.id"
               class="post-tile"
               type="button"
               @click="openPost(post)"
             >
-              <img :src="post.postImageUrl" :alt="post.caption" />
+              <img v-if="post.imageUrl" :src="post.imageUrl" :alt="post.caption" />
             </button>
           </div>
 
@@ -115,31 +111,41 @@ import { ChevronLeft, Settings } from 'lucide-vue-next';
 import { api } from 'src/boot/axios';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useToast } from 'src/composables/useToast';
-import { normalizeError } from 'src/composables/useApiError';
+import { apiErrorToast } from 'src/composables/useApiError';
+import ServerHeaderSkeleton from 'src/components/feedback/skeletons/ServerHeaderSkeleton.vue';
+import PostGridSkeleton from 'src/components/feedback/skeletons/PostGridSkeleton.vue';
 
 interface ServerDetail {
   id: string;
   name: string;
   shortName: string;
   categoryName: string | null;
-  avatarImageUrl: string | null;
-  bannerImageUrl: string | null;
+  avatarUrl: string | null;
+  bannerUrl: string | null;
   description: string | null;
-  createDatetime: string;
+  createdAt: string;
   createdBy?: string;
 }
 
+interface PostAuthor {
+  userId: string;
+  nickname: string;
+  avatarUrl: string | null;
+  status: string;
+}
+
 interface PostItem {
-  postId: string;
-  ownerId: string;
-  ownerName: string;
-  ownerImageUrl: string | null;
-  postImageUrl: string;
+  id: string;
+  serverId: string;
+  author: PostAuthor;
+  imageUrl: string | null;
   caption: string;
   likeCount: number;
   commentCount: number;
-  isLiked: boolean;
-  createDatetime: string;
+  userLiked: boolean;
+  isOwner: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface PaginatedResponse<T> {
@@ -171,10 +177,10 @@ const isOwner = computed(
 );
 
 const bannerStyle = computed(() => {
-  if (server.value?.bannerImageUrl) {
-    return { backgroundImage: `url(${server.value.bannerImageUrl})` };
+  if (server.value?.bannerUrl) {
+    return { backgroundImage: `url(${server.value.bannerUrl})` };
   }
-  return { background: 'linear-gradient(135deg, #007BFF, #6C63FF)' };
+  return { background: 'linear-gradient(135deg, #007BFF, #007BFF)' };
 });
 
 onMounted(async () => {
@@ -187,8 +193,7 @@ async function loadServer() {
     const res = await api.get<ServerDetail>(`/servers/${props.id}`);
     server.value = res.data;
   } catch (err) {
-    const norm = normalizeError(err);
-    toast.error(norm.message);
+    toast.error(apiErrorToast(err, () => void loadServer()));
   } finally {
     loadingServer.value = false;
   }
@@ -207,10 +212,12 @@ async function loadPosts(reset: boolean) {
     const list = res.data?.data ?? [];
     if (reset) posts.value = list;
     else posts.value.push(...list);
-    nextCursor.value = res.data?.page?.nextCursor ?? null;
+    nextCursor.value = res.data?.page?.nextCursor || null;
     hasMore.value = !!nextCursor.value;
   } catch {
-    // Quiet fail — empty state shown instead.
+    // Freeze pagination on fail so q-infinite-scroll doesn't hammer the
+    // endpoint when BE is down / CORS rejects.
+    hasMore.value = false;
   } finally {
     loadingPosts.value = false;
   }
@@ -226,7 +233,7 @@ async function loadMore(_idx: number, done: (stop?: boolean) => void) {
 }
 
 async function openPost(post: PostItem) {
-  await router.push({ name: 'post-detail', params: { postId: post.postId } });
+  await router.push({ name: 'post-detail', params: { postId: post.id } });
 }
 
 async function openSettings() {
