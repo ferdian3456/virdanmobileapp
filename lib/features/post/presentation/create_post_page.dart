@@ -878,14 +878,30 @@ class _PhotoStageState extends State<_PhotoStage> {
       color: Colors.black,
       child: Stack(
         children: [
-          Center(
-            child: ready
-                ? AspectRatio(
-                    aspectRatio: ctrl.value.aspectRatio,
-                    child: CameraPreview(ctrl),
-                  )
-                : Container(color: Colors.black),
-          ),
+          // Fill stage with cover crop — match Quasar object-fit:cover.
+          if (ready)
+            Positioned.fill(
+              child: LayoutBuilder(
+                builder: (context, c) {
+                  // camera value.aspectRatio is width / height in landscape
+                  // sensor orientation. Use the previewSize, swapping axes
+                  // to portrait when needed.
+                  final preview = ctrl.value.previewSize;
+                  final pw = preview?.height ?? c.maxWidth;
+                  final ph = preview?.width ?? c.maxHeight;
+                  return FittedBox(
+                    fit: BoxFit.cover,
+                    clipBehavior: Clip.hardEdge,
+                    child: SizedBox(
+                      width: pw,
+                      height: ph,
+                      child: CameraPreview(ctrl),
+                    ),
+                  );
+                },
+              ),
+            ),
+          if (!ready) Positioned.fill(child: Container(color: Colors.black)),
           // Corner brackets
           const Positioned.fill(child: IgnorePointer(child: _CameraCorners())),
           // Error overlay
