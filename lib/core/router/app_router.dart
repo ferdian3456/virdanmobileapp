@@ -117,7 +117,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: Routes.appHome, builder: (_, _) => const HomePage()),
           GoRoute(path: Routes.appExplore, builder: (_, _) => const ExplorePage()),
-          GoRoute(path: Routes.appCreate, builder: (_, _) => const CreatePostPage()),
           GoRoute(
             path: Routes.appNotifications,
             builder: (_, _) => const NotificationsPage(),
@@ -125,6 +124,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(path: Routes.appProfile, builder: (_, _) => const ProfilePage()),
         ],
       ),
+      // /app/create lives OUTSIDE the shell — composer hides bottom nav.
+      GoRoute(path: Routes.appCreate, builder: (_, _) => const CreatePostPage()),
 
       // Standalone protected pages (no bottom nav).
       GoRoute(path: Routes.appCreateServer, builder: (_, _) => const CreateServerPage()),
