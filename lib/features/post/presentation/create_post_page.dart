@@ -193,20 +193,26 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
   }
 
   void _loadBytes(Uint8List bytes) {
-    final decoded = img.decodeImage(bytes);
+    var decoded = img.decodeImage(bytes);
     if (decoded == null) {
       ref
           .read(toastControllerProvider.notifier)
           .error(title: 'Could not read image.');
       return;
     }
+    // Apply EXIF rotation so width/height match what users see — camera
+    // captures often carry an orientation tag that Image.memory honors but
+    // img.decodeImage doesn't until we bake it in.
+    decoded = img.bakeOrientation(decoded);
+    final rebaked = Uint8List.fromList(img.encodeJpg(decoded, quality: 95));
     setState(() {
-      _sourceBytes = bytes;
+      _sourceBytes = rebaked;
       _decoded = decoded;
       _step = CpStep.crop;
       _aspectId = '1:1';
       _zoom = 1.0;
       _translate = Offset.zero;
+      _stageW = 0;
     });
   }
 
@@ -773,7 +779,10 @@ class _NextButton extends StatelessWidget {
       width: 64,
       child: TextButton(
         onPressed: enabled ? onTap : null,
-        style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+        style: TextButton.styleFrom(
+          foregroundColor: Colors.white,
+          disabledForegroundColor: Colors.white38,
+        ),
         child: const Text(
           'Next',
           style: TextStyle(
