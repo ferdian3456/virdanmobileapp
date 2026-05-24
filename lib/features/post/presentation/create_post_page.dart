@@ -7,8 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image/image.dart' as img;
-import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:photo_manager/photo_manager.dart';
 
 import '../../../core/errors/show_api_error_toast.dart';
 import '../../../core/feedback/toast/toast_controller.dart';
@@ -68,6 +68,8 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
 
   Uint8List? _croppedBytes;
   final _captionCtrl = TextEditingController();
+
+  AssetEntity? _selectedAsset;
 
   bool _isProcessing = false;
   bool _isUploading = false;
@@ -200,16 +202,12 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
 
   /* ─── Source picking ─── */
 
-  Future<void> _pickFromGallery() async {
+  Future<void> _loadFromSelectedAsset() async {
+    final asset = _selectedAsset;
+    if (asset == null) return;
     try {
-      final picker = ImagePicker();
-      final file = await picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 95,
-        maxWidth: 2400,
-      );
-      if (file == null || !mounted) return;
-      final bytes = await file.readAsBytes();
+      final bytes = await asset.originBytes;
+      if (bytes == null || !mounted) return;
       _loadBytes(bytes);
     } catch (e) {
       if (!mounted) return;
@@ -461,9 +459,18 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
           _Header(
             title: _headerTitle,
             onBack: _onBack,
-            trailing: _step == CpStep.crop
-                ? _NextButton(enabled: _decoded != null && !_isProcessing, onTap: _commitCrop)
-                : const SizedBox(width: 64),
+            trailing: switch (_step) {
+              CpStep.source when _tab == SourceTab.gallery => _NextButton(
+                  enabled: _selectedAsset != null,
+                  onTap: _loadFromSelectedAsset,
+                ),
+              CpStep.crop => _NextButton(
+                  enabled: _decoded != null && !_isProcessing,
+                  onTap: _commitCrop,
+                  dark: true,
+                ),
+              _ => const SizedBox(width: 64),
+            },
             dark: _step == CpStep.crop,
           ),
           Expanded(
@@ -484,13 +491,16 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
       children: [
         Expanded(
           child: switch (_tab) {
-            SourceTab.gallery => _GalleryStage(onTap: _pickFromGallery),
+            SourceTab.gallery => _GalleryPicker(
+                selected: _selectedAsset,
+                onSelect: (a) => setState(() => _selectedAsset = a),
+              ),
             SourceTab.photo => _PhotoStage(
                 controller: _camCtrl,
                 initializing: _camInitializing,
                 errorText: _camError,
                 onShutter: _captureFrame,
-                onPickGallery: _pickFromGallery,
+                onPickGallery: () => _onSourceTabChanged(SourceTab.gallery),
                 onFlip: _flipCamera,
                 onMount: _startCamera,
               ),
@@ -793,20 +803,23 @@ class _Header extends StatelessWidget {
 }
 
 class _NextButton extends StatelessWidget {
-  const _NextButton({required this.enabled, required this.onTap});
+  const _NextButton({required this.enabled, required this.onTap, this.dark = false});
 
   final bool enabled;
   final VoidCallback onTap;
+  final bool dark;
 
   @override
   Widget build(BuildContext context) {
+    final fg = dark ? Colors.white : AppColors.primary;
+    final disabled = dark ? Colors.white38 : AppColors.textTertiary;
     return SizedBox(
       width: 64,
       child: TextButton(
         onPressed: enabled ? onTap : null,
         style: TextButton.styleFrom(
-          foregroundColor: Colors.white,
-          disabledForegroundColor: Colors.white38,
+          foregroundColor: fg,
+          disabledForegroundColor: disabled,
         ),
         child: const Text(
           'Next',
@@ -823,53 +836,214 @@ class _NextButton extends StatelessWidget {
 
 /* ─── Source step bodies ─── */
 
-class _GalleryStage extends StatelessWidget {
-  const _GalleryStage({required this.onTap});
+class _GalleryPicker extends StatefulWidget {
+  const _GalleryPicker({required this.selected, required this.onSelect});
 
-  final VoidCallback onTap;
+  final AssetEntity? selected;
+  final ValueChanged<AssetEntity> onSelect;
+
+  @override
+  State<_GalleryPicker> createState() => _GalleryPickerState();
+}
+
+class _GalleryPickerState extends State<_GalleryPicker> {
+  List<AssetEntity> _items = const [];
+  bool _loading = true;
+  bool _denied = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadGallery());
+  }
+
+  Future<void> _loadGallery() async {
+    setState(() {
+      _loading = true;
+      _denied = false;
+    });
+    try {
+      final perm = await PhotoManager.requestPermissionExtend();
+      if (!perm.isAuth && !perm.hasAccess) {
+        if (!mounted) return;
+        setState(() {
+          _denied = true;
+          _loading = false;
+        });
+        return;
+      }
+      final albums = await PhotoManager.getAssetPathList(
+        type: RequestType.image,
+        onlyAll: true,
+      );
+      if (albums.isEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _items = const [];
+          _loading = false;
+        });
+        return;
+      }
+      final count = await albums.first.assetCountAsync;
+      final assets = await albums.first.getAssetListRange(
+        start: 0,
+        end: count > 200 ? 200 : count,
+      );
+      if (!mounted) return;
+      setState(() {
+        _items = assets;
+        _loading = false;
+      });
+      // Auto-select first (most recent) if nothing chosen yet.
+      if (widget.selected == null && assets.isNotEmpty) {
+        widget.onSelect(assets.first);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _items = const [];
+        _loading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Material(
-        color: const Color(0xFFF8F9FA),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xFFDEE2E6), width: 1.5),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(LucideIcons.image, size: 44, color: AppColors.textTertiary),
-                SizedBox(height: 12),
-                Text(
-                  'Tap to choose a photo',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF0F172A),
-                  ),
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_denied) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(LucideIcons.imageOff,
+                  size: 44, color: AppColors.textTertiary),
+              const SizedBox(height: 12),
+              const Text(
+                'No access to your photos',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF0F172A),
                 ),
-                SizedBox(height: 4),
-                Text(
-                  'JPEG, PNG, or WebP — max 10MB',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Grant photo permission to pick an image from your library.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton(
+                onPressed: () async {
+                  await PhotoManager.openSetting();
+                  if (mounted) _loadGallery();
+                },
+                child: const Text('Open settings'),
+              ),
+            ],
           ),
         ),
-      ),
+      );
+    }
+    if (_items.isEmpty) {
+      return const Center(
+        child: Text(
+          'No photos found.',
+          style: TextStyle(fontFamily: 'Inter', color: AppColors.textSecondary),
+        ),
+      );
+    }
+    return Column(
+      children: [
+        // Top preview — square of selected asset.
+        AspectRatio(
+          aspectRatio: 1,
+          child: Container(
+            color: const Color(0xFFF1F3F5),
+            child: widget.selected == null
+                ? null
+                : _AssetImage(
+                    asset: widget.selected!,
+                    size: const ThumbnailSize.square(1080),
+                    fit: BoxFit.cover,
+                  ),
+          ),
+        ),
+        // Grid — 4 cols.
+        Expanded(
+          child: GridView.builder(
+            padding: EdgeInsets.zero,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              mainAxisSpacing: 2,
+              crossAxisSpacing: 2,
+            ),
+            itemCount: _items.length,
+            itemBuilder: (_, i) {
+              final a = _items[i];
+              final active = widget.selected?.id == a.id;
+              return GestureDetector(
+                onTap: () => widget.onSelect(a),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    _AssetImage(
+                      asset: a,
+                      size: const ThumbnailSize.square(200),
+                      fit: BoxFit.cover,
+                    ),
+                    if (active)
+                      Container(color: const Color(0x88FFFFFF)),
+                    if (active)
+                      const Align(
+                        alignment: Alignment.topRight,
+                        child: Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(LucideIcons.check,
+                              color: AppColors.primary, size: 18),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AssetImage extends StatelessWidget {
+  const _AssetImage({
+    required this.asset,
+    required this.size,
+    this.fit = BoxFit.cover,
+  });
+
+  final AssetEntity asset;
+  final ThumbnailSize size;
+  final BoxFit fit;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Uint8List?>(
+      future: asset.thumbnailDataWithSize(size),
+      builder: (_, snap) {
+        if (snap.connectionState != ConnectionState.done || snap.data == null) {
+          return Container(color: const Color(0xFFE9ECEF));
+        }
+        return Image.memory(snap.data!, fit: fit, gaplessPlayback: true);
+      },
     );
   }
 }
