@@ -109,20 +109,38 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
 
   Future<void> _startCamera() async {
     if (_camInitializing) return;
-    setState(() {
+
+    // Detach + dispose the previous controller BEFORE creating a new one so
+    // CameraPreview never gets rebuilt against a disposed instance.
+    final old = _camCtrl;
+    if (mounted) {
+      setState(() {
+        _camCtrl = null;
+        _camInitializing = true;
+        _camError = null;
+      });
+    } else {
+      _camCtrl = null;
       _camInitializing = true;
       _camError = null;
-    });
+    }
+    if (old != null) {
+      try {
+        await old.dispose();
+      } catch (_) {}
+    }
+
     try {
       if (_cameras.isEmpty) {
         _cameras = await availableCameras();
       }
       if (_cameras.isEmpty) {
-        setState(() => _camError = 'No camera available on this device.');
+        if (mounted) {
+          setState(() => _camError = 'No camera available on this device.');
+        }
         return;
       }
       final desc = _cameras[_camIndex % _cameras.length];
-      await _camCtrl?.dispose();
       final ctrl = CameraController(
         desc,
         ResolutionPreset.high,
@@ -145,7 +163,11 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
 
   Future<void> _stopCamera() async {
     final c = _camCtrl;
-    _camCtrl = null;
+    if (mounted) {
+      setState(() => _camCtrl = null);
+    } else {
+      _camCtrl = null;
+    }
     if (c != null) {
       try {
         await c.dispose();
@@ -154,7 +176,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
   }
 
   Future<void> _flipCamera() async {
-    if (_cameras.length < 2) return;
+    if (_cameras.length < 2 || _camInitializing) return;
     _camIndex = (_camIndex + 1) % _cameras.length;
     await _startCamera();
   }
@@ -165,7 +187,10 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
     try {
       final shot = await ctrl.takePicture();
       final bytes = await shot.readAsBytes();
+      // Stop camera AFTER reading bytes so the controller stays alive for
+      // the takePicture / readAsBytes await chain.
       await _stopCamera();
+      if (!mounted) return;
       _loadBytes(bytes);
     } catch (e) {
       if (!mounted) return;
