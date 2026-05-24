@@ -91,3 +91,8 @@ button, input, textarea, select
 // ─── Page-level paddings consistent with design canvas ─────────────
 .q-page
   min-height: calc(100dvh - var(--safe-top, 0px) - var(--safe-bottom, 0px))
+
+// ─── Safe area (notch / status bar / home indicator) for native shell ──
+.q-page-container
+  padding-top: var(--safe-top, 0px)
+  padding-bottom: var(--safe-bottom, 0px)
