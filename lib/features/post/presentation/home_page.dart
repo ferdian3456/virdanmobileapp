@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../core/errors/show_api_error_toast.dart';
 import '../../../core/feedback/toast/toast_controller.dart';
+import '../../../core/feedback/v_skeleton.dart';
 import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
@@ -12,6 +15,8 @@ import '../../../core/widgets/v_button.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../server/data/server_repository.dart';
 import '../../server/domain/server.dart';
+import '../data/server_feed_provider.dart';
+import 'widgets/post_card.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -21,12 +26,56 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  final _scroll = ScrollController();
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(myServersProvider.notifier).fetch();
+    _scroll.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await ref.read(myServersProvider.notifier).fetch();
+      final id = ref.read(myServersProvider).activeServerId;
+      if (id != null && mounted) {
+        ref.read(serverFeedProvider.notifier).loadFor(id);
+      }
     });
+  }
+
+  @override
+  void dispose() {
+    _scroll.removeListener(_onScroll);
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final pos = _scroll.position;
+    if (pos.pixels >= pos.maxScrollExtent - 400) {
+      ref.read(serverFeedProvider.notifier).loadMore();
+    }
+  }
+
+  Future<void> _refreshFeed() async {
+    HapticFeedback.lightImpact();
+    try {
+      await ref.read(serverFeedProvider.notifier).refresh();
+    } catch (e) {
+      if (!mounted) return;
+      showApiErrorToast(
+        ref,
+        e,
+        onRetry: () => ref.read(serverFeedProvider.notifier).refresh(),
+      );
+    }
+  }
+
+  Future<void> _toggleLike(String postId) async {
+    try {
+      await ref.read(serverFeedProvider.notifier).toggleLike(postId);
+    } catch (e) {
+      if (!mounted) return;
+      showApiErrorToast(ref, e);
+    }
   }
 
   void _logout() {
@@ -48,15 +97,13 @@ class _HomePageState extends ConsumerState<HomePage> {
             for (final s in servers)
               ListTile(
                 leading: _AvatarTile(server: s),
-                title: Text(
-                  s.name,
-                  style: AppTextStyles.bodyStrong,
-                ),
+                title: Text(s.name, style: AppTextStyles.bodyStrong),
                 trailing: s.id == activeId
                     ? const Icon(LucideIcons.check, color: AppColors.primary)
                     : null,
                 onTap: () {
                   ref.read(myServersProvider.notifier).setActive(s.id);
+                  ref.read(serverFeedProvider.notifier).loadFor(s.id);
                   Navigator.pop(context);
                 },
               ),
@@ -109,6 +156,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget build(BuildContext context) {
     final state = ref.watch(myServersProvider);
     final active = state.activeServer;
+    final activeId = active?.id;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -121,7 +169,15 @@ class _HomePageState extends ConsumerState<HomePage> {
               onTapName: () => _openServerSwitcher(state.servers, state.activeServerId),
               onLogout: _logout,
             ),
-            const Expanded(child: _EmptyFeed()),
+            Expanded(
+              child: activeId == null
+                  ? const _NoServerState()
+                  : _FeedBody(
+                      scroll: _scroll,
+                      onRefresh: _refreshFeed,
+                      onLikeTap: _toggleLike,
+                    ),
+            ),
           ],
         ),
       ),
@@ -186,7 +242,7 @@ class _HomeHeader extends StatelessWidget {
             icon: const Icon(LucideIcons.send, size: 24),
             tooltip: 'Direct messages',
             onPressed: () {
-              // TODO(Phase 6): chat page (mock).
+              // TODO(Phase 6 mock): chat list.
             },
           ),
           IconButton(
@@ -200,47 +256,198 @@ class _HomeHeader extends StatelessWidget {
   }
 }
 
-class _EmptyFeed extends ConsumerWidget {
-  const _EmptyFeed();
+class _FeedBody extends ConsumerWidget {
+  const _FeedBody({
+    required this.scroll,
+    required this.onRefresh,
+    required this.onLikeTap,
+  });
+
+  final ScrollController scroll;
+  final Future<void> Function() onRefresh;
+  final ValueChanged<String> onLikeTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Center(
+    final feed = ref.watch(serverFeedProvider);
+
+    if (feed.isLoading && feed.posts.isEmpty) {
+      return const _FeedSkeleton();
+    }
+    if (feed.hasError && feed.posts.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xxl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(LucideIcons.wifiOff, size: 48, color: AppColors.error),
+              const SizedBox(height: AppSpacing.md),
+              const Text(
+                'Failed to load posts',
+                style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              VButton(label: 'Try again', onPressed: onRefresh),
+            ],
+          ),
+        ),
+      );
+    }
+    if (feed.posts.isEmpty) {
+      return RefreshIndicator.adaptive(
+        onRefresh: onRefresh,
+        child: ListView(
+          children: [
+            const SizedBox(height: 80),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xxl),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(LucideIcons.image, size: 56, color: AppColors.textTertiary),
+                    SizedBox(height: AppSpacing.lg),
+                    Text(
+                      'No posts yet',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: AppSpacing.sm),
+                    Text(
+                      'Be the first to post in this server!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return RefreshIndicator.adaptive(
+      onRefresh: onRefresh,
+      child: ListView.builder(
+        controller: scroll,
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        itemCount: feed.posts.length + (feed.hasMore ? 1 : 0),
+        itemBuilder: (_, i) {
+          if (i == feed.posts.length) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(strokeWidth: 3),
+                ),
+              ),
+            );
+          }
+          final post = feed.posts[i];
+          return PostCard(
+            post: post,
+            onLikeTap: () => onLikeTap(post.id),
+            onCommentTap: () {
+              // TODO(Phase 4): push comments page.
+              ref
+                  .read(toastControllerProvider.notifier)
+                  .info(title: 'Comments page lands in Phase 4');
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _FeedSkeleton extends StatelessWidget {
+  const _FeedSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+      children: List.generate(3, (_) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: Row(
+                  children: [
+                    const VSkeleton.circle(size: 32),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          VSkeleton(width: 120, height: 12),
+                          SizedBox(height: 4),
+                          VSkeleton(width: 80, height: 10),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const AspectRatio(
+                aspectRatio: 1,
+                child: VSkeleton(height: double.infinity, radius: 0),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: VSkeleton(width: 180, height: 14),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _NoServerState extends StatelessWidget {
+  const _NoServerState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(LucideIcons.image, size: 56, color: AppColors.textTertiary),
-            const SizedBox(height: AppSpacing.lg),
-            const Text(
-              'No posts yet',
+          children: const [
+            Icon(LucideIcons.users, size: 56, color: AppColors.textTertiary),
+            SizedBox(height: AppSpacing.lg),
+            Text(
+              'No servers yet',
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: AppSpacing.sm),
-            const Text(
-              'Be the first to post in this server!\nPost composer lands in Phase 4.',
+            SizedBox(height: AppSpacing.sm),
+            Text(
+              'Create or join a server to see posts here.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 14,
                 color: AppColors.textSecondary,
-                height: 1.5,
               ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            VButton(
-              label: 'Create post',
-              onPressed: () {
-                ref.read(toastControllerProvider.notifier).info(
-                      title: 'Post composer arrives in Phase 4',
-                    );
-              },
             ),
           ],
         ),
