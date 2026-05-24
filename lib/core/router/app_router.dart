@@ -65,18 +65,28 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           (isProtectedApp || isOnboarding || isStandaloneProtected)) {
         return Routes.authLogin;
       }
-      if (isAuthed && isGuestRoute) {
-        final serversState = ref.read(myServersProvider);
-        if (!serversState.isLoading && serversState.servers.isEmpty) {
-          Future.microtask(() => ref.read(myServersProvider.notifier).fetch());
-        }
-        return serversState.hasServers
-            ? Routes.appHome
-            : Routes.onboardingServerChoice;
+
+      // Authed path. Kick off myServers fetch if not done yet.
+      final serversState = ref.read(myServersProvider);
+      if (isAuthed && !serversState.isInitialized && !serversState.isLoading) {
+        Future.microtask(() => ref.read(myServersProvider.notifier).fetch());
       }
+
+      // Guest pages while authed → always /app/home; the home guard below
+      // will bounce to onboarding if the fetch comes back empty.
+      if (isAuthed && isGuestRoute) {
+        return Routes.appHome;
+      }
+
+      // Onboarding entry while already initialized + has servers → go home.
+      if (isAuthed && isOnboarding && serversState.isInitialized && serversState.hasServers) {
+        return Routes.appHome;
+      }
+
+      // Protected app routes: only redirect to onboarding once we *know* the
+      // server list is empty (fetch returned 0). Pre-fetch we hold position.
       if (isAuthed && isProtectedApp && !isDevRoute) {
-        final serversState = ref.read(myServersProvider);
-        if (!serversState.hasServers && !serversState.isLoading) {
+        if (serversState.isInitialized && !serversState.hasServers) {
           return Routes.onboardingServerChoice;
         }
       }

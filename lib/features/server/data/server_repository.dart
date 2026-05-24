@@ -12,6 +12,7 @@ class MyServersState {
     required this.servers,
     this.activeServerId,
     this.isLoading = false,
+    this.isInitialized = false,
   });
 
   static const initial = MyServersState(servers: []);
@@ -19,6 +20,12 @@ class MyServersState {
   final List<Server> servers;
   final String? activeServerId;
   final bool isLoading;
+
+  /// True once `GET /servers/me` has returned at least once (success or
+  /// failure). Router uses this to avoid redirecting to onboarding before
+  /// the fetch resolves — otherwise we punt a user with N>0 servers to the
+  /// onboarding screen on cold boot just because we hadn't asked yet.
+  final bool isInitialized;
 
   bool get hasServers => servers.isNotEmpty;
 
@@ -34,11 +41,13 @@ class MyServersState {
     List<Server>? servers,
     String? activeServerId,
     bool? isLoading,
+    bool? isInitialized,
   }) {
     return MyServersState(
       servers: servers ?? this.servers,
       activeServerId: activeServerId ?? this.activeServerId,
       isLoading: isLoading ?? this.isLoading,
+      isInitialized: isInitialized ?? this.isInitialized,
     );
   }
 }
@@ -88,10 +97,13 @@ class MyServersRepository extends Notifier<MyServersState> {
         servers: servers,
         activeServerId: active,
         isLoading: false,
+        isInitialized: true,
       );
       _initialized = true;
     } catch (e) {
-      state = state.copyWith(isLoading: false);
+      // Mark initialized so the router stops bouncing; let page show error.
+      state = state.copyWith(isLoading: false, isInitialized: true);
+      _initialized = true;
       rethrow;
     }
   }
