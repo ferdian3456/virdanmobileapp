@@ -9,6 +9,8 @@ import '../core/feedback/v_progress_ring.dart';
 import '../core/feedback/v_skeleton.dart';
 import '../core/theme/tokens.dart';
 import '../core/theme/typography.dart';
+import '../core/widgets/v_app_bar.dart';
+import '../core/widgets/v_avatar.dart';
 import '../core/widgets/v_button.dart';
 import '../core/widgets/v_input.dart';
 
@@ -58,12 +60,61 @@ class _SmokeScreenState extends ConsumerState<SmokeScreen> {
   Widget build(BuildContext context) {
     final toast = ref.read(toastControllerProvider.notifier);
     return Scaffold(
-      appBar: AppBar(title: const Text('Smoke Test (dev)')),
+      appBar: VAppBar(
+        title: 'Smoke Test (dev)',
+        leading: VAppBarLeading.none,
+        actions: [
+          IconButton(
+            icon: const Icon(LucideIcons.bell),
+            tooltip: 'Notifications',
+            onPressed: () => ref.read(toastControllerProvider.notifier).info(
+                  title: 'Action tapped',
+                ),
+          ),
+        ],
+      ),
       body: Stack(
         children: [
           ListView(
             padding: const EdgeInsets.all(AppSpacing.lg),
             children: [
+              _Section('VAvatar', [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: const [
+                    VAvatar(fallbackInitial: 'V', size: VAvatarSize.xs),
+                    SizedBox(width: AppSpacing.md),
+                    VAvatar(fallbackInitial: 'V', size: VAvatarSize.sm),
+                    SizedBox(width: AppSpacing.md),
+                    VAvatar(fallbackInitial: 'V'),
+                    SizedBox(width: AppSpacing.md),
+                    VAvatar(fallbackInitial: 'V', size: VAvatarSize.lg),
+                    SizedBox(width: AppSpacing.md),
+                    VAvatar(fallbackInitial: 'V', size: VAvatarSize.xl),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    const VAvatar(
+                      url: 'https://i.pravatar.cc/200?img=15',
+                      fallbackInitial: 'F',
+                      size: VAvatarSize.lg,
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    const VAvatar(
+                      url: 'https://invalid-host.example/not-found.jpg',
+                      fallbackInitial: 'X',
+                      size: VAvatarSize.lg,
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    const VAvatar(fallbackInitial: 'A', size: VAvatarSize.lg),
+                    const SizedBox(width: AppSpacing.md),
+                    Text('URL · error fallback · no URL',
+                        style: AppTextStyles.caption),
+                  ],
+                ),
+              ]),
               _Section('Toast', [
                 Wrap(
                   spacing: AppSpacing.sm,
