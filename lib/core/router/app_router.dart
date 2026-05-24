@@ -9,14 +9,29 @@ import '../../features/auth/presentation/login_page.dart';
 import '../../features/auth/presentation/register_page.dart';
 import '../../features/auth/presentation/verify_otp_page.dart';
 import '../../features/auth/presentation/verify_password_page.dart';
+import '../../features/chat/presentation/chat_page.dart';
 import '../../features/explore/presentation/explore_page.dart';
 import '../../features/notifications/presentation/notifications_page.dart';
 import '../../features/onboarding/presentation/onboarding_server_choice_page.dart';
+import '../../features/post/presentation/comments_page.dart';
 import '../../features/post/presentation/create_post_page.dart';
 import '../../features/post/presentation/home_page.dart';
+import '../../features/post/presentation/post_detail_page.dart';
+import '../../features/profile/presentation/edit_profile_page.dart';
+import '../../features/profile/presentation/profile_page.dart';
 import '../../features/profile/presentation/your_profile_page.dart';
 import '../../features/server/data/server_repository.dart';
 import '../../features/server/presentation/create_server_page.dart';
+import '../../features/server/presentation/edit_server_settings_page.dart';
+import '../../features/server/presentation/join_by_invite_page.dart';
+import '../../features/server/presentation/server_detail_page.dart';
+import '../../features/settings/presentation/change_email_page.dart';
+import '../../features/settings/presentation/change_password_page.dart';
+import '../../features/settings/presentation/help_center_page.dart';
+import '../../features/settings/presentation/notification_settings_page.dart';
+import '../../features/settings/presentation/privacy_security_page.dart';
+import '../../features/settings/presentation/settings_page.dart';
+import '../../features/settings/presentation/static_pages.dart';
 import '../../shared/layouts/main_layout.dart';
 import 'routes.dart';
 
@@ -37,8 +52,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isProtectedApp = matched.startsWith('/app');
       final isOnboarding = matched.startsWith('/onboarding');
       final isDevRoute = matched.startsWith('/dev');
+      final isStandaloneProtected = matched.startsWith('/server') ||
+          matched.startsWith('/posts') ||
+          matched.startsWith('/profile/') ||
+          matched.startsWith('/settings') ||
+          matched.startsWith('/chat') ||
+          matched.startsWith('/join');
 
-      if (!isAuthed && (isProtectedApp || isOnboarding)) {
+      if (!isAuthed &&
+          (isProtectedApp || isOnboarding || isStandaloneProtected)) {
         return Routes.authLogin;
       }
       if (isAuthed && isGuestRoute) {
@@ -64,6 +86,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.authRegister, builder: (_, _) => const RegisterPage()),
       GoRoute(path: Routes.authVerifyOtp, builder: (_, _) => const VerifyOtpPage()),
       GoRoute(path: Routes.authVerifyPassword, builder: (_, _) => const VerifyPasswordPage()),
+
       GoRoute(
         path: Routes.onboardingServerChoice,
         builder: (_, _) => const OnboardingServerChoicePage(),
@@ -73,12 +96,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const CreateServerPage(),
       ),
 
-      // Phase 0 dev screen — keep accessible until Phase 6 cleanup.
+      // Dev surface — keep until Phase 6 cleanup.
       GoRoute(path: Routes.devSmoke, builder: (_, _) => const SmokeScreen()),
 
-      // /app shell — bottom tab bar wraps all in-app pages. Sub-routes that
-      // should NOT show the bottom nav (e.g., compose, create-server) live
-      // outside this shell.
+      // Bottom-tab shell.
       ShellRoute(
         builder: (_, _, child) => MainLayout(child: child),
         routes: [
@@ -93,18 +114,53 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      // Modal-style routes (full screen, no bottom nav).
+      // Standalone protected pages (no bottom nav).
+      GoRoute(path: Routes.appCreateServer, builder: (_, _) => const CreateServerPage()),
+      GoRoute(path: Routes.appJoin, builder: (_, _) => const JoinByInvitePage()),
+      GoRoute(path: Routes.appChat, builder: (_, _) => const ChatPage()),
+      GoRoute(path: Routes.appEditProfile, builder: (_, _) => const EditProfilePage()),
+
       GoRoute(
-        path: Routes.appCreateServer,
-        builder: (_, _) => const CreateServerPage(),
+        path: '/server/:id',
+        builder: (_, state) => ServerDetailPage(serverId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/server/:id/settings',
+        builder: (_, state) =>
+            EditServerSettingsPage(serverId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/posts/:id',
+        builder: (_, state) => PostDetailPage(postId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/posts/:id/comments',
+        builder: (_, state) => CommentsPage(postId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/profile/:userId',
+        builder: (_, state) => ProfilePage(userId: state.pathParameters['userId']!),
+      ),
+
+      GoRoute(path: Routes.settings, builder: (_, _) => const SettingsPage()),
+      GoRoute(path: Routes.settingsEmail, builder: (_, _) => const ChangeEmailPage()),
+      GoRoute(path: Routes.settingsPassword, builder: (_, _) => const ChangePasswordPage()),
+      GoRoute(
+        path: Routes.settingsNotifications,
+        builder: (_, _) => const NotificationSettingsPage(),
+      ),
+      GoRoute(path: Routes.settingsPrivacy, builder: (_, _) => const PrivacySecurityPage()),
+      GoRoute(path: Routes.settingsHelp, builder: (_, _) => const HelpCenterPage()),
+      GoRoute(path: Routes.settingsTerms, builder: (_, _) => const TermsOfServicePage()),
+      GoRoute(
+        path: Routes.settingsPrivacyPolicy,
+        builder: (_, _) => const PrivacyPolicyPage(),
       ),
     ],
     errorBuilder: (_, state) => _NotFoundPage(uri: state.uri.toString()),
   );
 });
 
-/// Bridges Riverpod state changes into a Listenable so go_router refreshes
-/// its redirect chain when auth or server state flips.
 class _RouterRefreshNotifier extends ChangeNotifier {
   _RouterRefreshNotifier(this._ref) {
     _authSub = _ref.listen<AsyncValue<AuthState>>(
