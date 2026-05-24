@@ -902,8 +902,6 @@ class _PhotoStageState extends State<_PhotoStage> {
               ),
             ),
           if (!ready) Positioned.fill(child: Container(color: Colors.black)),
-          // Corner brackets
-          const Positioned.fill(child: IgnorePointer(child: _CameraCorners())),
           // Error overlay
           if (widget.errorText != null)
             Positioned.fill(
@@ -973,46 +971,6 @@ class _PhotoStageState extends State<_PhotoStage> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _CameraCorners extends StatelessWidget {
-  const _CameraCorners();
-
-  @override
-  Widget build(BuildContext context) {
-    Widget corner(Alignment a) {
-      const size = 26.0;
-      const thick = 3.0;
-      final box = Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          border: Border(
-            top: a.y < 0 ? const BorderSide(color: Colors.white, width: thick) : BorderSide.none,
-            bottom: a.y > 0 ? const BorderSide(color: Colors.white, width: thick) : BorderSide.none,
-            left: a.x < 0 ? const BorderSide(color: Colors.white, width: thick) : BorderSide.none,
-            right: a.x > 0 ? const BorderSide(color: Colors.white, width: thick) : BorderSide.none,
-          ),
-        ),
-      );
-      return Positioned(
-        top: a.y < 0 ? 16 : null,
-        bottom: a.y > 0 ? 110 : null,
-        left: a.x < 0 ? 16 : null,
-        right: a.x > 0 ? 16 : null,
-        child: box,
-      );
-    }
-
-    return Stack(
-      children: [
-        corner(Alignment.topLeft),
-        corner(Alignment.topRight),
-        corner(Alignment.bottomLeft),
-        corner(Alignment.bottomRight),
-      ],
     );
   }
 }
