@@ -164,7 +164,6 @@ abstract final class AppMotion {
 |---|---|---|---|
 | **Skeleton** | Initial load list/feed/detail dengan layout known | Load < 200ms, button submit, mutation | `VSkeleton` (shimmer) |
 | **Spinner in-place (button)** | Submit/save/delete mutation triggered by button | List/feed load | `VButton(loading: true)` |
-| **Spinner overlay** | Critical block (auth init, payment) | Non-blocking ops | `VLoadingOverlay` |
 | **Spinner centered (small)** | Section refresh, nested area | Top-level page load | `CircularProgressIndicator` size 24 |
 | **Progress ring/bar** | File upload, multi-step progress measurable | Indeterminate ops | `VProgressRing` |
 | **Pull-to-refresh** | Top of feed/list yang refresh-able | Detail page, form | `RefreshIndicator` |
@@ -196,7 +195,19 @@ abstract final class AppMotion {
 ```dart
 ref.watch(feedProvider).when(
   loading: () => const FeedSkeleton(count: 5),
-  error: (e, _) => VErrorState(error: e, onRetry: () => ref.invalidate(feedProvider)),
+  error: (e, _) {
+    // Surface error via toast. Empty state with retry CTA covers the visible
+    // page so user has an obvious action.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showApiErrorToast(ref, e, onRetry: () => ref.invalidate(feedProvider));
+    });
+    return VEmptyState(
+      icon: LucideIcons.wifiOff,
+      title: 'Gagal memuat',
+      subtitle: 'Periksa koneksi internet kamu.',
+      cta: VButton(label: 'Coba lagi', onPressed: () => ref.invalidate(feedProvider)),
+    );
+  },
   data: (posts) => posts.isEmpty
       ? const VEmptyState(icon: LucideIcons.fileText, title: 'Belum ada post')
       : ListView.builder(itemBuilder: (_, i) => PostCard(post: posts[i])),
@@ -230,22 +241,6 @@ VButton(
   onPressed: state.isSubmitting ? null : () => controller.submit(),
 );
 ```
-
-### 2.4 Spinner Overlay (Full-Page Block) — Decision Rules
-
-**PAKAI ketika:**
-- App init (cek token, fetch initial state).
-- Critical action yang user tidak boleh interrupt (e.g., payment confirmation — N/A di Virdan saat ini).
-- Force-blocked state (e.g., maintenance mode toggle).
-
-**JANGAN pakai ketika:**
-- Operasi normal — block UX, jelek.
-- Mutation button — pakai spinner in-button.
-
-**Behavior**:
-- Semi-transparent backdrop (`AppColors.overlay`).
-- Centered spinner + optional message.
-- Dismissable: TIDAK. Sampai operasi selesai.
 
 ### 2.5 Spinner Centered Small — Decision Rules
 
@@ -508,25 +503,35 @@ VEmptyState(
 
 ---
 
-## 6. Error State (Full Page)
+## 6. Error → Toast Pattern (Project Decision)
 
-### 6.1 Kapan
+**Keputusan project**: Virdan TIDAK memakai full-page error component. Semua error di-surface lewat **toast** (lihat §3). Page tetap render — kalau load fail dan tidak ada data, fallback ke **empty state** dengan CTA retry.
 
-- Initial page load gagal **dan** tidak ada cached data untuk show.
-- Critical state error (e.g., session corrupted).
+Alasan:
+- Toast = non-blocking. User bisa retry tanpa kehilangan konteks.
+- Full-page error = jarang dibutuhkan di mobile context Virdan (cache-friendly, retry mudah).
+- Mengurangi component sprawl + state machine logic.
 
-### 6.2 Komposisi
+### 6.1 Decision Tree
 
-1. **Icon** — `LucideIcons.alertTriangle` atau `wifiOff`, 48px, `AppColors.error`.
-2. **Title** — "Gagal memuat" atau context-specific.
-3. **Subtitle** — pesan error human-friendly (jangan tampilkan raw stack trace).
-4. **Retry button** — `VButton` primary, label "Coba lagi".
-5. (Optional) "Lihat detail" expand untuk error message (untuk debug, di prod kondisional).
+| Skenario | Tampilan |
+|---|---|
+| Initial load fail, **ada cached data** | Tampilkan cached data + toast error (`onRetry` aman) |
+| Initial load fail, **tanpa cached data** | `VEmptyState` ber-CTA "Coba lagi" + toast error (`onRetry`) |
+| Background refresh fail | Toast error (jangan flush page) |
+| Mutation fail (POST/PUT/DELETE) | Toast error **tanpa `onRetry`** (cegah dobel write) |
+| Critical state (session corrupted, auth expired) | Redirect ke `/auth/login` + toast info "Sesi habis, silakan login lagi" |
 
-### 6.3 Jangan Tampilkan Error State Kalau:
+### 6.2 Implementasi
 
-- Ada **cached data** — show stale data + linear progress bar atau toast warning.
-- Background refresh fail — show toast error, jangan flush page.
+Pakai helper `showApiErrorToast(ref, error, {onRetry})` dari `core/errors/`. Mapping error → toast title:
+
+- `NetworkError` → "Tidak ada koneksi internet"
+- `TimeoutError` → "Permintaan terlalu lama"
+- `ApiError` → pakai `error.message` (dari BE envelope)
+- `UnknownError` → "Terjadi kesalahan. Coba lagi nanti"
+
+`onRetry` HANYA untuk GET/load operations. Mutation = no retry.
 
 ---
 
@@ -813,7 +818,7 @@ class FeedNotifier extends AutoDisposeAsyncNotifier<FeedState> {
 | State | Display |
 |---|---|
 | Initial loading | Skeleton (§2.2) |
-| Initial error | `VErrorState` (§6) |
+| Initial error | `VEmptyState` ber-CTA "Coba lagi" + toast error (§6) |
 | Empty | `VEmptyState` (§5) |
 | Has data, loading more | List + footer spinner small (§2.5) |
 | Has data, load more error | List + footer "Gagal load. Tap untuk coba lagi" |
@@ -1058,9 +1063,7 @@ Sebelum upload (avatar, banner, post image):
 | `VSkeleton` | `core/feedback/v_skeleton.dart` | TODO Phase 0 | Shimmer pakai `shimmer` package |
 | `VProgressRing` | `core/feedback/v_progress_ring.dart` | TODO Phase 0 | overlay + inline mode |
 | `VFieldError` | `core/feedback/v_field_error.dart` | TODO Phase 0 | shake animation |
-| `VLoadingOverlay` | `core/feedback/v_loading_overlay.dart` | TODO Phase 0 | Critical block |
 | `VEmptyState` | `core/feedback/v_empty_state.dart` | TODO Phase 0 | icon + title + sub + cta |
-| `VErrorState` | `core/feedback/v_error_state.dart` | TODO Phase 0 | icon + msg + retry |
 | `PostCard` | `features/post/presentation/widgets/` | TODO Phase 4 | Feed item |
 | `ServerCard` | `features/server/presentation/widgets/` | TODO Phase 3 | Discovery item |
 | `CommentTile` | `features/post/presentation/widgets/` | TODO Phase 4 | |

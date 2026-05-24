@@ -4,9 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../core/feedback/toast/toast_controller.dart';
 import '../core/feedback/v_empty_state.dart';
-import '../core/feedback/v_error_state.dart';
 import '../core/feedback/v_field_error.dart';
-import '../core/feedback/v_loading_overlay.dart';
 import '../core/feedback/v_progress_ring.dart';
 import '../core/feedback/v_skeleton.dart';
 import '../core/theme/tokens.dart';
@@ -27,7 +25,6 @@ class _SmokeScreenState extends ConsumerState<SmokeScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
   bool _submitting = false;
-  bool _showOverlay = false;
   double _progress = 0.0;
 
   @override
@@ -215,30 +212,9 @@ class _SmokeScreenState extends ConsumerState<SmokeScreen> {
                   ),
                 ),
               ]),
-              _Section('VErrorState', [
-                SizedBox(
-                  height: 240,
-                  child: VErrorState(
-                    title: 'Gagal memuat',
-                    subtitle: 'Periksa koneksi internet kamu.',
-                    onRetry: () => toast.info(title: 'Retry tapped'),
-                  ),
-                ),
-              ]),
-              _Section('VLoadingOverlay', [
-                VButton(
-                  label: _showOverlay ? 'Hide overlay' : 'Show overlay (3s)',
-                  onPressed: () async {
-                    setState(() => _showOverlay = true);
-                    await Future<void>.delayed(const Duration(seconds: 3));
-                    if (mounted) setState(() => _showOverlay = false);
-                  },
-                ),
-              ]),
               const SizedBox(height: AppSpacing.huge),
             ],
           ),
-          if (_showOverlay) const VLoadingOverlay(message: 'Memproses...'),
         ],
       ),
     );

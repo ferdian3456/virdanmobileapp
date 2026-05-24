@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../theme/tokens.dart';
 import 'toast_controller.dart';
 import 'v_toast.dart';
 
@@ -57,36 +56,47 @@ class _ToastHostState extends ConsumerState<ToastHost> {
     return Stack(
       children: [
         widget.child,
-        if (toasts.isNotEmpty)
-          Positioned(
-            top: MediaQuery.of(context).viewPadding.top + AppSpacing.sm,
-            left: AppSpacing.lg,
-            right: AppSpacing.lg,
-            child: Column(
-              children: [
-                for (final toast in toasts)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: AnimatedSwitcher(
-                      duration: AppMotion.medium,
-                      switchInCurve: AppMotion.enterCurve,
-                      switchOutCurve: AppMotion.exitCurve,
-                      transitionBuilder: (child, anim) => SlideTransition(
-                        position: Tween<Offset>(begin: const Offset(0, -0.3), end: Offset.zero)
-                            .animate(anim),
-                        child: FadeTransition(opacity: anim, child: child),
-                      ),
-                      child: VToast(
-                        key: ValueKey(toast.id),
-                        toast: toast,
-                        onDismiss: () =>
-                            ref.read(toastControllerProvider.notifier).dismiss(toast.id),
+        Positioned(
+          top: MediaQuery.of(context).viewPadding.top + 70,
+          left: 0,
+          right: 0,
+          child: IgnorePointer(
+            ignoring: toasts.isEmpty,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  for (final toast in toasts)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        switchInCurve: Curves.easeOut,
+                        switchOutCurve: Curves.easeIn,
+                        transitionBuilder: (child, anim) {
+                          final slide = Tween<Offset>(
+                            begin: const Offset(0, -0.12),
+                            end: Offset.zero,
+                          ).animate(anim);
+                          return SlideTransition(
+                            position: slide,
+                            child: FadeTransition(opacity: anim, child: child),
+                          );
+                        },
+                        child: VToast(
+                          key: ValueKey(toast.id),
+                          toast: toast,
+                          onDismiss: () =>
+                              ref.read(toastControllerProvider.notifier).dismiss(toast.id),
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
+        ),
       ],
     );
   }
