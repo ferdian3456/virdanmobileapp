@@ -1055,15 +1055,15 @@ Sebelum upload (avatar, banner, post image):
 
 | Component | Location | Status | Notes |
 |---|---|---|---|
-| `VButton` | `core/widgets/v_button.dart` | TODO Phase 0 | 5 variants, 3 sizes, loading state |
-| `VInput` | `core/widgets/v_input.dart` | TODO Phase 0 | 5 states, validation timing |
-| `VAvatar` | `core/widgets/v_avatar.dart` | TODO Phase 0 | URL + fallback initial |
-| `VAppBar` | `core/widgets/v_app_bar.dart` | TODO Phase 0 | Back + close + title + action |
-| `VToast` | `core/feedback/toast/v_toast.dart` | TODO Phase 0 | 4 types, max stack 3 |
-| `VSkeleton` | `core/feedback/v_skeleton.dart` | TODO Phase 0 | Shimmer pakai `shimmer` package |
-| `VProgressRing` | `core/feedback/v_progress_ring.dart` | TODO Phase 0 | overlay + inline mode |
-| `VFieldError` | `core/feedback/v_field_error.dart` | TODO Phase 0 | shake animation |
-| `VEmptyState` | `core/feedback/v_empty_state.dart` | TODO Phase 0 | icon + title + sub + cta |
+| `VButton` | `core/widgets/v_button.dart` | **Done (Phase 0)** | 5 variants × 3 sizes, loading state, haptic feedback |
+| `VInput` | `core/widgets/v_input.dart` | **Done (Phase 0)** | TextFormField wrapper, obscure toggle, error icon |
+| `VAvatar` | `core/widgets/v_avatar.dart` | **Done (Phase 0)** | 5 sizes (xs/sm/md/lg/xl), URL + fallback initial circle |
+| `VAppBar` | `core/widgets/v_app_bar.dart` | **Done (Phase 0)** | Leading (back/close/none) + title + actions + bottom border, PreferredSizeWidget |
+| `VToast` | `core/feedback/toast/v_toast.dart` | **Done (Phase 0)** | 4 types, max stack 3, Quasar spec parity (icon bubble, pill retry, error shake) |
+| `VSkeleton` | `core/feedback/v_skeleton.dart` | **Done (Phase 0)** | Shimmer via `shimmer` package, circle variant |
+| `VProgressRing` | `core/feedback/v_progress_ring.dart` | **Done (Phase 0)** | inline + overlay mode, % label |
+| `VFieldError` | `core/feedback/v_field_error.dart` | **Done (Phase 0)** | Inline non-input error with alert icon |
+| `VEmptyState` | `core/feedback/v_empty_state.dart` | **Done (Phase 0)** | icon + title + sub + optional CTA |
 | `PostCard` | `features/post/presentation/widgets/` | TODO Phase 4 | Feed item |
 | `ServerCard` | `features/server/presentation/widgets/` | TODO Phase 3 | Discovery item |
 | `CommentTile` | `features/post/presentation/widgets/` | TODO Phase 4 | |
