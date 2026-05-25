@@ -497,7 +497,7 @@ class _FeedCard extends StatelessWidget {
             child: Row(
               children: [
                 _ActionButton(
-                  icon: LucideIcons.heart,
+                  icon: post.isLiked ? Icons.favorite : LucideIcons.heart,
                   count: post.likeCount,
                   active: post.isLiked,
                   activeColor: AppColors.error,
@@ -599,7 +599,7 @@ class _ActionButton extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: iconSize, color: color, fill: active ? 1.0 : 0.0),
+            Icon(icon, size: iconSize, color: color),
             if (count > 0) ...[
               const SizedBox(width: 4),
               Text(

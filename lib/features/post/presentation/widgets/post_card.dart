@@ -187,7 +187,7 @@ class _Actions extends StatelessWidget {
         children: [
           IconButton(
             icon: Icon(
-              LucideIcons.heart,
+              isLiked ? Icons.favorite : LucideIcons.heart,
               size: 26,
               color: isLiked ? AppColors.error : AppColors.textPrimary,
             ),
