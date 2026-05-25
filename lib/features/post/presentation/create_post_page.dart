@@ -852,6 +852,7 @@ class _GalleryPickerState extends State<_GalleryPicker> {
   List<AssetEntity> _items = const [];
   bool _loading = true;
   bool _denied = false;
+  bool _fullView = false;
 
   @override
   void initState() {
@@ -971,18 +972,54 @@ class _GalleryPickerState extends State<_GalleryPicker> {
     }
     return Column(
       children: [
-        // Top preview — square of selected asset.
+        // Top preview — square frame; image cover or contain (full view).
         AspectRatio(
           aspectRatio: 1,
-          child: Container(
-            color: const Color(0xFFF1F3F5),
-            child: widget.selected == null
-                ? null
-                : _AssetImage(
-                    asset: widget.selected!,
-                    size: const ThumbnailSize.square(1080),
-                    fit: BoxFit.cover,
-                  ),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black,
+                  child: widget.selected == null
+                      ? null
+                      : _AssetImage(
+                          asset: widget.selected!,
+                          size: const ThumbnailSize.square(1080),
+                          fit: _fullView ? BoxFit.contain : BoxFit.cover,
+                        ),
+                ),
+              ),
+              Positioned(
+                left: 12,
+                bottom: 12,
+                child: _ExpandToggle(
+                  expanded: _fullView,
+                  onTap: () => setState(() => _fullView = !_fullView),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Recents header.
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
+          child: Row(
+            children: [
+              const Text(
+                'Recents',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(LucideIcons.chevronDown,
+                  size: 18, color: AppColors.textSecondary),
+              const Spacer(),
+            ],
           ),
         ),
         // Grid — 4 cols.
@@ -998,34 +1035,88 @@ class _GalleryPickerState extends State<_GalleryPicker> {
             itemBuilder: (_, i) {
               final a = _items[i];
               final active = widget.selected?.id == a.id;
-              return GestureDetector(
+              return _GridTile(
+                asset: a,
+                active: active,
                 onTap: () => widget.onSelect(a),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    _AssetImage(
-                      asset: a,
-                      size: const ThumbnailSize.square(200),
-                      fit: BoxFit.cover,
-                    ),
-                    if (active)
-                      Container(color: const Color(0x88FFFFFF)),
-                    if (active)
-                      const Align(
-                        alignment: Alignment.topRight,
-                        child: Padding(
-                          padding: EdgeInsets.all(4),
-                          child: Icon(LucideIcons.check,
-                              color: AppColors.primary, size: 18),
-                        ),
-                      ),
-                  ],
-                ),
               );
             },
           ),
         ),
       ],
+    );
+  }
+}
+
+class _GridTile extends StatelessWidget {
+  const _GridTile({
+    required this.asset,
+    required this.active,
+    required this.onTap,
+  });
+
+  final AssetEntity asset;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          _AssetImage(
+            asset: asset,
+            size: const ThumbnailSize.square(200),
+            fit: BoxFit.cover,
+          ),
+          if (active)
+            const IgnorePointer(
+              child: ColoredBox(color: Color(0x88FFFFFF)),
+            ),
+          if (active)
+            const IgnorePointer(
+              child: Align(
+                alignment: Alignment.topRight,
+                child: Padding(
+                  padding: EdgeInsets.all(4),
+                  child: Icon(LucideIcons.check,
+                      color: AppColors.primary, size: 18),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExpandToggle extends StatelessWidget {
+  const _ExpandToggle({required this.expanded, required this.onTap});
+
+  final bool expanded;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0x88000000),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 36,
+          height: 36,
+          child: Icon(
+            expanded ? LucideIcons.minimize2 : LucideIcons.maximize2,
+            size: 18,
+            color: Colors.white,
+          ),
+        ),
+      ),
     );
   }
 }
