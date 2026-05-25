@@ -1491,9 +1491,10 @@ class _AspectStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: Colors.black,
-      padding: const EdgeInsets.only(top: 8, bottom: 16),
+      padding: const EdgeInsets.only(top: 12),
       child: SafeArea(
         top: false,
+        minimum: const EdgeInsets.only(bottom: 32),
         child: SizedBox(
           height: 36,
           child: ListView.separated(
