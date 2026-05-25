@@ -528,29 +528,31 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
                   width: _stageW,
                   height: _frameH,
                   child: ClipRect(
-                    child: Stack(
-                      clipBehavior: Clip.hardEdge,
-                      children: [
-                        GestureDetector(
-                          onPanUpdate: _onPanUpdate,
-                          child: Transform.translate(
-                            offset: _translate,
+                    child: GestureDetector(
+                      onPanUpdate: _onPanUpdate,
+                      behavior: HitTestBehavior.opaque,
+                      child: Stack(
+                        clipBehavior: Clip.hardEdge,
+                        children: [
+                          Positioned(
+                            left: _translate.dx,
+                            top: _translate.dy,
+                            width: dispW,
+                            height: dispH,
                             child: Image.memory(
                               src,
-                              width: dispW,
-                              height: dispH,
-                              fit: BoxFit.cover,
+                              fit: BoxFit.fill,
                               gaplessPlayback: true,
                             ),
                           ),
-                        ),
-                        IgnorePointer(
-                          child: CustomPaint(
-                            size: Size(_frameW, _frameH),
-                            painter: _CropGridPainter(),
+                          IgnorePointer(
+                            child: CustomPaint(
+                              size: Size(_frameW, _frameH),
+                              painter: _CropGridPainter(),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -875,6 +877,11 @@ class _GalleryPickerState extends State<_GalleryPicker> {
       final albums = await PhotoManager.getAssetPathList(
         type: RequestType.image,
         onlyAll: true,
+        filterOption: FilterOptionGroup(
+          orders: [
+            const OrderOption(type: OrderOptionType.createDate, asc: false),
+          ],
+        ),
       );
       if (albums.isEmpty) {
         if (!mounted) return;
