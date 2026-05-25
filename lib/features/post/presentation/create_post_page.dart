@@ -1489,14 +1489,12 @@ class _AspectStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewPadding.bottom;
     return Container(
       color: Colors.black,
-      padding: const EdgeInsets.only(top: 12),
-      child: SafeArea(
-        top: false,
-        minimum: const EdgeInsets.only(bottom: 32),
-        child: SizedBox(
-          height: 36,
+      padding: EdgeInsets.only(top: 12, bottom: 40 + bottomInset),
+      child: SizedBox(
+        height: 36,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1534,7 +1532,6 @@ class _AspectStrip extends StatelessWidget {
               );
             },
           ),
-        ),
       ),
     );
   }
