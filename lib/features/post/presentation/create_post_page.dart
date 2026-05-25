@@ -63,8 +63,6 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
   double _stageW = 0;
   double _frameW = 0;
   double _frameH = 0;
-  double _baseDisplayW = 0;
-  double _baseDisplayH = 0;
 
   Uint8List? _croppedBytes;
   final _captionCtrl = TextEditingController();
@@ -257,59 +255,25 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
   }
 
   void _recalcStage(double parentWidth) {
-    final dec = _decoded;
-    if (dec == null) return;
-    final w = parentWidth;
     final ratio = _aspectRatio();
-    final fw = w;
-    final fh = ratio == null ? w : (w / ratio);
-
-    // Cover fit
-    final imgRatio = dec.width / dec.height;
-    final frameRatio = fw / fh;
-    final double baseW;
-    final double baseH;
-    if (imgRatio > frameRatio) {
-      // image wider than frame → fit height, overflow horizontally
-      baseH = fh;
-      baseW = fh * imgRatio;
-    } else {
-      baseW = fw;
-      baseH = fw / imgRatio;
-    }
-    final newStateChange = _stageW != w ||
-        _frameW != fw ||
-        _frameH != fh ||
-        _baseDisplayW != baseW ||
-        _baseDisplayH != baseH;
-    if (newStateChange) {
-      _stageW = w;
-      _frameW = fw;
-      _frameH = fh;
-      _baseDisplayW = baseW;
-      _baseDisplayH = baseH;
-      // Center.
-      final dispW = baseW * _zoom;
-      final dispH = baseH * _zoom;
-      _translate = Offset(
-        (fw - dispW) / 2,
-        (fh - dispH) / 2,
-      );
-    }
+    final fw = parentWidth;
+    final fh = ratio == null ? parentWidth : (parentWidth / ratio);
+    if (_stageW == fw && _frameW == fw && _frameH == fh) return;
+    _stageW = fw;
+    _frameW = fw;
+    _frameH = fh;
+    _translate = Offset.zero;
   }
 
   Offset _clampTranslate(Offset t) {
-    final dispW = _baseDisplayW * _zoom;
-    final dispH = _baseDisplayH * _zoom;
-    final overflowX = dispW - _frameW;
-    final overflowY = dispH - _frameH;
-    final minTx = overflowX > 0 ? -overflowX : (_frameW - dispW) / 2;
-    final maxTx = overflowX > 0 ? 0.0 : (_frameW - dispW) / 2;
-    final minTy = overflowY > 0 ? -overflowY : (_frameH - dispH) / 2;
-    final maxTy = overflowY > 0 ? 0.0 : (_frameH - dispH) / 2;
+    // Cover-fit-zoomed image overflows by (zoom-1) in BOTH axes around the
+    // frame center. Allow translation up to half that overflow per side.
+    final overflowX = _frameW * (_zoom - 1);
+    final overflowY = _frameH * (_zoom - 1);
+    final half = Offset(overflowX / 2, overflowY / 2);
     return Offset(
-      t.dx.clamp(minTx, maxTx),
-      t.dy.clamp(minTy, maxTy),
+      t.dx.clamp(-half.dx, half.dx),
+      t.dy.clamp(-half.dy, half.dy),
     );
   }
 
@@ -339,27 +303,37 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
     if (dec == null || _isProcessing) return;
     setState(() => _isProcessing = true);
     try {
-      // Map frame rect (in display coords) → source-image rect (in image px).
-      final dispW = _baseDisplayW * _zoom;
-      final dispH = _baseDisplayH * _zoom;
-      final scaleX = dec.width / dispW;
-      final scaleY = dec.height / dispH;
-      // tx, ty are offsets of the image top-left relative to frame top-left.
-      // Frame top-left = origin (0,0) inside stage; image top-left is _translate.
-      // The pixel of the image that sits at frame top-left (0,0) is:
-      //   sx = -tx / dispW * imgW  (or scale)
-      final sx = (-_translate.dx) * scaleX;
-      final sy = (-_translate.dy) * scaleY;
-      final sw = _frameW * scaleX;
-      final sh = _frameH * scaleY;
+      // BoxFit.cover-fits the source image into the frame, then we apply
+      // scale + translate. Compute the source-pixel rect that corresponds
+      // to the visible frame.
+      final imgRatio = dec.width / dec.height;
+      final frameRatio = _frameW / _frameH;
+      // baseScale = how many display px per source px at zoom=1 (cover fit).
+      final double baseScale;
+      if (imgRatio > frameRatio) {
+        // wider image — fits to frame height.
+        baseScale = _frameH / dec.height;
+      } else {
+        baseScale = _frameW / dec.width;
+      }
+      final effectiveScale = baseScale * _zoom;
+      // Source rect width/height in source pixels.
+      final sw = _frameW / effectiveScale;
+      final sh = _frameH / effectiveScale;
+      // Centered cover-fit puts source image center at frame center;
+      // translate shifts that. Negative translate = image moved up/left
+      // visually, which means the visible source rect moves down/right.
+      final centerX = dec.width / 2 - _translate.dx / effectiveScale;
+      final centerY = dec.height / 2 - _translate.dy / effectiveScale;
+      final sx = (centerX - sw / 2).round().clamp(0, dec.width - 1);
+      final sy = (centerY - sh / 2).round().clamp(0, dec.height - 1);
       var cropped = img.copyCrop(
         dec,
-        x: sx.round().clamp(0, dec.width - 1),
-        y: sy.round().clamp(0, dec.height - 1),
-        width: sw.round().clamp(1, dec.width),
-        height: sh.round().clamp(1, dec.height),
+        x: sx,
+        y: sy,
+        width: sw.round().clamp(1, dec.width - sx),
+        height: sh.round().clamp(1, dec.height - sy),
       );
-      // Resize to max 1080
       if (cropped.width > 1080) {
         cropped = img.copyResize(cropped, width: 1080);
       }
@@ -513,56 +487,64 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
   }
 
   Widget _buildCrop() {
-    return Column(
-      children: [
-        Expanded(
-          child: Center(
-            child: LayoutBuilder(
-              builder: (context, c) {
-                _recalcStage(c.maxWidth);
-                final dispW = _baseDisplayW * _zoom;
-                final dispH = _baseDisplayH * _zoom;
-                final src = _sourceBytes;
-                if (src == null) return const SizedBox.shrink();
-                return SizedBox(
-                  width: _stageW,
-                  height: _frameH,
-                  child: ClipRect(
-                    child: GestureDetector(
-                      onPanUpdate: _onPanUpdate,
-                      behavior: HitTestBehavior.opaque,
-                      child: Stack(
-                        clipBehavior: Clip.hardEdge,
-                        children: [
-                          Positioned(
-                            left: _translate.dx,
-                            top: _translate.dy,
-                            width: dispW,
-                            height: dispH,
-                            child: Image.memory(
-                              src,
-                              fit: BoxFit.fill,
-                              gaplessPlayback: true,
+    return ColoredBox(
+      color: Colors.black,
+      child: Column(
+        children: [
+          Expanded(
+            child: Center(
+              child: LayoutBuilder(
+                builder: (context, c) {
+                  _recalcStage(c.maxWidth);
+                  final src = _sourceBytes;
+                  if (src == null) return const SizedBox.shrink();
+                  return SizedBox(
+                    width: _frameW,
+                    height: _frameH,
+                    child: ClipRect(
+                      child: GestureDetector(
+                        onPanUpdate: _onPanUpdate,
+                        behavior: HitTestBehavior.opaque,
+                        child: Stack(
+                          clipBehavior: Clip.hardEdge,
+                          children: [
+                            // Cover-fit the source into the frame, then
+                            // scale + translate it for zoom + pan.
+                            Transform.translate(
+                              offset: _translate,
+                              child: Transform.scale(
+                                scale: _zoom,
+                                alignment: Alignment.center,
+                                child: SizedBox(
+                                  width: _frameW,
+                                  height: _frameH,
+                                  child: Image.memory(
+                                    src,
+                                    fit: BoxFit.cover,
+                                    gaplessPlayback: true,
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
-                          IgnorePointer(
-                            child: CustomPaint(
-                              size: Size(_frameW, _frameH),
-                              painter: _CropGridPainter(),
+                            IgnorePointer(
+                              child: CustomPaint(
+                                size: Size(_frameW, _frameH),
+                                painter: _CropGridPainter(),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
-        ),
-        _ZoomRow(value: _zoom, onChanged: _onZoomChanged),
-        _AspectStrip(active: _aspectId, onTap: _changeAspect),
-      ],
+          _ZoomRow(value: _zoom, onChanged: _onZoomChanged),
+          _AspectStrip(active: _aspectId, onTap: _changeAspect),
+        ],
+      ),
     );
   }
 
