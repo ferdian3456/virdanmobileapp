@@ -1491,13 +1491,14 @@ class _AspectStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: Colors.black,
+      padding: const EdgeInsets.only(top: 8, bottom: 16),
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 56,
+          height: 36,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: _aspects.length,
             separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (_, i) {
@@ -1512,14 +1513,18 @@ class _AspectStrip extends StatelessWidget {
                 child: InkWell(
                   borderRadius: BorderRadius.circular(999),
                   onTap: () => onTap(a.id),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  child: Container(
+                    height: 36,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    alignment: Alignment.center,
                     child: Text(
                       a.label,
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
+                        height: 1.0,
                         color: selected ? Colors.black : Colors.white,
                       ),
                     ),
