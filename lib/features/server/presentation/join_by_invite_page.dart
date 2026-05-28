@@ -3,17 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../../../core/errors/show_api_error_toast.dart';
-import '../../../core/feedback/toast/toast_controller.dart';
-import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/util/avatar_color.dart';
 import '../../../core/widgets/v_app_bar.dart';
 import '../../../core/widgets/v_button.dart';
 import '../../../core/widgets/v_input.dart';
+import '../data/server_create_draft.dart';
 import '../data/server_detail_api.dart';
-import '../data/server_repository.dart';
 
 class JoinByInvitePage extends ConsumerStatefulWidget {
   const JoinByInvitePage({super.key});
@@ -25,7 +22,6 @@ class JoinByInvitePage extends ConsumerStatefulWidget {
 class _JoinByInvitePageState extends ConsumerState<JoinByInvitePage> {
   final _code = TextEditingController();
   bool _checking = false;
-  bool _joining = false;
   ServerInviteInfo? _preview;
   String? _errorText;
 
@@ -58,25 +54,17 @@ class _JoinByInvitePageState extends ConsumerState<JoinByInvitePage> {
     }
   }
 
-  Future<void> _join() async {
-    final code = _code.text.trim();
-    if (code.isEmpty) return;
-    setState(() => _joining = true);
-    try {
-      await ref.read(serverDetailApiProvider).joinViaInvite(code);
-      if (!mounted) return;
-      await ref.read(myServersProvider.notifier).fetch(force: true);
-      if (!mounted) return;
-      ref.read(toastControllerProvider.notifier).success(
-            title: 'Joined ${_preview?.serverName ?? 'server'}',
-          );
-      context.go(Routes.appHome);
-    } catch (e) {
-      if (!mounted) return;
-      showApiErrorToast(ref, e);
-    } finally {
-      if (mounted) setState(() => _joining = false);
-    }
+  void _join() {
+    final preview = _preview;
+    if (preview == null || preview.alreadyMember) return;
+    ref.read(joinTargetProvider.notifier).setTarget(
+          JoinTarget(
+            serverId: preview.serverId,
+            serverName: preview.serverName,
+            serverShortName: preview.serverShortName,
+          ),
+        );
+    context.push('/app/create-server/profile');
   }
 
   @override
@@ -107,7 +95,12 @@ class _JoinByInvitePageState extends ConsumerState<JoinByInvitePage> {
                 onPressed: _checking ? null : _check,
               ),
               const SizedBox(height: AppSpacing.xl),
-              if (_preview != null) _InvitePreview(preview: _preview!, onJoin: _joining ? null : _join, joining: _joining),
+              if (_preview != null)
+                _InvitePreview(
+                  preview: _preview!,
+                  onJoin: _preview!.alreadyMember ? null : _join,
+                  joining: false,
+                ),
             ],
           ),
         ),

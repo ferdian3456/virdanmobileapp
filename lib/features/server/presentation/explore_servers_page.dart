@@ -6,13 +6,12 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/errors/show_api_error_toast.dart';
-import '../../../core/feedback/toast/toast_controller.dart';
 import '../../../core/feedback/v_skeleton.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/util/app_assets.dart';
 import '../../../core/util/avatar_color.dart';
 import '../data/server_api.dart';
-import '../data/server_repository.dart';
+import '../data/server_create_draft.dart';
 import '../domain/server.dart';
 
 /// Server discovery, used at `/app/explore-servers` and
@@ -35,7 +34,6 @@ class _ExploreServersPageState extends ConsumerState<ExploreServersPage> {
   bool _loading = false;
   bool _loadingMore = false;
   String? _nextCursor;
-  String? _joiningId;
   String _query = '';
 
   @override
@@ -111,22 +109,18 @@ class _ExploreServersPageState extends ConsumerState<ExploreServersPage> {
     }
   }
 
-  Future<void> _join(DiscoveryServer srv) async {
-    if (_joiningId != null) return;
-    setState(() => _joiningId = srv.id);
-    try {
-      await ref.read(serverApiProvider).join(srv.id);
-      if (!mounted) return;
-      await ref.read(myServersProvider.notifier).fetch(force: true);
-      if (!mounted) return;
-      ref.read(toastControllerProvider.notifier).success(title: 'Joined ${srv.name}');
-      context.pop();
-    } catch (e) {
-      if (!mounted) return;
-      showApiErrorToast(ref, e);
-    } finally {
-      if (mounted) setState(() => _joiningId = null);
-    }
+  void _join(DiscoveryServer srv) {
+    ref.read(joinTargetProvider.notifier).setTarget(
+          JoinTarget(
+            serverId: srv.id,
+            serverName: srv.name,
+            serverShortName: srv.shortName,
+          ),
+        );
+    final path = ModalRoute.of(context)?.settings.name?.startsWith('/onboarding') ?? false
+        ? '/onboarding/create-server/profile'
+        : '/app/create-server/profile';
+    context.push(path);
   }
 
   List<DiscoveryServer> get _filtered {
@@ -166,7 +160,10 @@ class _ExploreServersPageState extends ConsumerState<ExploreServersPage> {
                   if (_loading && _servers.isEmpty)
                     const SliverToBoxAdapter(child: _ListSkeleton())
                   else if (_filtered.isEmpty)
-                    const SliverToBoxAdapter(child: _EmptyState())
+                    const SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _EmptyState(),
+                    )
                   else
                     SliverList.builder(
                       itemCount: _filtered.length,
@@ -174,7 +171,7 @@ class _ExploreServersPageState extends ConsumerState<ExploreServersPage> {
                         final srv = _filtered[i];
                         return _Row(
                           server: srv,
-                          joining: _joiningId == srv.id,
+                          joining: false,
                           onJoin: () => _join(srv),
                         );
                       },
@@ -561,6 +558,8 @@ class _EmptyState extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
       child: Center(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SvgPicture.asset(AppAssets.illustrationEmpty, width: 220),
             const SizedBox(height: 16),

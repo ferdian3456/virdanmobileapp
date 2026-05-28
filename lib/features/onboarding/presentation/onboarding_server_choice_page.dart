@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/errors/show_api_error_toast.dart';
-import '../../../core/feedback/toast/toast_controller.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/feedback/v_skeleton.dart';
@@ -14,16 +13,19 @@ import '../../../core/theme/typography.dart';
 import '../../../core/util/app_assets.dart';
 import '../../../core/util/avatar_color.dart';
 import '../../server/data/server_api.dart';
+import '../../server/data/server_create_draft.dart';
 import '../../server/domain/server.dart';
 
 class OnboardingServerChoicePage extends ConsumerStatefulWidget {
   const OnboardingServerChoicePage({super.key});
 
   @override
-  ConsumerState<OnboardingServerChoicePage> createState() => _OnboardingServerChoicePageState();
+  ConsumerState<OnboardingServerChoicePage> createState() =>
+      _OnboardingServerChoicePageState();
 }
 
-class _OnboardingServerChoicePageState extends ConsumerState<OnboardingServerChoicePage> {
+class _OnboardingServerChoicePageState
+    extends ConsumerState<OnboardingServerChoicePage> {
   final _scroll = ScrollController();
   final _searchCtrl = TextEditingController();
 
@@ -35,7 +37,6 @@ class _OnboardingServerChoicePageState extends ConsumerState<OnboardingServerCho
   bool _loading = false;
   bool _loadingMore = false;
   String? _nextCursor;
-  String? _joiningId;
   String _query = '';
 
   static const _chipSkeletonWidths = [56.0, 72.0, 60.0, 80.0, 64.0, 68.0];
@@ -94,7 +95,9 @@ class _OnboardingServerChoicePageState extends ConsumerState<OnboardingServerCho
       setState(() => _loadingMore = true);
     }
     try {
-      final page = await ref.read(serverApiProvider).discover(
+      final page = await ref
+          .read(serverApiProvider)
+          .discover(
             categoryId: _activeCategoryId,
             cursor: reset ? null : _nextCursor,
             limit: _limit,
@@ -126,25 +129,17 @@ class _OnboardingServerChoicePageState extends ConsumerState<OnboardingServerCho
     _loadServers(reset: true);
   }
 
-  Future<void> _join(DiscoveryServer srv) async {
-    if (_joiningId != null) return;
-    // TODO(VIR-90 Phase 3): per-server profile creation step before join.
-    // For now bounce through direct join; will be replaced by a profile
-    // flow page once that's built.
-    setState(() => _joiningId = srv.id);
-    try {
-      await ref.read(serverApiProvider).join(srv.id);
-      if (!mounted) return;
-      ref.read(toastControllerProvider.notifier).success(
-            title: 'Joined ${srv.name}',
-          );
-      // TODO: refresh myServers + navigate to /app/home.
-    } catch (e) {
-      if (!mounted) return;
-      showApiErrorToast(ref, e);
-    } finally {
-      if (mounted) setState(() => _joiningId = null);
-    }
+  void _join(DiscoveryServer srv) {
+    ref
+        .read(joinTargetProvider.notifier)
+        .setTarget(
+          JoinTarget(
+            serverId: srv.id,
+            serverName: srv.name,
+            serverShortName: srv.shortName,
+          ),
+        );
+    context.push('/onboarding/create-server/profile');
   }
 
   void _onCreate() {
@@ -154,10 +149,12 @@ class _OnboardingServerChoicePageState extends ConsumerState<OnboardingServerCho
   List<DiscoveryServer> get _filtered {
     final q = _query.trim().toLowerCase();
     if (q.isEmpty) return _servers;
-    return _servers.where((s) {
-      return s.name.toLowerCase().contains(q) ||
-          (s.description ?? '').toLowerCase().contains(q);
-    }).toList(growable: false);
+    return _servers
+        .where((s) {
+          return s.name.toLowerCase().contains(q) ||
+              (s.description ?? '').toLowerCase().contains(q);
+        })
+        .toList(growable: false);
   }
 
   @override
@@ -171,9 +168,7 @@ class _OnboardingServerChoicePageState extends ConsumerState<OnboardingServerCho
             SliverToBoxAdapter(child: _Hero()),
             SliverToBoxAdapter(child: _CreateCard(onTap: _onCreate)),
             const SliverToBoxAdapter(child: _OrJoinDivider()),
-            SliverToBoxAdapter(
-              child: _SearchBox(controller: _searchCtrl),
-            ),
+            SliverToBoxAdapter(child: _SearchBox(controller: _searchCtrl)),
             SliverToBoxAdapter(
               child: _CategoryStrip(
                 categories: _categories,
@@ -186,7 +181,10 @@ class _OnboardingServerChoicePageState extends ConsumerState<OnboardingServerCho
             if (_loading && _servers.isEmpty)
               const SliverToBoxAdapter(child: _ServerListSkeleton())
             else if (_filtered.isEmpty)
-              const SliverToBoxAdapter(child: _EmptyState())
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: _EmptyState(),
+              )
             else
               SliverList.builder(
                 itemCount: _filtered.length,
@@ -194,7 +192,7 @@ class _OnboardingServerChoicePageState extends ConsumerState<OnboardingServerCho
                   final srv = _filtered[i];
                   return _ServerRow(
                     server: srv,
-                    joining: _joiningId == srv.id,
+                    joining: false,
                     onJoin: () => _join(srv),
                   );
                 },
@@ -250,7 +248,10 @@ class _Hero extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             'Create your own server or join an existing community — pick what suits your interests.',
-            style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary, height: 1.5),
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+              height: 1.5,
+            ),
           ),
         ],
       ),
@@ -402,12 +403,21 @@ class _SearchBox extends StatelessWidget {
           style: AppTextStyles.caption.copyWith(color: AppColors.textPrimary),
           decoration: InputDecoration(
             hintText: 'Search servers…',
-            hintStyle: AppTextStyles.caption.copyWith(color: AppColors.textTertiary),
-            prefixIcon: const Icon(LucideIcons.search, size: 18, color: AppColors.textTertiary),
+            hintStyle: AppTextStyles.caption.copyWith(
+              color: AppColors.textTertiary,
+            ),
+            prefixIcon: const Icon(
+              LucideIcons.search,
+              size: 18,
+              color: AppColors.textTertiary,
+            ),
             filled: true,
             fillColor: const Color(0xFFF1F3F5),
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 8,
+              horizontal: 14,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -450,7 +460,11 @@ class _CategoryStrip extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [
-          _Chip(label: 'All', active: activeId == null, onTap: () => onTap(null)),
+          _Chip(
+            label: 'All',
+            active: activeId == null,
+            onTap: () => onTap(null),
+          ),
           const SizedBox(width: AppSpacing.sm),
           if (loading)
             ...skeletonWidths.map(
@@ -489,7 +503,9 @@ class _Chip extends StatelessWidget {
       color: active ? AppColors.primary : Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(999),
-        side: BorderSide(color: active ? AppColors.primary : const Color(0xFFE9ECEF)),
+        side: BorderSide(
+          color: active ? AppColors.primary : const Color(0xFFE9ECEF),
+        ),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(999),
@@ -514,7 +530,11 @@ class _Chip extends StatelessWidget {
 }
 
 class _ServerRow extends StatelessWidget {
-  const _ServerRow({required this.server, required this.joining, required this.onJoin});
+  const _ServerRow({
+    required this.server,
+    required this.joining,
+    required this.onJoin,
+  });
 
   final DiscoveryServer server;
   final bool joining;
@@ -565,7 +585,11 @@ class _ServerRow extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(LucideIcons.users, size: 12, color: AppColors.textSecondary),
+                    const Icon(
+                      LucideIcons.users,
+                      size: 12,
+                      color: AppColors.textSecondary,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       formatCount(server.memberCount),
@@ -730,6 +754,8 @@ class _EmptyState extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
       child: Center(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SvgPicture.asset(AppAssets.illustrationEmpty, width: 220),
             const SizedBox(height: AppSpacing.lg),
