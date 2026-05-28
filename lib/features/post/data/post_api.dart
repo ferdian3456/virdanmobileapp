@@ -60,10 +60,17 @@ class PostApi {
     return CursorPage.fromJson(res.data ?? const {}, Comment.fromJson);
   }
 
-  Future<Comment> postComment(String postId, String content) async {
+  Future<Comment> postComment(
+    String postId,
+    String content, {
+    String? parentId,
+  }) async {
     final res = await _dio.post<Map<String, dynamic>>(
       '/posts/$postId/comments',
-      data: {'content': content},
+      data: {
+        'content': content,
+        if (parentId != null) 'parentId': parentId,
+      },
     );
     return Comment.fromJson(res.data ?? const {});
   }

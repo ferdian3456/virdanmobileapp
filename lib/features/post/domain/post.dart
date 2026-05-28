@@ -17,20 +17,25 @@ class Post {
   });
 
   factory Post.fromJson(Map<String, dynamic> json) {
+    final author = json['author'] as Map<String, dynamic>?;
     return Post(
       id: json['id'] as String? ?? json['postId'] as String,
       serverId: (json['serverId'] as String?) ?? '',
-      authorId: (json['authorId'] as String?) ?? '',
+      authorId: (json['authorId'] as String?) ??
+          (author?['userId'] as String?) ??
+          '',
       authorNickname: (json['authorNickname'] as String?) ??
-          (json['author']?['nickname'] as String?) ??
+          (author?['nickname'] as String?) ??
           'Unknown',
       authorAvatarUrl: (json['authorAvatarUrl'] as String?) ??
-          (json['author']?['avatarUrl'] as String?),
+          (author?['avatarUrl'] as String?),
       caption: (json['caption'] as String?) ?? '',
       imageUrl: json['imageUrl'] as String?,
       likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
       commentCount: (json['commentCount'] as num?)?.toInt() ?? 0,
-      isLiked: (json['isLiked'] as bool?) ?? false,
+      isLiked: (json['userLiked'] as bool?) ??
+          (json['isLiked'] as bool?) ??
+          false,
       createdAt: (json['createdAt'] as String?) ?? '',
     );
   }
@@ -73,20 +78,25 @@ class Comment {
     required this.authorNickname,
     required this.content,
     required this.createdAt,
+    this.parentId,
     this.authorAvatarUrl,
   });
 
   factory Comment.fromJson(Map<String, dynamic> json) {
+    final author = json['author'] as Map<String, dynamic>?;
     return Comment(
       id: (json['id'] as String?) ?? (json['commentId'] as String),
       postId: (json['postId'] as String?) ?? '',
-      authorId: (json['authorId'] as String?) ?? '',
+      authorId: (json['authorId'] as String?) ??
+          (author?['userId'] as String?) ??
+          '',
       authorNickname: (json['authorNickname'] as String?) ??
-          (json['author']?['nickname'] as String?) ??
+          (author?['nickname'] as String?) ??
           'Unknown',
       authorAvatarUrl: (json['authorAvatarUrl'] as String?) ??
-          (json['author']?['avatarUrl'] as String?),
+          (author?['avatarUrl'] as String?),
       content: (json['content'] as String?) ?? '',
+      parentId: json['parentId'] as String?,
       createdAt: (json['createdAt'] as String?) ?? '',
     );
   }
@@ -97,5 +107,6 @@ class Comment {
   final String authorNickname;
   final String? authorAvatarUrl;
   final String content;
+  final String? parentId;
   final String createdAt;
 }
