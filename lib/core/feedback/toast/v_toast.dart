@@ -88,7 +88,7 @@ class _VToastState extends State<VToast> with SingleTickerProviderStateMixin {
           borderRadius: BorderRadius.circular(16),
           onTap: widget.onDismiss,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
@@ -101,7 +101,7 @@ class _VToastState extends State<VToast> with SingleTickerProviderStateMixin {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _Bubble(color: _bubbleColor, icon: _icon),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,19 +110,19 @@ class _VToastState extends State<VToast> with SingleTickerProviderStateMixin {
                       Text(
                         widget.toast.title,
                         style: AppTextStyles.body.copyWith(
-                          fontSize: 13,
+                          fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: _toastTitle,
-                          letterSpacing: -0.13,
+                          letterSpacing: -0.15,
                           height: 1.3,
                         ),
                       ),
                       if (widget.toast.caption != null) ...[
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 4),
                         Text(
                           widget.toast.caption!,
                           style: AppTextStyles.body.copyWith(
-                            fontSize: 11.5,
+                            fontSize: 13,
                             fontWeight: FontWeight.w500,
                             color: _toastCaption,
                             height: 1.4,
@@ -182,10 +182,10 @@ class _Bubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 24,
-      height: 24,
+      width: 30,
+      height: 30,
       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      child: Icon(icon, size: 14, color: Colors.white),
+      child: Icon(icon, size: 18, color: Colors.white),
     );
   }
 }
@@ -204,11 +204,11 @@ class _RetryPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         onTap: onTap,
         child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           child: Text(
             'Try again',
             style: TextStyle(
-              fontSize: 11.5,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
               color: _retryFg,
               fontFamily: 'Inter',

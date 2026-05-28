@@ -58,11 +58,15 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     return BlankLayout(
       child: ListView(
         children: [
-          GestureDetector(
-            onTap: _submitting ? null : () => context.go(Routes.authLogin),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-              child: Icon(LucideIcons.arrowLeft, size: 24, color: AppColors.textPrimary),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: GestureDetector(
+              onTap: _submitting ? null : () => context.go(Routes.authLogin),
+              behavior: HitTestBehavior.opaque,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+                child: Icon(LucideIcons.arrowLeft, size: 24, color: AppColors.textPrimary),
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.md),

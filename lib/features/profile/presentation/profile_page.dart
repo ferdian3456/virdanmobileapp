@@ -94,7 +94,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             SliverToBoxAdapter(
               child: _Header(
                 title: username,
-                onSettings: () => context.push(Routes.settings),
+                onSettings: () async {
+                  await context.push(Routes.settings);
+                  if (mounted) _load();
+                },
               ),
             ),
             if (_loadingProfile && profile == null)
@@ -107,7 +110,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   bio: profile?.bio,
                   avatarUrl: profile?.avatarUrl,
                   initial: initial,
-                  onEdit: () => context.push(Routes.appEditProfile),
+                  onEdit: () async {
+                    await context.push(Routes.appEditProfile);
+                    if (mounted) _load();
+                  },
                 ),
               ),
             SliverToBoxAdapter(
