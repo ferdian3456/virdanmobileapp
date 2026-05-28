@@ -1,36 +1,16 @@
-# Virdan Mobile App (virdanmobileapp-quasar)
+# virdanmobileapp
 
-Virdan mobile app migration to Quasar
-## Install the dependencies
-```bash
-yarn
-# or
-npm install
-```
+A new Flutter project.
 
-### Start the app in development mode (hot-code reloading, error reporting, etc.)
-```bash
-quasar dev
-```
+## Getting Started
 
-### Lint the files
-```bash
-yarn lint
-# or
-npm run lint
-```
+This project is a starting point for a Flutter application.
 
-### Format the files
-```bash
-yarn format
-# or
-npm run format
-```
+A few resources to get you started if this is your first Flutter project:
 
-### Build the app for production
-```bash
-quasar build
-```
+- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
+- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
 
-### Customize the configuration
-See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-vite/quasar-config-js).
+For help getting started with Flutter development, view the
+[online documentation](https://docs.flutter.dev/), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.
