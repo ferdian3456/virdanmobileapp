@@ -10,12 +10,11 @@ import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/util/app_assets.dart';
-import '../../../core/util/relative_time.dart';
 import '../../../core/widgets/v_button.dart';
 import '../../server/data/server_repository.dart';
 import '../../server/domain/server.dart';
 import '../data/server_feed_provider.dart';
-import '../domain/post.dart';
+import 'widgets/post_card.dart';
 
 /// Matches Quasar HomePage.vue closely:
 /// - No-servers state: community.svg + "No servers yet" + Explore + Create.
@@ -342,10 +341,10 @@ class _FeedBody extends ConsumerWidget {
             );
           }
           final p = feed.posts[i];
-          return _FeedCard(
+          return PostCard(
             post: p,
-            onLike: () => onLikeTap(p.id),
-            onComment: () => GoRouter.of(context).push('/posts/${p.id}/comments'),
+            onLikeTap: () => onLikeTap(p.id),
+            onCommentTap: () => GoRouter.of(context).push('/posts/${p.id}/comments'),
           );
         },
       ),
@@ -399,220 +398,6 @@ class _EmptyFeedState extends StatelessWidget {
                 onPressed: onCreate,
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FeedCard extends StatelessWidget {
-  const _FeedCard({required this.post, required this.onLike, required this.onComment});
-
-  final Post post;
-  final VoidCallback onLike;
-  final VoidCallback onComment;
-
-  @override
-  Widget build(BuildContext context) {
-    final initial = post.authorNickname.isNotEmpty
-        ? post.authorNickname.characters.first.toUpperCase()
-        : '?';
-    return Container(
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFF1F3F5))),
-      ),
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
-            child: Row(
-              children: [
-                ClipOval(
-                  child: post.authorAvatarUrl != null && post.authorAvatarUrl!.isNotEmpty
-                      ? Image.network(
-                          post.authorAvatarUrl!,
-                          width: 36,
-                          height: 36,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => _fallback(initial),
-                        )
-                      : _fallback(initial),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        post.authorNickname,
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF0F172A),
-                          letterSpacing: -0.14,
-                        ),
-                      ),
-                      Text(
-                        formatRelativeTime(post.createdAt),
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(LucideIcons.ellipsis, size: 20),
-                  onPressed: () {},
-                  tooltip: 'More',
-                ),
-              ],
-            ),
-          ),
-          // Image
-          if (post.imageUrl != null && post.imageUrl!.isNotEmpty)
-            AspectRatio(
-              aspectRatio: 1,
-              child: ColoredBox(
-                color: const Color(0xFFF1F3F5),
-                child: Image.network(
-                  post.imageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const Center(
-                    child: Icon(LucideIcons.imageOff, color: AppColors.textTertiary),
-                  ),
-                ),
-              ),
-            ),
-          // Actions
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Row(
-              children: [
-                _ActionButton(
-                  icon: post.isLiked ? Icons.favorite : LucideIcons.heart,
-                  count: post.likeCount,
-                  active: post.isLiked,
-                  activeColor: AppColors.error,
-                  onTap: onLike,
-                ),
-                _ActionButton(
-                  icon: LucideIcons.messageCircle,
-                  count: post.commentCount,
-                  onTap: onComment,
-                ),
-                _ActionButton(
-                  icon: LucideIcons.send,
-                  onTap: () {},
-                ),
-                const Spacer(),
-                _ActionButton(
-                  icon: LucideIcons.bookmark,
-                  iconSize: 22,
-                  onTap: () {},
-                ),
-              ],
-            ),
-          ),
-          // Caption
-          if (post.caption.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: RichText(
-                text: TextSpan(
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 14,
-                    color: Color(0xFF212529),
-                    height: 1.4,
-                  ),
-                  children: [
-                    TextSpan(
-                      text: '${post.authorNickname} ',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    TextSpan(text: post.caption),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _fallback(String initial) {
-    return Container(
-      width: 36,
-      height: 36,
-      alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        color: AppColors.primary,
-        shape: BoxShape.circle,
-      ),
-      child: Text(
-        initial,
-        style: const TextStyle(
-          fontFamily: 'Inter',
-          fontSize: 15,
-          fontWeight: FontWeight.w700,
-          color: Colors.white,
-        ),
-      ),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
-    required this.icon,
-    this.count = 0,
-    this.active = false,
-    this.activeColor,
-    this.iconSize = 24,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final int count;
-  final bool active;
-  final Color? activeColor;
-  final double iconSize;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = active ? (activeColor ?? AppColors.error) : const Color(0xFF212529);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        constraints: const BoxConstraints(minWidth: 48, minHeight: 40),
-        padding: const EdgeInsets.symmetric(horizontal: 6),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: iconSize, color: color),
-            if (count > 0) ...[
-              const SizedBox(width: 4),
-              Text(
-                '$count',
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF0F172A),
-                  letterSpacing: -0.14,
-                ),
-              ),
-            ],
           ],
         ),
       ),
