@@ -13,6 +13,7 @@ import '../../../core/feedback/toast/toast_controller.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/util/avatar_color.dart';
+import '../../../core/widgets/v_app_bar.dart';
 import '../../../core/widgets/v_button.dart';
 import '../../../core/router/routes.dart';
 import '../../auth/data/auth_repository.dart';
@@ -207,9 +208,9 @@ class _YourProfilePageState extends ConsumerState<YourProfilePage> {
     final letter = _avatarLetter;
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
+      appBar: VAppBar(title: 'Your Profile', onLeadingTap: () => context.pop()),
       body: Column(
         children: [
-          _Header(onBack: () => context.pop()),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
@@ -331,50 +332,6 @@ class _YourProfilePageState extends ConsumerState<YourProfilePage> {
   }
 }
 
-class _Header extends StatelessWidget {
-  const _Header({required this.onBack});
-
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      child: SafeArea(
-        bottom: false,
-        child: Container(
-          height: 56,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Color(0xFFE9ECEF))),
-          ),
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(LucideIcons.chevronLeft, size: 24),
-                onPressed: onBack,
-              ),
-              const Expanded(
-                child: Center(
-                  child: Text(
-                    'Your Profile',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 48),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _AvatarUploader extends StatelessWidget {
   const _AvatarUploader({

@@ -218,7 +218,6 @@ class _Header extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Icon(LucideIcons.chevronDown, size: 18),
               ],
             ),
           ),

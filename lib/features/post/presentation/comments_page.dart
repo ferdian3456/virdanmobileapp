@@ -112,7 +112,7 @@ class _CommentsPageState extends ConsumerState<CommentsPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: VAppBar(
-        title: _comments.isEmpty ? 'Comments' : 'Comments · ${_comments.length}',
+        title: 'Comments',
         leading: VAppBarLeading.back,
       ),
       body: SafeArea(
