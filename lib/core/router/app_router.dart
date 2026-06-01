@@ -35,6 +35,7 @@ import '../../features/settings/presentation/notification_settings_page.dart';
 import '../../features/settings/presentation/privacy_security_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
 import '../../features/settings/presentation/static_pages.dart';
+import '../../features/splash/presentation/splash_page.dart';
 import '../../shared/layouts/main_layout.dart';
 import 'routes.dart';
 
@@ -42,7 +43,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier(ref);
 
   return GoRouter(
-    initialLocation: Routes.authLogin,
+    initialLocation: Routes.splash,
     debugLogDiagnostics: true,
     refreshListenable: notifier,
     redirect: (context, state) {
@@ -96,6 +97,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: Routes.root, redirect: (_, _) => Routes.authLogin),
+      GoRoute(path: Routes.splash, builder: (_, _) => const SplashPage()),
       GoRoute(path: Routes.authLogin, builder: (_, _) => const LoginPage()),
       GoRoute(path: Routes.authRegister, builder: (_, _) => const RegisterPage()),
       GoRoute(path: Routes.authVerifyOtp, builder: (_, _) => const VerifyOtpPage()),

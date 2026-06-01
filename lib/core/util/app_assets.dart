@@ -10,6 +10,9 @@ abstract final class AppAssets {
   static const illustrationSocialLife = 'assets/illustrator/social_life.svg';
   static const illustrationTakingPhoto = 'assets/illustrator/taking_photo.svg';
 
+  // Brand logo
+  static const logoMark = 'assets/logo/virdan-mark-color.svg';
+
   // OAuth icons
   static const iconGoogle = 'assets/icons/google_logo.svg';
   static const iconApple = 'assets/icons/apple_logo.svg';

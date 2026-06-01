@@ -1,5 +1,6 @@
 abstract final class Routes {
   static const root = '/';
+  static const splash = '/splash';
 
   static const authLogin = '/auth/login';
   static const authRegister = '/auth/register';

@@ -1,0 +1,7 @@
+<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Virdan">
+  <g transform="translate(50 52)">
+    <ellipse cx="0" cy="-18" rx="16" ry="28" fill="#9DC8FF" transform="rotate(0)"></ellipse>
+    <ellipse cx="0" cy="-18" rx="16" ry="28" fill="#4DA0FF" transform="rotate(120)"></ellipse>
+    <ellipse cx="0" cy="-18" rx="16" ry="28" fill="#007BFF" transform="rotate(240)"></ellipse>
+  </g>
+</svg>
