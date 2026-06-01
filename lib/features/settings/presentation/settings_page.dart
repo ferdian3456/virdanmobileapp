@@ -115,7 +115,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     _Row(
                       icon: LucideIcons.shield,
                       label: 'Privacy & Security',
-                      onTap: () => context.push(Routes.settingsPrivacy),
+                      disabled: true,
                     ),
                     _Row(
                       icon: LucideIcons.ban,
