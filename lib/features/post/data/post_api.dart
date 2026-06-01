@@ -24,6 +24,35 @@ class PostApi {
     return CursorPage.fromJson(res.data ?? const {}, Post.fromJson);
   }
 
+  Future<CursorPage<Post>> postsForMe({
+    required String serverId,
+    String? cursor,
+    int limit = 20,
+  }) async {
+    final params = <String, dynamic>{'limit': limit};
+    if (cursor != null && cursor.isNotEmpty) params['cursor'] = cursor;
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/servers/$serverId/posts/me',
+      queryParameters: params,
+    );
+    return CursorPage.fromJson(res.data ?? const {}, Post.fromJson);
+  }
+
+  Future<CursorPage<Post>> postsForUser({
+    required String serverId,
+    required String userId,
+    String? cursor,
+    int limit = 20,
+  }) async {
+    final params = <String, dynamic>{'limit': limit};
+    if (cursor != null && cursor.isNotEmpty) params['cursor'] = cursor;
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/servers/$serverId/members/$userId/posts',
+      queryParameters: params,
+    );
+    return CursorPage.fromJson(res.data ?? const {}, Post.fromJson);
+  }
+
   Future<Post> getById(String postId) async {
     final res = await _dio.get<Map<String, dynamic>>('/posts/$postId');
     return Post.fromJson(res.data ?? const {});

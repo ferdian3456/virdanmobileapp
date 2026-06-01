@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/errors/show_api_error_toast.dart';
+import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/util/avatar_color.dart';
 import '../../../core/util/relative_time.dart';
 import '../../../core/widgets/v_app_bar.dart';
+import '../../server/data/server_repository.dart';
 import '../data/post_api.dart';
 import '../domain/post.dart';
 
@@ -89,6 +92,12 @@ class _CommentsPageState extends ConsumerState<CommentsPage> {
     setState(() => _replyingTo = null);
   }
 
+  void _openAuthor(Comment c) {
+    final serverId = ref.read(myServersProvider).activeServerId;
+    if (serverId == null) return;
+    context.push(Routes.userProfile(serverId, c.authorId));
+  }
+
   List<_TreeNode> _buildTree() {
     final byId = <String, _TreeNode>{};
     for (final c in _comments) {
@@ -142,6 +151,7 @@ class _CommentsPageState extends ConsumerState<CommentsPage> {
                             node: roots[i],
                             depth: 0,
                             onReply: _startReply,
+                            onAuthorTap: _openAuthor,
                           ),
                         ),
             ),
@@ -174,11 +184,13 @@ class _CommentNode extends StatelessWidget {
     required this.node,
     required this.depth,
     required this.onReply,
+    required this.onAuthorTap,
   });
 
   final _TreeNode node;
   final int depth;
   final ValueChanged<Comment> onReply;
+  final ValueChanged<Comment> onAuthorTap;
 
   @override
   Widget build(BuildContext context) {
@@ -195,17 +207,20 @@ class _CommentNode extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ClipOval(
-                child: c.authorAvatarUrl != null && c.authorAvatarUrl!.isNotEmpty
-                    ? Image.network(
-                        c.authorAvatarUrl!,
-                        width: 32,
-                        height: 32,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) =>
-                            _avatarFallback(initial, c.authorNickname),
-                      )
-                    : _avatarFallback(initial, c.authorNickname),
+              GestureDetector(
+                onTap: () => onAuthorTap(c),
+                child: ClipOval(
+                  child: c.authorAvatarUrl != null && c.authorAvatarUrl!.isNotEmpty
+                      ? Image.network(
+                          c.authorAvatarUrl!,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) =>
+                              _avatarFallback(initial, c.authorNickname),
+                        )
+                      : _avatarFallback(initial, c.authorNickname),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -262,7 +277,12 @@ class _CommentNode extends StatelessWidget {
           ),
         ),
         for (final reply in node.replies)
-          _CommentNode(node: reply, depth: depth + 1, onReply: onReply),
+          _CommentNode(
+            node: reply,
+            depth: depth + 1,
+            onReply: onReply,
+            onAuthorTap: onAuthorTap,
+          ),
       ],
     );
   }

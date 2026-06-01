@@ -178,8 +178,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        path: '/profile/:userId',
-        builder: (_, state) => UserProfilePage(userId: state.pathParameters['userId']!),
+        path: '/servers/:serverId/members/:userId/profile',
+        builder: (_, state) => UserProfilePage(
+          serverId: state.pathParameters['serverId']!,
+          userId: state.pathParameters['userId']!,
+        ),
       ),
 
       GoRoute(path: Routes.settings, builder: (_, _) => const SettingsPage()),

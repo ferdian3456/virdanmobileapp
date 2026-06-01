@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/errors/show_api_error_toast.dart';
+import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/v_app_bar.dart';
 import '../data/post_api.dart';
@@ -81,6 +82,8 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
                         post: _post!,
                         onLikeTap: _toggleLike,
                         onCommentTap: () => context.push('/posts/${_post!.id}/comments'),
+                        onAuthorTap: () => context.push(
+                            Routes.userProfile(_post!.serverId, _post!.authorId)),
                       ),
                     ],
                   ),

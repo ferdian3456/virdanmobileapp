@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import '../../../core/errors/show_api_error_toast.dart';
+import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/v_app_bar.dart';
 import '../data/post_api.dart';
@@ -168,6 +169,8 @@ class _ExploreFeedPageState extends ConsumerState<ExploreFeedPage> {
                     post: p,
                     onLikeTap: () => _toggleLike(p.id),
                     onCommentTap: () => context.push('/posts/${p.id}/comments'),
+                    onAuthorTap: () =>
+                        context.push(Routes.userProfile(p.serverId, p.authorId)),
                   );
                 },
               ),

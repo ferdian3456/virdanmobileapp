@@ -84,6 +84,11 @@ class ProfileApi {
     return ServerMemberProfile.fromJson(res.data ?? const {});
   }
 
+  Future<ServerMemberProfile> forUser(String serverId, String userId) async {
+    final res = await _dio.get<Map<String, dynamic>>('/servers/$serverId/members/$userId/profile');
+    return ServerMemberProfile.fromJson(res.data ?? const {});
+  }
+
   Future<CursorPage<ProfileHistoryItem>> history() async {
     final res = await _dio.get<Map<String, dynamic>>('/profiles/history');
     return CursorPage.fromJson(res.data ?? const {}, ProfileHistoryItem.fromJson);

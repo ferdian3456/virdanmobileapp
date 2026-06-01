@@ -345,6 +345,8 @@ class _FeedBody extends ConsumerWidget {
             post: p,
             onLikeTap: () => onLikeTap(p.id),
             onCommentTap: () => GoRouter.of(context).push('/posts/${p.id}/comments'),
+            onAuthorTap: () =>
+                GoRouter.of(context).push(Routes.userProfile(p.serverId, p.authorId)),
           );
         },
       ),
