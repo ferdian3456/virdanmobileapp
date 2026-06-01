@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-enum NotificationKind { follow, like, comment, mention }
+enum NotificationKind { follow, like, comment, reply, mention }
 
 enum NotificationGroup { newer, today, earlier }
 
@@ -20,7 +20,10 @@ class NotificationItem {
     required this.actor,
     required this.text,
     required this.timeLabel,
+    this.serverId,
+    this.postId,
     this.thumbnailUrl,
+    this.isRead = false,
     this.isFollowing = false,
     this.showFollowAction = false,
   });
@@ -31,7 +34,10 @@ class NotificationItem {
   final NotificationActor actor;
   final String text;
   final String timeLabel;
+  final String? serverId;
+  final String? postId; // deep-link target on tap
   final String? thumbnailUrl;
+  bool isRead; // mutable: set true after mark-read so we don't re-call the API
   bool isFollowing;
   final bool showFollowAction;
 }
