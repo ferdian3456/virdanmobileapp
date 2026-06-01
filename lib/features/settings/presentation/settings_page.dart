@@ -439,43 +439,44 @@ class _LogoutSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
-      child: Center(
-        child: Opacity(
-          opacity: loggingOut ? 0.6 : 1,
-          child: Material(
-            color: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: Color(0xFFFECACA)),
-            ),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: loggingOut ? null : onTap,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(LucideIcons.logOut, size: 18, color: AppColors.error),
-                    const SizedBox(width: 8),
-                    Text(
-                      loggingOut ? 'Signing out…' : 'Sign Out',
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.error,
-                      ),
+    // Left-aligned row matching the other settings items; neutral (non-red)
+    // colors. The logOut icon still signals the action.
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        InkWell(
+          onTap: loggingOut ? null : onTap,
+          child: Opacity(
+            opacity: loggingOut ? 0.6 : 1,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: Center(
+                      child: Icon(LucideIcons.logOut, size: 20, color: Color(0xFF495057)),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 14),
+                  Text(
+                    loggingOut ? 'Signing out…' : 'Sign Out',
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: -0.15,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
         ),
-      ),
+        const SizedBox(height: 32),
+      ],
     );
   }
 }
