@@ -11,6 +11,7 @@ import '../../../core/util/app_assets.dart';
 import '../../../core/util/avatar_color.dart';
 import '../../../core/util/relative_time.dart';
 import '../../../mocks/notifications_mock.dart';
+import '../../server/data/server_repository.dart';
 
 /// Real notification feed (replaces the mock). Fetches GET /api/notifications, maps the raw
 /// payload to the existing NotificationItem UI model, marks read on tap (only when unread), and
@@ -55,10 +56,20 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     if (_loading) return;
     if (!refresh && !_hasMore) return;
 
+    final serverId = ref.read(myServersProvider).activeServerId;
+    if (serverId == null) {
+      setState(() {
+        _items.clear();
+        _hasMore = false;
+        _initialLoaded = true;
+      });
+      return;
+    }
+
     setState(() => _loading = true);
     try {
       final cursor = refresh ? null : _nextCursor;
-      final data = await ref.read(notificationApiProvider).getNotifications(cursor: cursor);
+      final data = await ref.read(notificationApiProvider).getNotifications(serverId: serverId, cursor: cursor);
 
       final rawItems = (data['data'] as List? ?? const []).cast<Map<String, dynamic>>();
       final page = data['page'] as Map<String, dynamic>?;
@@ -152,10 +163,11 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
 
   Future<void> _onTap(NotificationItem item) async {
     // Only call the API when still unread — avoids redundant requests.
-    if (!item.isRead) {
+    final serverId = ref.read(myServersProvider).activeServerId;
+    if (!item.isRead && serverId != null) {
       setState(() => item.isRead = true);
       try {
-        await ref.read(notificationApiProvider).markRead(item.id);
+        await ref.read(notificationApiProvider).markRead(serverId, item.id);
         ref.invalidate(unreadCountProvider);
       } catch (_) {
         // Roll back the optimistic flag on failure.
@@ -188,6 +200,13 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Reload when the active server changes — notifications are per-server.
+    ref.listen(
+      myServersProvider.select((s) => s.activeServerId),
+      (prev, next) {
+        if (next != prev) _load(refresh: true);
+      },
+    );
     final groups = _grouped;
     final isEmpty = _filtered.isEmpty && _initialLoaded && !_loading;
     return Scaffold(
