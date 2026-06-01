@@ -101,7 +101,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                     : null,
                 onTap: () {
                   ref.read(myServersProvider.notifier).setActive(s.id);
-                  ref.read(serverFeedProvider.notifier).loadFor(s.id);
                   Navigator.pop(context);
                 },
               ),
@@ -136,6 +135,17 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Reload the feed whenever the active server changes (switcher or
+    // create-server). HomePage may already be mounted underneath a pushed
+    // route, so initState alone won't catch the change.
+    ref.listen(
+      myServersProvider.select((s) => s.activeServerId),
+      (prev, next) {
+        if (next != null && next != prev) {
+          ref.read(serverFeedProvider.notifier).loadFor(next);
+        }
+      },
+    );
     final state = ref.watch(myServersProvider);
     final servers = state.servers;
     final active = state.activeServer;
