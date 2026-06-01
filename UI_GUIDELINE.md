@@ -4,7 +4,7 @@
 > **Audience**: Engineer (saat ini hanya solo founder).
 > **Relasi**: `MIGRATION_QUASAR_TO_FLUTTER.md` (parent migration plan). `virdan/virdan-reference-ui/` (visual reference).
 > **Style guide**: Light only, primary `#007BFF`, Inter font, Instagram-inspired hybrid Discord.
-> **Last updated**: 2026-05-24
+> **Last updated**: 2026-06-01
 
 ---
 
@@ -634,7 +634,7 @@ showModalBottomSheet(
 
 **Spec**:
 - Pakai `context.push('/route')` (go_router) — bukan `showDialog`.
-- App bar: `VAppBar` dengan back arrow (`LucideIcons.x` untuk close-style atau `arrowLeft` untuk back-style).
+- App bar: `VAppBar` (back-style `chevronLeft` + judul ter-center; close-style `x`). Semua secondary page pakai `VAppBar` — jangan bikin header custom per-page.
 - Page transition: platform-native (slide right iOS, fade Android).
 
 ---
@@ -730,7 +730,7 @@ Pengecualian: **password match** validation di signup → re-validate setiap per
 
 - iOS: swipe-from-left = back. Auto-handled go_router + `CupertinoPageRoute`.
 - Android: hardware back = back. Auto-handled.
-- Custom AppBar: `LucideIcons.arrowLeft` untuk back, `LucideIcons.x` untuk close-modal.
+- Header standar = `VAppBar` (single source of truth): back-style `chevronLeft` + judul di tengah, close-style `x`. Jangan bikin header custom per-page — semua secondary page pakai `VAppBar`.
 - **Tap behavior**: HapticFeedback.lightImpact() saat tap back (native feel).
 
 ### 10.3 Unsaved Changes Warning
@@ -1058,13 +1058,13 @@ Sebelum upload (avatar, banner, post image):
 | `VButton` | `core/widgets/v_button.dart` | **Done (Phase 0)** | 5 variants × 3 sizes, loading state, haptic feedback |
 | `VInput` | `core/widgets/v_input.dart` | **Done (Phase 0)** | TextFormField wrapper, obscure toggle, error icon |
 | `VAvatar` | `core/widgets/v_avatar.dart` | **Done (Phase 0)** | 5 sizes (xs/sm/md/lg/xl), URL + fallback initial circle |
-| `VAppBar` | `core/widgets/v_app_bar.dart` | **Done (Phase 0)** | Leading (back/close/none) + title + actions + bottom border, PreferredSizeWidget |
+| `VAppBar` | `core/widgets/v_app_bar.dart` | **Done (Phase 0)** | Single standard header untuk semua secondary page: chevron-left back (atau close/none) + judul ter-center + actions + bottom divider. Migrate header custom apapun ke sini. |
 | `VToast` | `core/feedback/toast/v_toast.dart` | **Done (Phase 0)** | 4 types, max stack 3, Quasar spec parity (icon bubble, pill retry, error shake) |
 | `VSkeleton` | `core/feedback/v_skeleton.dart` | **Done (Phase 0)** | Shimmer via `shimmer` package, circle variant |
 | `VProgressRing` | `core/feedback/v_progress_ring.dart` | **Done (Phase 0)** | inline + overlay mode, % label |
 | `VFieldError` | `core/feedback/v_field_error.dart` | **Done (Phase 0)** | Inline non-input error with alert icon |
 | `VEmptyState` | `core/feedback/v_empty_state.dart` | **Done (Phase 0)** | icon + title + sub + optional CTA |
-| `PostCard` | `features/post/presentation/widgets/` | TODO Phase 4 | Feed item |
+| `PostCard` | `features/post/presentation/widgets/post_card.dart` | **Done** | Shared feed/detail/explore card: avatar + author + relative time, 1:1 image, inline like/comment counts + bookmark, caption, `onAuthorTap` (ke profil per-server author). |
 | `ServerCard` | `features/server/presentation/widgets/` | TODO Phase 3 | Discovery item |
 | `CommentTile` | `features/post/presentation/widgets/` | TODO Phase 4 | |
 
@@ -1082,5 +1082,5 @@ Sebelum upload (avatar, banner, post image):
 
 ---
 
-_Last updated: 2026-05-24_
-_Doc version: 1.0.0_
+_Last updated: 2026-06-01_
+_Doc version: 1.1.0_

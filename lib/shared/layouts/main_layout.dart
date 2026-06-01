@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/notifications/notification_api.dart';
 import '../../core/router/routes.dart';
 import '../../core/theme/tokens.dart';
+import '../../features/server/data/server_repository.dart';
 
 /// Shell for /app/*. Renders a bottom tab bar; selected index is derived from
 /// the current route. `StatefulShellRoute` migration is deferred to Phase 6.
@@ -28,7 +29,10 @@ class MainLayout extends ConsumerWidget {
     var currentIndex = _tabs.indexWhere((t) => location.startsWith(t.route));
     if (currentIndex < 0) currentIndex = 0;
 
-    final unreadCount = ref.watch(unreadCountProvider).asData?.value ?? 0;
+    final activeServerId = ref.watch(myServersProvider.select((s) => s.activeServerId));
+    final unreadCount = activeServerId == null
+        ? 0
+        : (ref.watch(unreadCountProvider(activeServerId)).asData?.value ?? 0);
 
     return Scaffold(
       backgroundColor: AppColors.background,

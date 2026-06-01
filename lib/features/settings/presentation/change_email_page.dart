@@ -200,6 +200,7 @@ class _RequestForm extends StatelessWidget {
         const SizedBox(height: 24),
         VInput(
           controller: controller,
+          labelOnTop: true,
           label: 'New email',
           hint: 'Enter your new email',
           keyboardType: TextInputType.emailAddress,
@@ -258,6 +259,7 @@ class _ConfirmForm extends StatelessWidget {
         const SizedBox(height: 24),
         VInput(
           controller: controller,
+          labelOnTop: true,
           label: 'Verification code',
           hint: '123456',
           keyboardType: TextInputType.number,

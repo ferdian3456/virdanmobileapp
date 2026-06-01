@@ -6,13 +6,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/errors/show_api_error_toast.dart';
 import '../../../core/feedback/toast/toast_controller.dart';
 import '../../../core/http/dio_client.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/util/avatar_color.dart';
+import '../../../core/widgets/v_app_bar.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../server/data/server_repository.dart';
@@ -182,9 +182,12 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: VAppBar(
+        title: 'Edit Profile',
+        onLeadingTap: () => context.canPop() ? context.pop() : context.go('/settings'),
+      ),
       body: Column(
         children: [
-          _Header(onBack: () => context.canPop() ? context.pop() : context.go('/settings')),
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
@@ -305,53 +308,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header({required this.onBack});
-
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      child: SafeArea(
-        bottom: false,
-        child: Container(
-          height: 56,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Color(0xFFF1F3F5))),
-          ),
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(LucideIcons.chevronLeft, size: 24),
-                onPressed: onBack,
-                tooltip: 'Back',
-              ),
-              const Expanded(
-                child: Center(
-                  child: Text(
-                    'Edit Profile',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -0.17,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 40, height: 40),
-            ],
-          ),
-        ),
       ),
     );
   }

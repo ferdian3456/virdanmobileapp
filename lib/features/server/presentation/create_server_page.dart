@@ -9,6 +9,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/errors/show_api_error_toast.dart';
 import '../../../core/feedback/toast/toast_controller.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../core/widgets/v_app_bar.dart';
 import '../../../core/widgets/v_button.dart';
 import '../data/server_api.dart';
 import '../data/server_create_draft.dart';
@@ -209,9 +210,9 @@ class _CreateServerPageState extends ConsumerState<CreateServerPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
+      appBar: VAppBar(title: 'Create Server', onLeadingTap: _goBack),
       body: Column(
         children: [
-          _Header(onBack: _goBack),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
@@ -323,61 +324,6 @@ class _CreateServerPageState extends ConsumerState<CreateServerPage> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header({required this.onBack});
-
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      child: SafeArea(
-        bottom: false,
-        child: Container(
-          height: 56,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Color(0xFFE9ECEF))),
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 40,
-                height: 40,
-                child: Material(
-                  color: Colors.transparent,
-                  shape: const CircleBorder(),
-                  child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: onBack,
-                    child: const Center(child: Icon(LucideIcons.chevronLeft, size: 24)),
-                  ),
-                ),
-              ),
-              const Expanded(
-                child: Center(
-                  child: Text(
-                    'Create Server',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -0.17,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 40, height: 40),
-            ],
-          ),
-        ),
       ),
     );
   }

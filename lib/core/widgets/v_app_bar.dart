@@ -6,8 +6,10 @@ import '../theme/typography.dart';
 
 enum VAppBarLeading { back, close, none }
 
-/// Project AppBar wrapper. Use over raw Material AppBar so leading icon style
-/// (lucide arrow vs X) and bottom divider stay consistent across pages.
+/// Project AppBar wrapper and single source of truth for secondary-page
+/// headers: a chevron-left back button on the left and a centered title.
+/// Use over a raw Material AppBar so leading icon, title style, and the bottom
+/// divider stay identical across every page.
 class VAppBar extends StatelessWidget implements PreferredSizeWidget {
   const VAppBar({
     super.key,
@@ -16,7 +18,7 @@ class VAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.leading = VAppBarLeading.back,
     this.onLeadingTap,
     this.actions,
-    this.centerTitle = false,
+    this.centerTitle = true,
     this.showBorder = true,
     this.backgroundColor,
   }) : assert(title == null || titleWidget == null,
@@ -32,6 +34,9 @@ class VAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Color? backgroundColor;
 
   static const _height = 56.0;
+  // Matches IconButton's interactive size so a centered title stays visually
+  // centered when there are no actions to balance the leading slot.
+  static const _sideSlot = 48.0;
 
   @override
   Size get preferredSize => const Size.fromHeight(_height);
@@ -42,7 +47,7 @@ class VAppBar extends StatelessWidget implements PreferredSizeWidget {
         return null;
       case VAppBarLeading.back:
         return IconButton(
-          icon: const Icon(LucideIcons.arrowLeft),
+          icon: const Icon(LucideIcons.chevronLeft),
           tooltip: 'Back',
           onPressed: onLeadingTap ?? () => Navigator.maybeOf(context)?.maybePop(),
         );
@@ -57,6 +62,11 @@ class VAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final leadingWidget = _buildLeading(context);
+    final Widget? trailingWidget = actions != null
+        ? Row(mainAxisSize: MainAxisSize.min, children: actions!)
+        : (leadingWidget != null ? const SizedBox(width: _sideSlot) : null);
+
     return Material(
       color: backgroundColor ?? AppColors.background,
       child: SafeArea(
@@ -69,21 +79,16 @@ class VAppBar extends StatelessWidget implements PreferredSizeWidget {
                 )
               : null,
           child: NavigationToolbar(
-            leading: _buildLeading(context),
+            leading: leadingWidget,
             middle: titleWidget ??
                 (title != null
                     ? Text(
                         title!,
-                        style: AppTextStyles.h3,
+                        style: AppTextStyles.bodyStrong.copyWith(fontSize: 17),
                         overflow: TextOverflow.ellipsis,
                       )
                     : null),
-            trailing: actions == null
-                ? null
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: actions!,
-                  ),
+            trailing: trailingWidget,
             centerMiddle: centerTitle,
             middleSpacing: AppSpacing.sm,
           ),

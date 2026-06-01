@@ -15,6 +15,7 @@ import '../../features/notifications/presentation/notifications_page.dart';
 import '../../features/onboarding/presentation/onboarding_server_choice_page.dart';
 import '../../features/post/presentation/comments_page.dart';
 import '../../features/post/presentation/create_post_page.dart';
+import '../../features/post/presentation/explore_feed_page.dart';
 import '../../features/post/presentation/home_page.dart';
 import '../../features/post/presentation/post_detail_page.dart';
 import '../../features/profile/presentation/edit_profile_page.dart';
@@ -34,6 +35,7 @@ import '../../features/settings/presentation/notification_settings_page.dart';
 import '../../features/settings/presentation/privacy_security_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
 import '../../features/settings/presentation/static_pages.dart';
+import '../../features/splash/presentation/splash_page.dart';
 import '../../shared/layouts/main_layout.dart';
 import 'routes.dart';
 
@@ -41,7 +43,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier(ref);
 
   return GoRouter(
-    initialLocation: Routes.authLogin,
+    initialLocation: Routes.splash,
     debugLogDiagnostics: true,
     refreshListenable: notifier,
     redirect: (context, state) {
@@ -56,6 +58,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isDevRoute = matched.startsWith('/dev');
       final isStandaloneProtected = matched.startsWith('/server') ||
           matched.startsWith('/posts') ||
+          matched.startsWith('/explore') ||
           matched.startsWith('/profile/') ||
           matched.startsWith('/settings') ||
           matched.startsWith('/chat') ||
@@ -94,6 +97,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: Routes.root, redirect: (_, _) => Routes.authLogin),
+      GoRoute(path: Routes.splash, builder: (_, _) => const SplashPage()),
       GoRoute(path: Routes.authLogin, builder: (_, _) => const LoginPage()),
       GoRoute(path: Routes.authRegister, builder: (_, _) => const RegisterPage()),
       GoRoute(path: Routes.authVerifyOtp, builder: (_, _) => const VerifyOtpPage()),
@@ -167,8 +171,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => CommentsPage(postId: state.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/profile/:userId',
-        builder: (_, state) => UserProfilePage(userId: state.pathParameters['userId']!),
+        path: '/explore/feed/:postId',
+        builder: (_, state) => ExploreFeedPage(
+          postId: state.pathParameters['postId']!,
+          args: state.extra is ExploreFeedArgs
+              ? state.extra! as ExploreFeedArgs
+              : null,
+        ),
+      ),
+      GoRoute(
+        path: '/servers/:serverId/members/:userId/profile',
+        builder: (_, state) => UserProfilePage(
+          serverId: state.pathParameters['serverId']!,
+          userId: state.pathParameters['userId']!,
+        ),
       ),
 
       GoRoute(path: Routes.settings, builder: (_, _) => const SettingsPage()),

@@ -12,6 +12,7 @@ import '../../../core/util/app_assets.dart';
 import '../../../core/widgets/v_button.dart';
 import '../../post/data/post_api.dart';
 import '../../post/domain/post.dart';
+import '../../post/presentation/explore_feed_page.dart';
 import '../../server/data/server_repository.dart';
 
 /// Matches Quasar ExplorePage.vue: search bar + 3-column post grid from the
@@ -106,6 +107,22 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
         .toList();
   }
 
+  void _openFeed(Post p) {
+    final serverId = ref.read(myServersProvider).activeServerId;
+    if (serverId == null) return;
+    final index = _posts.indexWhere((e) => e.id == p.id);
+    context.push(
+      Routes.exploreFeed(p.id),
+      extra: ExploreFeedArgs(
+        posts: _posts,
+        startIndex: index < 0 ? 0 : index,
+        serverId: serverId,
+        nextCursor: _nextCursor,
+        hasMore: _hasMore,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final showSkeleton = _loading && _posts.isEmpty;
@@ -145,7 +162,7 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
                             }
                             final p = filtered[i];
                             return GestureDetector(
-                              onTap: () => context.push('/posts/${p.id}'),
+                              onTap: () => _openFeed(p),
                               child: p.imageUrl != null && p.imageUrl!.isNotEmpty
                                   ? Image.network(p.imageUrl!,
                                       fit: BoxFit.cover,

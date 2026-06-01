@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -8,7 +9,9 @@ import '../../../core/feedback/v_skeleton.dart';
 import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
+import '../../../core/util/app_assets.dart';
 import '../../../core/util/avatar_color.dart';
+import '../../../core/widgets/v_button.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../post/data/post_api.dart';
@@ -56,9 +59,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       if (mounted) setState(() => _loadingProfile = false);
     }
     try {
-      final page = await ref.read(postApiProvider).listForServer(
+      final page = await ref.read(postApiProvider).postsForMe(
             serverId: serverId,
-            limit: 30,
+            limit: 20,
           );
       if (!mounted) return;
       setState(() => _posts = page.data);
@@ -126,9 +129,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               if (_loadingPosts && _posts.isEmpty)
                 const SliverToBoxAdapter(child: _GridSkeleton())
               else if (_posts.isEmpty)
-                const SliverFillRemaining(
+                SliverFillRemaining(
                   hasScrollBody: false,
-                  child: _EmptyGrid(),
+                  child: _EmptyGrid(onCreate: () => context.push(Routes.appCreate)),
                 )
               else
                 SliverGrid.builder(
@@ -218,7 +221,6 @@ class _Header extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Icon(LucideIcons.chevronDown, size: 18),
               ],
             ),
           ),
@@ -384,34 +386,49 @@ class _TabStrip extends StatelessWidget {
 }
 
 class _EmptyGrid extends StatelessWidget {
-  const _EmptyGrid();
+  const _EmptyGrid({required this.onCreate});
+
+  final VoidCallback onCreate;
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(32, 24, 32, 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(LucideIcons.image, size: 48, color: AppColors.textTertiary),
-            SizedBox(height: 12),
-            Text(
+          children: [
+            SvgPicture.asset(AppAssets.illustrationEmptyPostForProfile, width: 200),
+            const SizedBox(height: 20),
+            const Text(
               'No posts yet',
               style: TextStyle(
                 fontFamily: 'Inter',
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.36,
+                color: Color(0xFF0F172A),
               ),
             ),
-            SizedBox(height: 6),
-            Text(
+            const SizedBox(height: 8),
+            const Text(
               'Share your first post to fill up your profile grid.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Inter',
-                fontSize: 13,
+                fontSize: 14,
                 color: AppColors.textSecondary,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 320),
+              child: VButton(
+                label: 'Create a Post',
+                size: VButtonSize.lg,
+                fullWidth: true,
+                onPressed: onCreate,
               ),
             ),
           ],

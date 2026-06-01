@@ -13,6 +13,7 @@ import '../../../core/feedback/toast/toast_controller.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/util/avatar_color.dart';
+import '../../../core/widgets/v_app_bar.dart';
 import '../../../core/widgets/v_button.dart';
 import '../../../core/router/routes.dart';
 import '../../auth/data/auth_repository.dart';
@@ -41,6 +42,7 @@ class _YourProfilePageState extends ConsumerState<YourProfilePage> {
   final _bio = TextEditingController();
   XFile? _avatar;
   List<ProfileHistoryItem> _history = const [];
+  ProfileHistoryItem? _pickedHistory;
   bool _loadingHistory = false;
   bool _submitting = false;
   String? _usernameError;
@@ -87,6 +89,80 @@ class _YourProfilePageState extends ConsumerState<YourProfilePage> {
       _username.text = item.username;
       _bio.text = item.bio ?? '';
     });
+  }
+
+  Future<void> _openHistoryPicker() async {
+    if (_loadingHistory || _history.isEmpty) return;
+    final picked = await showModalBottomSheet<ProfileHistoryItem>(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xxl)),
+      ),
+      builder: (_) => SafeArea(
+        top: false,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Choose a profile',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _history.length,
+                  itemBuilder: (_, i) {
+                    final item = _history[i];
+                    final active = _pickedHistory?.profileId == item.profileId;
+                    return ListTile(
+                      title: Text(
+                        item.nickname,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 15,
+                          fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                          color: active ? AppColors.primary : AppColors.textPrimary,
+                        ),
+                      ),
+                      subtitle: Text(
+                        item.serverName,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      trailing: active
+                          ? const Icon(LucideIcons.check, color: AppColors.primary)
+                          : null,
+                      onTap: () => Navigator.pop(context, item),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked != null && mounted) {
+      setState(() => _pickedHistory = picked);
+      _copyFromHistory(picked);
+    }
   }
 
   Future<void> _pickAvatar() async {
@@ -207,9 +283,9 @@ class _YourProfilePageState extends ConsumerState<YourProfilePage> {
     final letter = _avatarLetter;
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
+      appBar: VAppBar(title: 'Your Profile', onLeadingTap: () => context.pop()),
       body: Column(
         children: [
-          _Header(onBack: () => context.pop()),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
@@ -224,10 +300,14 @@ class _YourProfilePageState extends ConsumerState<YourProfilePage> {
                   const SizedBox(height: 24),
                   if (_history.isNotEmpty) ...[
                     _FieldLabel(label: 'PROFILE', optionalTag: true),
-                    _HistoryPicker(
-                      items: _history,
-                      loading: _loadingHistory,
-                      onPick: _copyFromHistory,
+                    _HistoryPickerField(
+                      label: _loadingHistory
+                          ? 'Loading profiles…'
+                          : (_pickedHistory != null
+                              ? '${_pickedHistory!.nickname}  ·  ${_pickedHistory!.serverName}'
+                              : 'Choose a profile to copy…'),
+                      isPlaceholder: _pickedHistory == null,
+                      onTap: _openHistoryPicker,
                     ),
                     const SizedBox(height: 4),
                     const Text(
@@ -331,50 +411,6 @@ class _YourProfilePageState extends ConsumerState<YourProfilePage> {
   }
 }
 
-class _Header extends StatelessWidget {
-  const _Header({required this.onBack});
-
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      child: SafeArea(
-        bottom: false,
-        child: Container(
-          height: 56,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Color(0xFFE9ECEF))),
-          ),
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(LucideIcons.chevronLeft, size: 24),
-                onPressed: onBack,
-              ),
-              const Expanded(
-                child: Center(
-                  child: Text(
-                    'Your Profile',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 48),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _AvatarUploader extends StatelessWidget {
   const _AvatarUploader({
@@ -571,61 +607,48 @@ class _Field extends StatelessWidget {
   }
 }
 
-class _HistoryPicker extends StatelessWidget {
-  const _HistoryPicker({
-    required this.items,
-    required this.loading,
-    required this.onPick,
+class _HistoryPickerField extends StatelessWidget {
+  const _HistoryPickerField({
+    required this.label,
+    required this.isPlaceholder,
+    required this.onTap,
   });
 
-  final List<ProfileHistoryItem> items;
-  final bool loading;
-  final ValueChanged<ProfileHistoryItem> onPick;
+  final String label;
+  final bool isPlaceholder;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<String>(
-      isExpanded: true,
-      icon: const Icon(LucideIcons.chevronDown, size: 18, color: AppColors.textSecondary),
-      hint: Text(
-        loading ? 'Loading history…' : 'Choose profile…',
-        style: const TextStyle(
-          fontFamily: 'Inter',
-          fontSize: 15,
-          color: AppColors.textTertiary,
-        ),
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFE9ECEF)),
       ),
-      items: items
-          .map(
-            (i) => DropdownMenuItem<String>(
-              value: i.profileId,
-              child: Text('${i.nickname}  ·  ${i.serverName}'),
-            ),
-          )
-          .toList(growable: false),
-      onChanged: loading
-          ? null
-          : (id) {
-              if (id == null) return;
-              final picked = items.firstWhere((e) => e.profileId == id);
-              onPick(picked);
-            },
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.white,
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE9ECEF)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE9ECEF)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 15,
+                    color:
+                        isPlaceholder ? AppColors.textTertiary : AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              const Icon(LucideIcons.chevronDown,
+                  size: 18, color: AppColors.textSecondary),
+            ],
+          ),
         ),
       ),
     );

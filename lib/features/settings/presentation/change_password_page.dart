@@ -239,6 +239,7 @@ class _VerifyForm extends StatelessWidget {
         const SizedBox(height: 20),
         VInput(
           controller: controller,
+          labelOnTop: true,
           label: 'Current password',
           hint: 'Enter your current password',
           obscure: true,
@@ -300,6 +301,7 @@ class _SetForm extends StatelessWidget {
         const SizedBox(height: 20),
         VInput(
           controller: nextCtl,
+          labelOnTop: true,
           label: 'New password',
           hint: 'Enter your new password',
           obscure: true,
@@ -309,6 +311,7 @@ class _SetForm extends StatelessWidget {
         const SizedBox(height: 12),
         VInput(
           controller: confirmCtl,
+          labelOnTop: true,
           label: 'Confirm new password',
           hint: 'Re-enter your new password',
           obscure: true,

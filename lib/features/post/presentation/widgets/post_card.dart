@@ -2,70 +2,153 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/theme/tokens.dart';
-import '../../../../core/util/avatar_color.dart';
+import '../../../../core/util/relative_time.dart';
 import '../../domain/post.dart';
 
+/// Canonical post card shared by the home feed, explore feed, and post detail.
+/// IG-style: header (avatar + author + relative time), 1:1 image, action row
+/// with inline like/comment counts plus a bookmark on the right, then caption.
+/// [onAuthorTap] navigates to the author's per-server profile when provided.
 class PostCard extends StatelessWidget {
   const PostCard({
     super.key,
     required this.post,
     required this.onLikeTap,
     required this.onCommentTap,
+    this.onAuthorTap,
   });
 
   final Post post;
   final VoidCallback onLikeTap;
   final VoidCallback onCommentTap;
+  final VoidCallback? onAuthorTap;
 
   @override
   Widget build(BuildContext context) {
+    final initial = post.authorNickname.isNotEmpty
+        ? post.authorNickname.characters.first.toUpperCase()
+        : '?';
     return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFF1F3F5))),
+      ),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _Header(post: post),
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: onAuthorTap,
+                  child: ClipOval(
+                    child: post.authorAvatarUrl != null && post.authorAvatarUrl!.isNotEmpty
+                        ? Image.network(
+                            post.authorAvatarUrl!,
+                            width: 36,
+                            height: 36,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => _fallback(initial),
+                          )
+                        : _fallback(initial),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: onAuthorTap,
+                    behavior: HitTestBehavior.opaque,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          post.authorNickname,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF0F172A),
+                            letterSpacing: -0.14,
+                          ),
+                        ),
+                        Text(
+                          formatRelativeTime(post.createdAt),
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(LucideIcons.ellipsis, size: 20),
+                  onPressed: () {},
+                  tooltip: 'More',
+                ),
+              ],
+            ),
+          ),
+          // Image
           if (post.imageUrl != null && post.imageUrl!.isNotEmpty)
             AspectRatio(
               aspectRatio: 1,
-              child: Image.network(
-                post.imageUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const ColoredBox(
-                  color: AppColors.surface,
-                  child: Center(
+              child: ColoredBox(
+                color: const Color(0xFFF1F3F5),
+                child: Image.network(
+                  post.imageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => const Center(
                     child: Icon(LucideIcons.imageOff, color: AppColors.textTertiary),
                   ),
                 ),
               ),
             ),
-          _Actions(
-            isLiked: post.isLiked,
-            onLikeTap: onLikeTap,
-            onCommentTap: onCommentTap,
-          ),
-          if (post.likeCount > 0)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Text(
-                '${formatCount(post.likeCount)} likes',
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+          // Actions
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Row(
+              children: [
+                _ActionButton(
+                  icon: post.isLiked ? Icons.favorite : LucideIcons.heart,
+                  count: post.likeCount,
+                  active: post.isLiked,
+                  activeColor: AppColors.error,
+                  onTap: onLikeTap,
                 ),
-              ),
+                _ActionButton(
+                  icon: LucideIcons.messageCircle,
+                  count: post.commentCount,
+                  onTap: onCommentTap,
+                ),
+                _ActionButton(
+                  icon: LucideIcons.send,
+                  onTap: () {},
+                ),
+                const Spacer(),
+                _ActionButton(
+                  icon: LucideIcons.bookmark,
+                  iconSize: 22,
+                  onTap: () {},
+                ),
+              ],
             ),
+          ),
+          // Caption
           if (post.caption.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: RichText(
                 text: TextSpan(
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 14,
-                    color: AppColors.textPrimary,
-                    height: 1.35,
+                    color: Color(0xFF212529),
+                    height: 1.4,
                   ),
                   children: [
                     TextSpan(
@@ -77,89 +160,25 @@ class PostCard extends StatelessWidget {
                 ),
               ),
             ),
-          if (post.commentCount > 0)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              child: GestureDetector(
-                onTap: onCommentTap,
-                child: Text(
-                  'View ${post.commentCount} comments',
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header({required this.post});
-
-  final Post post;
-
-  @override
-  Widget build(BuildContext context) {
-    final initial = post.authorNickname.isNotEmpty
-        ? post.authorNickname.characters.first.toUpperCase()
-        : '?';
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      child: Row(
-        children: [
-          ClipOval(
-            child: post.authorAvatarUrl != null && post.authorAvatarUrl!.isNotEmpty
-                ? Image.network(
-                    post.authorAvatarUrl!,
-                    width: 32,
-                    height: 32,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => _avatarFallback(initial),
-                  )
-                : _avatarFallback(initial),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              post.authorNickname,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          IconButton(
-            icon: const Icon(LucideIcons.ellipsis, size: 20),
-            onPressed: () {},
-            visualDensity: VisualDensity.compact,
-          ),
         ],
       ),
     );
   }
 
-  Widget _avatarFallback(String initial) {
+  Widget _fallback(String initial) {
     return Container(
-      width: 32,
-      height: 32,
+      width: 36,
+      height: 36,
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: avatarColorFor(post.authorNickname),
+      decoration: const BoxDecoration(
+        color: AppColors.primary,
         shape: BoxShape.circle,
       ),
       child: Text(
         initial,
         style: const TextStyle(
           fontFamily: 'Inter',
-          fontSize: 14,
+          fontSize: 15,
           fontWeight: FontWeight.w700,
           color: Colors.white,
         ),
@@ -168,40 +187,51 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _Actions extends StatelessWidget {
-  const _Actions({
-    required this.isLiked,
-    required this.onLikeTap,
-    required this.onCommentTap,
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.icon,
+    this.count = 0,
+    this.active = false,
+    this.activeColor,
+    this.iconSize = 24,
+    required this.onTap,
   });
 
-  final bool isLiked;
-  final VoidCallback onLikeTap;
-  final VoidCallback onCommentTap;
+  final IconData icon;
+  final int count;
+  final bool active;
+  final Color? activeColor;
+  final double iconSize;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      child: Row(
-        children: [
-          IconButton(
-            icon: Icon(
-              isLiked ? Icons.favorite : LucideIcons.heart,
-              size: 26,
-              color: isLiked ? AppColors.error : AppColors.textPrimary,
-            ),
-            onPressed: onLikeTap,
-          ),
-          IconButton(
-            icon: const Icon(LucideIcons.messageCircle, size: 26),
-            onPressed: onCommentTap,
-          ),
-          IconButton(
-            icon: const Icon(LucideIcons.send, size: 26),
-            onPressed: () {},
-          ),
-        ],
+    final color = active ? (activeColor ?? AppColors.error) : const Color(0xFF212529);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 40),
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: iconSize, color: color),
+            if (count > 0) ...[
+              const SizedBox(width: 4),
+              Text(
+                '$count',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF0F172A),
+                  letterSpacing: -0.14,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
