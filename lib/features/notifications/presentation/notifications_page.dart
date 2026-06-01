@@ -29,11 +29,26 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   bool _loading = false;
   bool _hasMore = true;
   bool _initialLoaded = false;
+  final ScrollController _scroll = ScrollController();
 
   @override
   void initState() {
     super.initState();
+    _scroll.addListener(_onScroll);
     _load(refresh: true);
+  }
+
+  @override
+  void dispose() {
+    _scroll.removeListener(_onScroll);
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scroll.hasClients || _loading || !_hasMore) return;
+    final pos = _scroll.position;
+    if (pos.pixels >= pos.maxScrollExtent - 300) _load();
   }
 
   Future<void> _load({bool refresh = false}) async {
@@ -189,21 +204,12 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                   : RefreshIndicator(
                       onRefresh: () => _load(refresh: true),
                       child: ListView(
+                        controller: _scroll,
                         padding: const EdgeInsets.only(bottom: 24),
                         children: [
                           _Section(title: 'New', items: groups[NotificationGroup.newer]!, onTap: _onTap),
                           _Section(title: 'Today', items: groups[NotificationGroup.today]!, onTap: _onTap),
                           _Section(title: 'Earlier', items: groups[NotificationGroup.earlier]!, onTap: _onTap),
-                          if (_hasMore && !_loading && _initialLoaded)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Center(
-                                child: TextButton(
-                                  onPressed: () => _load(),
-                                  child: const Text('Muat lebih banyak'),
-                                ),
-                              ),
-                            ),
                           if (_loading)
                             const Padding(
                               padding: EdgeInsets.all(16),
