@@ -15,6 +15,7 @@ import '../../features/notifications/presentation/notifications_page.dart';
 import '../../features/onboarding/presentation/onboarding_server_choice_page.dart';
 import '../../features/post/presentation/comments_page.dart';
 import '../../features/post/presentation/create_post_page.dart';
+import '../../features/post/presentation/explore_feed_page.dart';
 import '../../features/post/presentation/home_page.dart';
 import '../../features/post/presentation/post_detail_page.dart';
 import '../../features/profile/presentation/edit_profile_page.dart';
@@ -56,6 +57,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isDevRoute = matched.startsWith('/dev');
       final isStandaloneProtected = matched.startsWith('/server') ||
           matched.startsWith('/posts') ||
+          matched.startsWith('/explore') ||
           matched.startsWith('/profile/') ||
           matched.startsWith('/settings') ||
           matched.startsWith('/chat') ||
@@ -165,6 +167,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/posts/:id/comments',
         builder: (_, state) => CommentsPage(postId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/explore/feed/:postId',
+        builder: (_, state) => ExploreFeedPage(
+          postId: state.pathParameters['postId']!,
+          args: state.extra is ExploreFeedArgs
+              ? state.extra! as ExploreFeedArgs
+              : null,
+        ),
       ),
       GoRoute(
         path: '/profile/:userId',
