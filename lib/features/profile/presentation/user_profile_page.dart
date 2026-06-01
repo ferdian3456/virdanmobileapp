@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -7,6 +8,7 @@ import '../../../core/errors/show_api_error_toast.dart';
 import '../../../core/feedback/v_skeleton.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
+import '../../../core/util/app_assets.dart';
 import '../../../core/util/avatar_color.dart';
 import '../../../core/widgets/v_app_bar.dart';
 import '../../post/data/post_api.dart';
@@ -245,19 +247,32 @@ class _EmptyGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(32, 24, 32, 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(LucideIcons.image, size: 48, color: AppColors.textTertiary),
-            SizedBox(height: 12),
-            Text(
+          children: [
+            SvgPicture.asset(AppAssets.illustrationEmptyPostForProfile, width: 200),
+            const SizedBox(height: 20),
+            const Text(
               'No posts yet',
               style: TextStyle(
                 fontFamily: 'Inter',
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.36,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "This user hasn't posted anything yet.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                color: AppColors.textSecondary,
+                height: 1.5,
               ),
             ),
           ],

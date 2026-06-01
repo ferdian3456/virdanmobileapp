@@ -2,6 +2,7 @@ abstract final class AppAssets {
   // Illustrations (svg)
   static const illustrationCommunity = 'assets/illustrator/community.svg';
   static const illustrationEmpty = 'assets/illustrator/empty.svg';
+  static const illustrationEmptyPostForProfile = 'assets/illustrator/empty_post_for_profile.svg';
   static const illustrationNotification = 'assets/illustrator/notification.svg';
   static const illustrationPost = 'assets/illustrator/post.svg';
   static const illustrationPostingPhoto = 'assets/illustrator/posting_photo.svg';
