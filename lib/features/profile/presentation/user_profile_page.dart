@@ -58,7 +58,7 @@ class _UserProfilePageState extends ConsumerState<UserProfilePage> {
       final page = await ref.read(postApiProvider).postsForUser(
             serverId: widget.serverId,
             userId: widget.userId,
-            limit: 30,
+            limit: 20,
           );
       if (!mounted) return;
       setState(() => _posts = page.data);

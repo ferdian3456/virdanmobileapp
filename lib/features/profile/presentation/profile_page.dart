@@ -58,7 +58,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     try {
       final page = await ref.read(postApiProvider).postsForMe(
             serverId: serverId,
-            limit: 30,
+            limit: 20,
           );
       if (!mounted) return;
       setState(() => _posts = page.data);
