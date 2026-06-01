@@ -7,9 +7,11 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/errors/show_api_error_toast.dart';
 import '../../../core/feedback/v_skeleton.dart';
+import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/util/app_assets.dart';
 import '../../../core/util/avatar_color.dart';
+import '../../../core/widgets/v_button.dart';
 import '../data/server_api.dart';
 import '../data/server_create_draft.dart';
 import '../domain/server.dart';
@@ -123,6 +125,12 @@ class _ExploreServersPageState extends ConsumerState<ExploreServersPage> {
     context.push(path);
   }
 
+  void _createServer() {
+    final isOnboarding =
+        ModalRoute.of(context)?.settings.name?.startsWith('/onboarding') ?? false;
+    context.push(isOnboarding ? Routes.onboardingCreateServer : Routes.appCreateServer);
+  }
+
   List<DiscoveryServer> get _filtered {
     final q = _query.trim().toLowerCase();
     if (q.isEmpty) return _servers;
@@ -160,9 +168,9 @@ class _ExploreServersPageState extends ConsumerState<ExploreServersPage> {
                   if (_loading && _servers.isEmpty)
                     const SliverToBoxAdapter(child: _ListSkeleton())
                   else if (_filtered.isEmpty)
-                    const SliverFillRemaining(
+                    SliverFillRemaining(
                       hasScrollBody: false,
-                      child: _EmptyState(),
+                      child: _EmptyState(onCreate: _createServer),
                     )
                   else
                     SliverList.builder(
@@ -550,25 +558,52 @@ class _JoinPill extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState({required this.onCreate});
+
+  final VoidCallback onCreate;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SvgPicture.asset(AppAssets.illustrationEmpty, width: 220),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             const Text(
-              'No servers match your search.',
+              'No servers found',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.36,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "No community matches this yet. Be the first to create one.",
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 14,
                 color: AppColors.textSecondary,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 320),
+              child: VButton(
+                label: 'Create a Server',
+                size: VButtonSize.lg,
+                fullWidth: true,
+                onPressed: onCreate,
               ),
             ),
           ],
