@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "34596810051",
+    "project_id": "virdan-3a6d7",
+    "storage_bucket": "virdan-3a6d7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:34596810051:android:98d300757b84dd8d8493f6",
+        "android_client_info": {
+          "package_name": "com.virdan.virdanmobileapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAbyYfiQrbG47E3bjRLIibg62QklrzHL5g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

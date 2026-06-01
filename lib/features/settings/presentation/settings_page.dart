@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../core/http/dio_client.dart';
 import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/util/avatar_color.dart';
@@ -25,6 +26,7 @@ class SettingsPage extends ConsumerStatefulWidget {
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   ServerMemberProfile? _profile;
   bool _loggingOut = false;
+  bool _testingNotification = false;
 
   @override
   void initState() {
@@ -41,6 +43,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       setState(() => _profile = p);
     } catch (_) {
       // Silent — header gracefully degrades to email.
+    }
+  }
+
+  Future<void> _testNotification() async {
+    if (_testingNotification) return;
+    setState(() => _testingNotification = true);
+    try {
+      await ref.read(apiDioProvider).post('/notifications/test-send');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Test notification sent. Check your device.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to send test notification.')),
+      );
+    } finally {
+      if (mounted) setState(() => _testingNotification = false);
     }
   }
 
@@ -122,6 +143,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       icon: LucideIcons.bell,
                       label: 'Notification Settings',
                       onTap: () => context.push(Routes.settingsNotifications),
+                    ),
+                    _Row(
+                      icon: LucideIcons.send,
+                      label: _testingNotification ? 'Sending…' : 'Test Notification',
+                      onTap: _testingNotification ? null : _testNotification,
                     ),
                   ]),
                   _Section(title: 'ABOUT & SUPPORT', children: [

@@ -1,28 +1,156 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../core/notifications/notification_api.dart';
+import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/util/app_assets.dart';
 import '../../../core/util/avatar_color.dart';
+import '../../../core/util/relative_time.dart';
 import '../../../mocks/notifications_mock.dart';
 
-/// Mirrors Quasar NotificationsPage.vue: centered title header, 2 full-width
-/// tab pills (All / Mentions), grouped sections (New / Today / Earlier),
-/// row = 40px avatar with kind badge + text (username bold inline) + time
-/// on separate line + trailing Follow rect button OR 40px thumbnail.
-/// Empty state uses notification.svg.
-class NotificationsPage extends StatefulWidget {
+/// Real notification feed (replaces the mock). Fetches GET /api/notifications, maps the raw
+/// payload to the existing NotificationItem UI model, marks read on tap (only when unread), and
+/// deep-links to the related post.
+class NotificationsPage extends ConsumerStatefulWidget {
   const NotificationsPage({super.key});
 
   @override
-  State<NotificationsPage> createState() => _NotificationsPageState();
+  ConsumerState<NotificationsPage> createState() => _NotificationsPageState();
 }
 
-class _NotificationsPageState extends State<NotificationsPage> {
+class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   int _tab = 0;
-  late final List<NotificationItem> _items =
-      List<NotificationItem>.of(mockNotifications);
+  final List<NotificationItem> _items = [];
+  String? _nextCursor;
+  bool _loading = false;
+  bool _hasMore = true;
+  bool _initialLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load(refresh: true);
+  }
+
+  Future<void> _load({bool refresh = false}) async {
+    if (_loading) return;
+    if (!refresh && !_hasMore) return;
+
+    setState(() => _loading = true);
+    try {
+      final cursor = refresh ? null : _nextCursor;
+      final data = await ref.read(notificationApiProvider).getNotifications(cursor: cursor);
+
+      final rawItems = (data['data'] as List? ?? const []).cast<Map<String, dynamic>>();
+      final page = data['page'] as Map<String, dynamic>?;
+      final nextCursor = page?['nextCursor'] as String?;
+
+      final mapped = rawItems.map(_mapItem).toList();
+
+      if (!mounted) return;
+      setState(() {
+        if (refresh) {
+          _items
+            ..clear()
+            ..addAll(mapped);
+        } else {
+          _items.addAll(mapped);
+        }
+        _nextCursor = nextCursor;
+        _hasMore = nextCursor != null && nextCursor.isNotEmpty;
+      });
+    } catch (_) {
+      // Graceful — keep what we have.
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _initialLoaded = true;
+        });
+      }
+    }
+  }
+
+  NotificationItem _mapItem(Map<String, dynamic> raw) {
+    final type = raw['type'] as String? ?? '';
+    final createdAtIso = raw['createdAt'] as String?;
+    final createdAt = createdAtIso != null ? DateTime.tryParse(createdAtIso) : null;
+
+    return NotificationItem(
+      id: raw['id'] as String? ?? '',
+      kind: _kindFromType(type),
+      group: _groupFromDate(createdAt),
+      actor: NotificationActor(
+        username: raw['actorUsername'] as String? ?? '',
+        avatarUrl: raw['actorAvatarUrl'] as String?,
+      ),
+      text: _textFromType(type),
+      timeLabel: formatRelativeTime(createdAtIso),
+      serverId: raw['serverId'] as String?,
+      postId: raw['postId'] as String?,
+      isRead: raw['readAt'] != null,
+    );
+  }
+
+  NotificationKind _kindFromType(String type) {
+    switch (type) {
+      case 'like':
+        return NotificationKind.like;
+      case 'comment':
+        return NotificationKind.comment;
+      case 'reply':
+        return NotificationKind.reply;
+      case 'mention':
+        return NotificationKind.mention;
+      default:
+        return NotificationKind.like;
+    }
+  }
+
+  NotificationGroup _groupFromDate(DateTime? date) {
+    if (date == null) return NotificationGroup.earlier;
+    final now = DateTime.now();
+    final diff = now.difference(date);
+    if (diff.inHours < 1) return NotificationGroup.newer;
+    if (diff.inHours < 24 && now.day == date.day) return NotificationGroup.today;
+    return NotificationGroup.earlier;
+  }
+
+  String _textFromType(String type) {
+    switch (type) {
+      case 'like':
+        return 'menyukai postinganmu.';
+      case 'comment':
+        return 'mengomentari postinganmu.';
+      case 'reply':
+        return 'membalas komentarmu.';
+      case 'mention':
+        return 'menyebut kamu.';
+      default:
+        return 'berinteraksi denganmu.';
+    }
+  }
+
+  Future<void> _onTap(NotificationItem item) async {
+    // Only call the API when still unread — avoids redundant requests.
+    if (!item.isRead) {
+      setState(() => item.isRead = true);
+      try {
+        await ref.read(notificationApiProvider).markRead(item.id);
+        ref.invalidate(unreadCountProvider);
+      } catch (_) {
+        // Roll back the optimistic flag on failure.
+        if (mounted) setState(() => item.isRead = false);
+      }
+    }
+    if (item.postId != null && item.postId!.isNotEmpty && mounted) {
+      context.push(Routes.postDetail(item.postId!));
+    }
+  }
 
   List<NotificationItem> get _filtered {
     if (_tab == 1) {
@@ -43,14 +171,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
     return out;
   }
 
-  void _toggleFollow(NotificationItem item) {
-    setState(() => item.isFollowing = !item.isFollowing);
-  }
-
   @override
   Widget build(BuildContext context) {
     final groups = _grouped;
-    final isEmpty = _filtered.isEmpty;
+    final isEmpty = _filtered.isEmpty && _initialLoaded && !_loading;
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -62,25 +186,31 @@ class _NotificationsPageState extends State<NotificationsPage> {
             Expanded(
               child: isEmpty
                   ? const _EmptyState()
-                  : ListView(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      children: [
-                        _Section(
-                          title: 'New',
-                          items: groups[NotificationGroup.newer]!,
-                          onFollow: _toggleFollow,
-                        ),
-                        _Section(
-                          title: 'Today',
-                          items: groups[NotificationGroup.today]!,
-                          onFollow: _toggleFollow,
-                        ),
-                        _Section(
-                          title: 'Earlier',
-                          items: groups[NotificationGroup.earlier]!,
-                          onFollow: _toggleFollow,
-                        ),
-                      ],
+                  : RefreshIndicator(
+                      onRefresh: () => _load(refresh: true),
+                      child: ListView(
+                        padding: const EdgeInsets.only(bottom: 24),
+                        children: [
+                          _Section(title: 'New', items: groups[NotificationGroup.newer]!, onTap: _onTap),
+                          _Section(title: 'Today', items: groups[NotificationGroup.today]!, onTap: _onTap),
+                          _Section(title: 'Earlier', items: groups[NotificationGroup.earlier]!, onTap: _onTap),
+                          if (_hasMore && !_loading && _initialLoaded)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Center(
+                                child: TextButton(
+                                  onPressed: () => _load(),
+                                  child: const Text('Muat lebih banyak'),
+                                ),
+                              ),
+                            ),
+                          if (_loading)
+                            const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Center(child: CircularProgressIndicator()),
+                            ),
+                        ],
+                      ),
                     ),
             ),
           ],
@@ -166,15 +296,11 @@ class _Tabs extends StatelessWidget {
 }
 
 class _Section extends StatelessWidget {
-  const _Section({
-    required this.title,
-    required this.items,
-    required this.onFollow,
-  });
+  const _Section({required this.title, required this.items, required this.onTap});
 
   final String title;
   final List<NotificationItem> items;
-  final ValueChanged<NotificationItem> onFollow;
+  final ValueChanged<NotificationItem> onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -197,7 +323,7 @@ class _Section extends StatelessWidget {
               ),
             ),
           ),
-          ...items.map((n) => _Row(item: n, onFollow: () => onFollow(n))),
+          ...items.map((n) => _Row(item: n, onTap: () => onTap(n))),
         ],
       ),
     );
@@ -205,10 +331,10 @@ class _Section extends StatelessWidget {
 }
 
 class _Row extends StatelessWidget {
-  const _Row({required this.item, required this.onFollow});
+  const _Row({required this.item, required this.onTap});
 
   final NotificationItem item;
-  final VoidCallback onFollow;
+  final VoidCallback onTap;
 
   Color get _badgeColor {
     switch (item.kind) {
@@ -216,6 +342,8 @@ class _Row extends StatelessWidget {
         return AppColors.error;
       case NotificationKind.comment:
         return AppColors.primary;
+      case NotificationKind.reply:
+        return const Color(0xFF7C3AED);
       case NotificationKind.mention:
         return const Color(0xFF10B981);
       case NotificationKind.follow:
@@ -229,6 +357,8 @@ class _Row extends StatelessWidget {
         return LucideIcons.heart;
       case NotificationKind.comment:
         return LucideIcons.messageCircle;
+      case NotificationKind.reply:
+        return LucideIcons.cornerDownRight;
       case NotificationKind.mention:
         return LucideIcons.atSign;
       case NotificationKind.follow:
@@ -241,147 +371,95 @@ class _Row extends StatelessWidget {
     final initial = item.actor.username.isNotEmpty
         ? item.actor.username.characters.first.toUpperCase()
         : '?';
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Avatar + badge
-          SizedBox(
-            width: 40,
-            height: 40,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: avatarColorFor(item.actor.username),
-                    shape: BoxShape.circle,
-                  ),
-                  child: item.actor.avatarUrl != null && item.actor.avatarUrl!.isNotEmpty
-                      ? ClipOval(
-                          child: Image.network(item.actor.avatarUrl!, fit: BoxFit.cover))
-                      : Text(
-                          initial,
-                          style: const TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                ),
-                Positioned(
-                  right: -2,
-                  bottom: -2,
-                  child: Container(
-                    width: 18,
-                    height: 18,
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        // Subtle unread highlight.
+        color: item.isRead ? Colors.transparent : AppColors.primarySoft.withValues(alpha: 0.4),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 40,
+              height: 40,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: _badgeColor,
+                      color: avatarColorFor(item.actor.username),
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
                     ),
-                    child: Icon(_kindIcon, size: 11, color: Colors.white),
+                    child: item.actor.avatarUrl != null && item.actor.avatarUrl!.isNotEmpty
+                        ? ClipOval(child: Image.network(item.actor.avatarUrl!, fit: BoxFit.cover))
+                        : Text(
+                            initial,
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Text (username + body) inline; time on its own line below.
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                RichText(
-                  text: TextSpan(
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 14,
-                      color: Color(0xFF212529),
-                      height: 1.4,
-                    ),
-                    children: [
-                      TextSpan(
-                        text: item.actor.username,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                  Positioned(
+                    right: -2,
+                    bottom: -2,
+                    child: Container(
+                      width: 18,
+                      height: 18,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: _badgeColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
                       ),
-                      TextSpan(text: ' ${item.text}'),
-                    ],
+                      child: Icon(_kindIcon, size: 11, color: Colors.white),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  item.timeLabel,
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 12,
-                    color: Color(0xFFADB5BD),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Trailing — follow button OR thumbnail.
-          if (item.showFollowAction)
-            _FollowButton(active: item.isFollowing, onTap: onFollow)
-          else if (item.thumbnailUrl != null && item.thumbnailUrl!.isNotEmpty)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                item.thumbnailUrl!,
-                width: 40,
-                height: 40,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
-                  width: 40,
-                  height: 40,
-                  color: const Color(0xFFF1F3F5),
-                ),
+                ],
               ),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FollowButton extends StatelessWidget {
-  const _FollowButton({required this.active, required this.onTap});
-
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = active ? const Color(0xFFF1F3F5) : AppColors.primary;
-    final fg = active ? const Color(0xFF495057) : Colors.white;
-    return Material(
-      color: bg,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Container(
-          height: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          alignment: Alignment.center,
-          child: Text(
-            active ? 'Following' : 'Follow',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: fg,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  RichText(
+                    text: TextSpan(
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 14,
+                        color: Color(0xFF212529),
+                        height: 1.4,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: item.actor.username,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        TextSpan(text: ' ${item.text}'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    item.timeLabel,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      color: Color(0xFFADB5BD),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

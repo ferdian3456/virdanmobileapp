@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../core/notifications/notification_api.dart';
 import '../../core/router/routes.dart';
 import '../../core/theme/tokens.dart';
 
 /// Shell for /app/*. Renders a bottom tab bar; selected index is derived from
 /// the current route. `StatefulShellRoute` migration is deferred to Phase 6.
-class MainLayout extends StatelessWidget {
+class MainLayout extends ConsumerWidget {
   const MainLayout({super.key, required this.child});
 
   final Widget child;
@@ -21,10 +23,12 @@ class MainLayout extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).matchedLocation;
     var currentIndex = _tabs.indexWhere((t) => location.startsWith(t.route));
     if (currentIndex < 0) currentIndex = 0;
+
+    final unreadCount = ref.watch(unreadCountProvider).asData?.value ?? 0;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -42,16 +46,27 @@ class MainLayout extends StatelessWidget {
               children: List.generate(_tabs.length, (i) {
                 final tab = _tabs[i];
                 final active = i == currentIndex;
+                final isActivity = tab.route == Routes.appNotifications;
+                final icon = Icon(
+                  tab.icon,
+                  size: 28,
+                  color: active ? AppColors.primary : AppColors.textSecondary,
+                );
                 return Expanded(
                   child: InkResponse(
-                    onTap: () => context.go(tab.route),
+                    onTap: () {
+                      // Refresh the unread count when entering the Activity tab.
+                      if (isActivity) ref.invalidate(unreadCountProvider);
+                      context.go(tab.route);
+                    },
                     radius: 36,
                     child: Center(
-                      child: Icon(
-                        tab.icon,
-                        size: 28,
-                        color: active ? AppColors.primary : AppColors.textSecondary,
-                      ),
+                      child: isActivity && unreadCount > 0
+                          ? Badge(
+                              label: Text(unreadCount > 99 ? '99+' : '$unreadCount'),
+                              child: icon,
+                            )
+                          : icon,
                     ),
                   ),
                 );
