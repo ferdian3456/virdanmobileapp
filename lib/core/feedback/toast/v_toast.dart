@@ -98,7 +98,11 @@ class _VToastState extends State<VToast> with SingleTickerProviderStateMixin {
               ],
             ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              // Single-line (title only) centers against the bubble; with a
+              // caption the block is taller, so align to the top instead.
+              crossAxisAlignment: widget.toast.caption == null
+                  ? CrossAxisAlignment.center
+                  : CrossAxisAlignment.start,
               children: [
                 _Bubble(color: _bubbleColor, icon: _icon),
                 const SizedBox(width: 14),
