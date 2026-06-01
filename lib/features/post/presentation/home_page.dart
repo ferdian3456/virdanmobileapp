@@ -157,7 +157,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                         active: active,
                         onTapName: () =>
                             _openServerSwitcher(servers, state.activeServerId),
-                        onMessages: () => context.push(Routes.appChat),
                       ),
                       Expanded(child: _FeedBody(
                         scroll: _scroll,
@@ -241,12 +240,10 @@ class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
     required this.active,
     required this.onTapName,
-    required this.onMessages,
   });
 
   final Server? active;
   final VoidCallback onTapName;
-  final VoidCallback onMessages;
 
   @override
   Widget build(BuildContext context) {
@@ -291,9 +288,9 @@ class _HomeHeader extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: const Icon(LucideIcons.send, size: 22),
+            icon: const Icon(LucideIcons.send, size: 22, color: AppColors.textTertiary),
             tooltip: 'Messages',
-            onPressed: onMessages,
+            onPressed: null,
           ),
         ],
       ),
