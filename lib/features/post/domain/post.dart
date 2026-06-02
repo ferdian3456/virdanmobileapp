@@ -12,6 +12,7 @@ class Post {
     required this.commentCount,
     required this.isLiked,
     required this.createdAt,
+    this.isSaved = false,
     this.authorAvatarUrl,
     this.imageUrl,
   });
@@ -36,6 +37,9 @@ class Post {
       isLiked: (json['userLiked'] as bool?) ??
           (json['isLiked'] as bool?) ??
           false,
+      isSaved: (json['userSaved'] as bool?) ??
+          (json['isSaved'] as bool?) ??
+          false,
       createdAt: (json['createdAt'] as String?) ?? '',
     );
   }
@@ -50,9 +54,15 @@ class Post {
   final int likeCount;
   final int commentCount;
   final bool isLiked;
+  final bool isSaved;
   final String createdAt;
 
-  Post copyWith({int? likeCount, int? commentCount, bool? isLiked}) {
+  Post copyWith({
+    int? likeCount,
+    int? commentCount,
+    bool? isLiked,
+    bool? isSaved,
+  }) {
     return Post(
       id: id,
       serverId: serverId,
@@ -64,6 +74,7 @@ class Post {
       likeCount: likeCount ?? this.likeCount,
       commentCount: commentCount ?? this.commentCount,
       isLiked: isLiked ?? this.isLiked,
+      isSaved: isSaved ?? this.isSaved,
       createdAt: createdAt,
     );
   }

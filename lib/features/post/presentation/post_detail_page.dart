@@ -66,6 +66,24 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
     }
   }
 
+  Future<void> _toggleSave() async {
+    final p = _post;
+    if (p == null) return;
+    final before = p;
+    setState(() => _post = p.copyWith(isSaved: !p.isSaved));
+    try {
+      if (before.isSaved) {
+        await ref.read(postApiProvider).unsave(p.id);
+      } else {
+        await ref.read(postApiProvider).save(p.id);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _post = before);
+      showApiErrorToast(ref, e);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -81,6 +99,7 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
                       PostCard(
                         post: _post!,
                         onLikeTap: _toggleLike,
+                        onSaveTap: _toggleSave,
                         onCommentTap: () => context.push('/posts/${_post!.id}/comments'),
                         onAuthorTap: () => context.push(
                             Routes.userProfile(_post!.serverId, _post!.authorId)),
