@@ -4,10 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../storage/secure_storage.dart';
 import 'auth_interceptor.dart';
 
-/// Default API base URL. Override via `--dart-define=API_URL=...` at build time.
+/// Default API base URL. Points to production. Override via `--dart-define=API_URL=...` at build time.
+/// Local dev: flutter run --dart-define=API_URL=http://<LAN-IP>:8081/api
 const _defaultApiUrl = String.fromEnvironment(
   'API_URL',
-  defaultValue: 'https://ungrating-bo-argumentatively.ngrok-free.dev/api',
+  defaultValue: 'https://virdan.cloud/api',
 );
 
 /// Bare Dio used only by the refresh call itself — no auth interceptor to
