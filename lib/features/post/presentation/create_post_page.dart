@@ -577,7 +577,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
                 controller: _captionCtrl,
                 maxLines: 4,
                 minLines: 4,
-                maxLength: 2200,
+                maxLength: 2000,
                 style: const TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 15,
@@ -611,11 +611,11 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
               Padding(
                 padding: const EdgeInsets.fromLTRB(0, 0, 12, 8),
                 child: Text(
-                  '$captionLen/2200',
+                  '$captionLen/2000',
                   style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 12,
-                    color: captionLen > 2100
+                    color: captionLen > 1900
                         ? AppColors.error
                         : AppColors.textTertiary,
                   ),

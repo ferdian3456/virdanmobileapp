@@ -140,6 +140,23 @@ class ServerFeed extends Notifier<ServerFeedState> {
     }
   }
 
+  /// Replace a post in-place after an edit (caption change). No-op if the post
+  /// isn't in the current buffer (e.g. feed reloaded for another server).
+  void replacePost(Post updated) {
+    final idx = state.posts.indexWhere((p) => p.id == updated.id);
+    if (idx == -1) return;
+    final list = [...state.posts]..[idx] = updated;
+    state = state.copyWith(posts: list);
+  }
+
+  /// Drop a post from the feed after deletion.
+  void removePost(String postId) {
+    if (!state.posts.any((p) => p.id == postId)) return;
+    state = state.copyWith(
+      posts: state.posts.where((p) => p.id != postId).toList(growable: false),
+    );
+  }
+
   /// Optimistic save/unsave with rollback on failure.
   Future<void> toggleSave(String postId) async {
     final idx = state.posts.indexWhere((p) => p.id == postId);
