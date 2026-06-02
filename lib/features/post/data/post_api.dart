@@ -70,6 +70,28 @@ class PostApi {
     return Post.fromJson(res.data ?? const {});
   }
 
+  /// Edit a post's caption. Only the author can update; image is immutable
+  /// server-side (PUT accepts caption only). Returns the refreshed post.
+  Future<Post> updateCaption({
+    required String serverId,
+    required String postId,
+    required String caption,
+  }) async {
+    final res = await _dio.put<Map<String, dynamic>>(
+      '/servers/$serverId/posts/$postId',
+      data: {'caption': caption},
+    );
+    return Post.fromJson(res.data ?? const {});
+  }
+
+  /// Hard-delete a post. Author-only server-side; cascades images/comments/likes.
+  Future<void> delete({
+    required String serverId,
+    required String postId,
+  }) async {
+    await _dio.delete<Map<String, dynamic>>('/servers/$serverId/posts/$postId');
+  }
+
   Future<void> like(String postId) async {
     await _dio.post<Map<String, dynamic>>('/posts/$postId/likes');
   }

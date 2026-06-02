@@ -36,6 +36,7 @@ abstract final class Routes {
   static String serverDetail(String id) => '/server/$id';
   static String serverSettings(String id) => '/server/$id/settings';
   static String postDetail(String id) => '/posts/$id';
+  static String postEdit(String id) => '/posts/$id/edit';
   static String postComments(String id) => '/posts/$id/comments';
   static String exploreFeed(String postId) => '/explore/feed/$postId';
   static String userProfile(String serverId, String userId) =>

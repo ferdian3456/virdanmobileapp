@@ -17,6 +17,7 @@ class PostCard extends StatelessWidget {
     required this.onCommentTap,
     required this.onSaveTap,
     this.onAuthorTap,
+    this.onMoreTap,
   });
 
   final Post post;
@@ -24,6 +25,10 @@ class PostCard extends StatelessWidget {
   final VoidCallback onCommentTap;
   final VoidCallback onSaveTap;
   final VoidCallback? onAuthorTap;
+
+  /// Opens the post options sheet (edit/delete). Provided only when the
+  /// current user owns the post; otherwise the overflow button is hidden.
+  final VoidCallback? onMoreTap;
 
   @override
   Widget build(BuildContext context) {
@@ -87,11 +92,14 @@ class PostCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(LucideIcons.ellipsis, size: 20),
-                  onPressed: () {},
-                  tooltip: 'More',
-                ),
+                if (onMoreTap != null)
+                  IconButton(
+                    icon: const Icon(LucideIcons.ellipsis, size: 20),
+                    onPressed: onMoreTap,
+                    tooltip: 'More',
+                  )
+                else
+                  const SizedBox(width: 8),
               ],
             ),
           ),

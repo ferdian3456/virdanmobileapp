@@ -13,8 +13,10 @@ import '../../features/chat/presentation/chat_page.dart';
 import '../../features/explore/presentation/explore_page.dart';
 import '../../features/notifications/presentation/notifications_page.dart';
 import '../../features/onboarding/presentation/onboarding_server_choice_page.dart';
+import '../../features/post/domain/post.dart';
 import '../../features/post/presentation/comments_page.dart';
 import '../../features/post/presentation/create_post_page.dart';
+import '../../features/post/presentation/edit_post_page.dart';
 import '../../features/post/presentation/explore_feed_page.dart';
 import '../../features/post/presentation/home_page.dart';
 import '../../features/post/presentation/post_detail_page.dart';
@@ -169,6 +171,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/posts/:id/comments',
         builder: (_, state) => CommentsPage(postId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/posts/:id/edit',
+        builder: (_, state) => EditPostPage(
+          postId: state.pathParameters['id']!,
+          initialPost: state.extra is Post ? state.extra! as Post : null,
+        ),
       ),
       GoRoute(
         path: '/explore/feed/:postId',

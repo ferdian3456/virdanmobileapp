@@ -11,10 +11,13 @@ import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/util/app_assets.dart';
 import '../../../core/widgets/v_button.dart';
+import '../../auth/data/auth_repository.dart';
+import '../../auth/domain/auth_state.dart';
 import '../../server/data/server_repository.dart';
 import '../../server/domain/server.dart';
 import '../data/server_feed_provider.dart';
 import 'widgets/post_card.dart';
+import 'widgets/post_options_sheet.dart';
 
 /// Matches Quasar HomePage.vue closely:
 /// - No-servers state: community.svg + "No servers yet" + Explore + Create.
@@ -336,6 +339,10 @@ class _FeedBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final feed = ref.watch(serverFeedProvider);
+    final currentUserId = switch (ref.watch(authRepositoryProvider)) {
+      AsyncData(value: AuthAuthenticated(:final user)) => user.id,
+      _ => null,
+    };
     if (feed.isLoading && feed.posts.isEmpty) return const _FeedSkeleton();
     if (feed.posts.isEmpty) {
       return _EmptyFeedState(onCreate: onCreatePost);
@@ -367,6 +374,17 @@ class _FeedBody extends ConsumerWidget {
             onCommentTap: () => GoRouter.of(context).push('/posts/${p.id}/comments'),
             onAuthorTap: () =>
                 GoRouter.of(context).push(Routes.userProfile(p.serverId, p.authorId)),
+            onMoreTap: p.authorId == currentUserId
+                ? () => showPostOptions(
+                      context: context,
+                      ref: ref,
+                      post: p,
+                      onEdited: (u) =>
+                          ref.read(serverFeedProvider.notifier).replacePost(u),
+                      onDeleted: () =>
+                          ref.read(serverFeedProvider.notifier).removePost(p.id),
+                    )
+                : null,
           );
         },
       ),
