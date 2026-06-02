@@ -139,6 +139,29 @@ class ServerFeed extends Notifier<ServerFeedState> {
       rethrow;
     }
   }
+
+  /// Optimistic save/unsave with rollback on failure.
+  Future<void> toggleSave(String postId) async {
+    final idx = state.posts.indexWhere((p) => p.id == postId);
+    if (idx == -1) return;
+    final before = state.posts[idx];
+    final next = before.copyWith(isSaved: !before.isSaved);
+    final list = [...state.posts]..[idx] = next;
+    state = state.copyWith(posts: list);
+    try {
+      if (before.isSaved) {
+        await ref.read(postApiProvider).unsave(postId);
+      } else {
+        await ref.read(postApiProvider).save(postId);
+      }
+    } catch (e) {
+      final rollback = [...state.posts];
+      final j = rollback.indexWhere((p) => p.id == postId);
+      if (j != -1) rollback[j] = before;
+      state = state.copyWith(posts: rollback);
+      rethrow;
+    }
+  }
 }
 
 final serverFeedProvider =

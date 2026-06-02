@@ -15,12 +15,14 @@ class PostCard extends StatelessWidget {
     required this.post,
     required this.onLikeTap,
     required this.onCommentTap,
+    required this.onSaveTap,
     this.onAuthorTap,
   });
 
   final Post post;
   final VoidCallback onLikeTap;
   final VoidCallback onCommentTap;
+  final VoidCallback onSaveTap;
   final VoidCallback? onAuthorTap;
 
   @override
@@ -131,9 +133,11 @@ class PostCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 _ActionButton(
-                  icon: LucideIcons.bookmark,
+                  icon: post.isSaved ? Icons.bookmark : LucideIcons.bookmark,
                   iconSize: 22,
-                  onTap: () {},
+                  active: post.isSaved,
+                  activeColor: const Color(0xFF0F172A),
+                  onTap: onSaveTap,
                 ),
               ],
             ),

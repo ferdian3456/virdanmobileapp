@@ -78,6 +78,30 @@ class PostApi {
     await _dio.delete<Map<String, dynamic>>('/posts/$postId/likes');
   }
 
+  Future<void> save(String postId) async {
+    await _dio.post<Map<String, dynamic>>('/posts/$postId/saves');
+  }
+
+  Future<void> unsave(String postId) async {
+    await _dio.delete<Map<String, dynamic>>('/posts/$postId/saves');
+  }
+
+  /// Saved (bookmarked) posts for the current user within one server.
+  /// Per-server scoped, ordered by save time (newest first).
+  Future<CursorPage<Post>> savedForServer({
+    required String serverId,
+    String? cursor,
+    int limit = 20,
+  }) async {
+    final params = <String, dynamic>{'limit': limit};
+    if (cursor != null && cursor.isNotEmpty) params['cursor'] = cursor;
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/servers/$serverId/posts/saved',
+      queryParameters: params,
+    );
+    return CursorPage.fromJson(res.data ?? const {}, Post.fromJson);
+  }
+
   Future<CursorPage<Comment>> comments(String postId,
       {String? cursor, int limit = 20}) async {
     final params = <String, dynamic>{'limit': limit};

@@ -134,6 +134,26 @@ class _ExploreFeedPageState extends ConsumerState<ExploreFeedPage> {
     }
   }
 
+  /// Optimistic save/unsave with rollback on failure (mirrors ServerFeed).
+  Future<void> _toggleSave(String postId) async {
+    final idx = _posts.indexWhere((p) => p.id == postId);
+    if (idx == -1) return;
+    final before = _posts[idx];
+    setState(() => _posts = [..._posts]..[idx] = before.copyWith(isSaved: !before.isSaved));
+    try {
+      if (before.isSaved) {
+        await ref.read(postApiProvider).unsave(postId);
+      } else {
+        await ref.read(postApiProvider).save(postId);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      final j = _posts.indexWhere((p) => p.id == postId);
+      if (j != -1) setState(() => _posts = [..._posts]..[j] = before);
+      showApiErrorToast(ref, e);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -168,6 +188,7 @@ class _ExploreFeedPageState extends ConsumerState<ExploreFeedPage> {
                   return PostCard(
                     post: p,
                     onLikeTap: () => _toggleLike(p.id),
+                    onSaveTap: () => _toggleSave(p.id),
                     onCommentTap: () => context.push('/posts/${p.id}/comments'),
                     onAuthorTap: () =>
                         context.push(Routes.userProfile(p.serverId, p.authorId)),

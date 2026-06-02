@@ -33,6 +33,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   bool _loadingProfile = false;
   List<Post> _posts = const [];
   bool _loadingPosts = false;
+  List<Post> _saved = const [];
+  bool _loadingSaved = false;
+  bool _savedLoaded = false;
   int _tab = 0;
 
   @override
@@ -70,6 +73,34 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     } finally {
       if (mounted) setState(() => _loadingPosts = false);
     }
+  }
+
+  /// Lazy-loads the saved tab the first time it is opened. Saved feed is
+  /// per-server (scoped to the active server), ordered by save time.
+  Future<void> _loadSaved() async {
+    final serverId = ref.read(myServersProvider).activeServerId;
+    if (serverId == null) return;
+    setState(() {
+      _loadingSaved = true;
+      _savedLoaded = true;
+    });
+    try {
+      final page = await ref.read(postApiProvider).savedForServer(
+            serverId: serverId,
+            limit: 20,
+          );
+      if (!mounted) return;
+      setState(() => _saved = page.data);
+    } catch (_) {
+      // Silent; grid simply empty.
+    } finally {
+      if (mounted) setState(() => _loadingSaved = false);
+    }
+  }
+
+  void _onTab(int i) {
+    setState(() => _tab = i);
+    if (i == 1 && !_savedLoaded) _loadSaved();
   }
 
   @override
@@ -122,7 +153,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             SliverToBoxAdapter(
               child: _TabStrip(
                 active: _tab,
-                onTap: (i) => setState(() => _tab = i),
+                onTap: _onTab,
               ),
             ),
             if (_tab == 0)
@@ -166,22 +197,45 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   },
                 )
             else
-              const SliverFillRemaining(
-                hasScrollBody: false,
-                child: Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32),
-                    child: Text(
-                      'Coming soon.',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
+              if (_loadingSaved && _saved.isEmpty)
+                const SliverToBoxAdapter(child: _GridSkeleton())
+              else if (_saved.isEmpty)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _EmptySaved(),
+                )
+              else
+                SliverGrid.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 2,
+                    crossAxisSpacing: 2,
                   ),
+                  itemCount: _saved.length,
+                  itemBuilder: (_, i) {
+                    final p = _saved[i];
+                    return GestureDetector(
+                      onTap: () => context.push('/posts/${p.id}'),
+                      child: p.imageUrl != null && p.imageUrl!.isNotEmpty
+                          ? Image.network(p.imageUrl!, fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => Container(color: AppColors.surface))
+                          : Container(
+                              color: AppColors.surface,
+                              padding: const EdgeInsets.all(8),
+                              child: Text(
+                                p.caption,
+                                style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 11,
+                                  color: AppColors.textPrimary,
+                                ),
+                                maxLines: 6,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                    );
+                  },
                 ),
-              ),
           ],
         ),
       ),
@@ -429,6 +483,47 @@ class _EmptyGrid extends StatelessWidget {
                 size: VButtonSize.lg,
                 fullWidth: true,
                 onPressed: onCreate,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptySaved extends StatelessWidget {
+  const _EmptySaved();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(32, 24, 32, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(LucideIcons.bookmark, size: 48, color: AppColors.textTertiary),
+            SizedBox(height: 16),
+            Text(
+              'No saved posts yet',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.36,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Posts you save in this server show up here.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                color: AppColors.textSecondary,
+                height: 1.5,
               ),
             ),
           ],

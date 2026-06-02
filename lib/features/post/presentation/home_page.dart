@@ -81,6 +81,15 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
+  Future<void> _toggleSave(String postId) async {
+    try {
+      await ref.read(serverFeedProvider.notifier).toggleSave(postId);
+    } catch (e) {
+      if (!mounted) return;
+      showApiErrorToast(ref, e);
+    }
+  }
+
   void _openServerSwitcher(List<Server> servers, String? activeId) {
     showModalBottomSheet<void>(
       context: context,
@@ -172,6 +181,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                         scroll: _scroll,
                         onRefresh: _refresh,
                         onLikeTap: _toggleLike,
+                        onSaveTap: _toggleSave,
                         onCreatePost: () => context.go(Routes.appCreate),
                       )),
                     ],
@@ -313,12 +323,14 @@ class _FeedBody extends ConsumerWidget {
     required this.scroll,
     required this.onRefresh,
     required this.onLikeTap,
+    required this.onSaveTap,
     required this.onCreatePost,
   });
 
   final ScrollController scroll;
   final Future<void> Function() onRefresh;
   final ValueChanged<String> onLikeTap;
+  final ValueChanged<String> onSaveTap;
   final VoidCallback onCreatePost;
 
   @override
@@ -351,6 +363,7 @@ class _FeedBody extends ConsumerWidget {
           return PostCard(
             post: p,
             onLikeTap: () => onLikeTap(p.id),
+            onSaveTap: () => onSaveTap(p.id),
             onCommentTap: () => GoRouter.of(context).push('/posts/${p.id}/comments'),
             onAuthorTap: () =>
                 GoRouter.of(context).push(Routes.userProfile(p.serverId, p.authorId)),
