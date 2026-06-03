@@ -11,6 +11,7 @@ import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../profile/data/profile_api.dart';
 import '../../server/data/server_repository.dart';
+import 'widgets/delete_account_sheet.dart';
 
 /// Mirrors Quasar SettingsPage.vue: per-server identity summary header,
 /// 4 grouped sections (ACCOUNT / PREFERENCES / NOTIFICATIONS / ABOUT &
@@ -81,6 +82,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       _ => '',
     };
     final profile = _profile;
+    final username = profile?.username;
+    final accountHandle = username != null && username.isNotEmpty
+        ? '@$username'
+        : (email.isNotEmpty ? email : null);
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -167,7 +172,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       onTap: () => context.push(Routes.settingsPrivacyPolicy),
                     ),
                   ]),
-                  _LogoutSection(loggingOut: _loggingOut, onTap: _logout),
+                  _LogoutSection(
+                    loggingOut: _loggingOut,
+                    onSignOut: _logout,
+                    onDeleteAccount: () => showDeleteAccountSheet(
+                      context: context,
+                      ref: ref,
+                      handle: accountHandle,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -432,51 +445,85 @@ class _Row extends StatelessWidget {
 }
 
 class _LogoutSection extends StatelessWidget {
-  const _LogoutSection({required this.loggingOut, required this.onTap});
+  const _LogoutSection({
+    required this.loggingOut,
+    required this.onSignOut,
+    required this.onDeleteAccount,
+  });
 
   final bool loggingOut;
-  final VoidCallback onTap;
+  final VoidCallback onSignOut;
+  final VoidCallback onDeleteAccount;
 
   @override
   Widget build(BuildContext context) {
-    // Left-aligned row matching the other settings items; neutral (non-red)
-    // colors. The logOut icon still signals the action.
+    // Left-aligned rows matching the other settings items; neutral (non-red)
+    // colors. Sign Out then Delete Account — the icons signal each action.
     return Column(
       children: [
         const SizedBox(height: 16),
-        InkWell(
-          onTap: loggingOut ? null : onTap,
-          child: Opacity(
-            opacity: loggingOut ? 0.6 : 1,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: Center(
-                      child: Icon(LucideIcons.logOut, size: 20, color: Color(0xFF495057)),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Text(
-                    loggingOut ? 'Signing out…' : 'Sign Out',
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: -0.15,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+        _ActionRow(
+          icon: LucideIcons.logOut,
+          label: loggingOut ? 'Signing out…' : 'Sign Out',
+          dimmed: loggingOut,
+          onTap: loggingOut ? null : onSignOut,
+        ),
+        _ActionRow(
+          icon: LucideIcons.userRoundMinus,
+          label: 'Delete Account',
+          onTap: onDeleteAccount,
         ),
         const SizedBox(height: 32),
       ],
+    );
+  }
+}
+
+class _ActionRow extends StatelessWidget {
+  const _ActionRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.dimmed = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  final bool dimmed;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Opacity(
+        opacity: dimmed ? 0.6 : 1,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: Center(
+                  child: Icon(icon, size: 20, color: const Color(0xFF495057)),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -0.15,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

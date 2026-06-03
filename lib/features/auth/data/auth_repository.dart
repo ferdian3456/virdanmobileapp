@@ -85,6 +85,22 @@ class AuthRepository extends AsyncNotifier<AuthState> {
     await _storage.clear();
     state = const AsyncData(AuthAnonymous());
   }
+
+  /// Permanently deletes the account (`DELETE /users/me`), then clears the local
+  /// session. Unlike [logout], a failed API call is NOT swallowed — it rethrows
+  /// so the caller can surface the error and the session stays intact. On success
+  /// the state flips to anonymous and the router redirects to login.
+  Future<void> deleteAccount() async {
+    // Unregister the device token while the access token is still valid.
+    try {
+      await _fcmService.unregisterToken();
+    } catch (_) {
+      // Best-effort — deletion must proceed even if FCM unregister fails.
+    }
+    await _api.deleteAccount();
+    await _storage.clear();
+    state = const AsyncData(AuthAnonymous());
+  }
 }
 
 final authRepositoryProvider = AsyncNotifierProvider<AuthRepository, AuthState>(
