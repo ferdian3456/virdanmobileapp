@@ -346,10 +346,21 @@ class _Results extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (state.isLoading && state.results.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (state.hasSearched && state.results.isEmpty) {
+    if (state.results.isEmpty) {
+      if (state.hasError) {
+        return const Center(
+          child: Text(
+            'Something went wrong. Try again.',
+            style:
+                TextStyle(fontFamily: 'Inter', color: AppColors.textSecondary),
+          ),
+        );
+      }
+      // Spinner while the request is in flight OR during the debounce window
+      // before the first run for this term (avoids an empty-grid flash).
+      if (state.isLoading || !state.hasSearched) {
+        return const Center(child: CircularProgressIndicator());
+      }
       return Center(
         child: Text(
           'No posts found for "${state.query}"',

@@ -95,8 +95,9 @@ class PostSearch extends Notifier<PostSearchState> {
       );
     } on DioException catch (e) {
       if (CancelToken.isCancel(e) || token.isCancelled) return;
+      // State carries hasError for the view; no rethrow (avoids an uncaught
+      // exception overlay since the caller does not wrap this).
       state = state.copyWith(isLoading: false, hasError: true);
-      rethrow;
     }
   }
 
@@ -120,7 +121,6 @@ class PostSearch extends Notifier<PostSearchState> {
     } on DioException catch (e) {
       if (CancelToken.isCancel(e)) return;
       state = state.copyWith(isLoadingMore: false, hasError: true);
-      rethrow;
     }
   }
 
