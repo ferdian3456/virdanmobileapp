@@ -14,6 +14,7 @@ import '../../post/data/post_api.dart';
 import '../../post/domain/post.dart';
 import '../../post/presentation/explore_feed_page.dart';
 import '../../server/data/server_repository.dart';
+import 'post_search_view.dart';
 
 /// Matches Quasar ExplorePage.vue: search bar + 3-column post grid from the
 /// active server's feed. Empty state uses social.svg.
@@ -25,18 +26,16 @@ class ExplorePage extends ConsumerStatefulWidget {
 }
 
 class _ExplorePageState extends ConsumerState<ExplorePage> {
-  final _search = TextEditingController();
   final _scroll = ScrollController();
   List<Post> _posts = const [];
   bool _loading = false;
   String? _nextCursor;
   bool _hasMore = true;
-  String _query = '';
+  bool _searchMode = false;
 
   @override
   void initState() {
     super.initState();
-    _search.addListener(() => setState(() => _query = _search.text));
     _scroll.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await ref.read(myServersProvider.notifier).fetch();
@@ -46,7 +45,6 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
 
   @override
   void dispose() {
-    _search.dispose();
     _scroll.removeListener(_onScroll);
     _scroll.dispose();
     super.dispose();
@@ -97,16 +95,6 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
     }
   }
 
-  List<Post> get _filtered {
-    final q = _query.trim().toLowerCase();
-    if (q.isEmpty) return _posts;
-    return _posts
-        .where((p) =>
-            p.authorNickname.toLowerCase().contains(q) ||
-            p.caption.toLowerCase().contains(q))
-        .toList();
-  }
-
   void _openFeed(Post p) {
     final serverId = ref.read(myServersProvider).activeServerId;
     if (serverId == null) return;
@@ -125,101 +113,109 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
 
   @override
   Widget build(BuildContext context) {
-    final showSkeleton = _loading && _posts.isEmpty;
-    final filtered = _filtered;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
-        child: Column(
-          children: [
-            _Search(controller: _search),
-            Expanded(
-              child: showSkeleton
-                  ? const _GridSkeleton()
-                  : filtered.isEmpty
-                      ? _EmptyState(
-                          onCreate: () => context.go(Routes.appCreate),
-                        )
-                      : GridView.builder(
-                          controller: _scroll,
-                          padding: const EdgeInsets.all(2),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            mainAxisSpacing: 2,
-                            crossAxisSpacing: 2,
-                          ),
-                          itemCount: filtered.length + (_hasMore ? 1 : 0),
-                          itemBuilder: (_, i) {
-                            if (i == filtered.length) {
-                              return const Center(
-                                  child: SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child:
-                                          CircularProgressIndicator(strokeWidth: 2)));
-                            }
-                            final p = filtered[i];
-                            return GestureDetector(
-                              onTap: () => _openFeed(p),
-                              child: p.imageUrl != null && p.imageUrl!.isNotEmpty
-                                  ? Image.network(p.imageUrl!,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, _, _) => Container(
-                                          color: AppColors.surface))
-                                  : Container(
-                                      color: AppColors.surface,
-                                      padding: const EdgeInsets.all(8),
-                                      child: Text(
-                                        p.caption,
-                                        maxLines: 6,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontFamily: 'Inter',
-                                          fontSize: 11,
-                                          color: AppColors.textPrimary,
-                                        ),
-                                      ),
-                                    ),
-                            );
-                          },
-                        ),
-            ),
-          ],
-        ),
+        child: _searchMode
+            ? PostSearchView(onClose: () => setState(() => _searchMode = false))
+            : _buildBrowse(),
       ),
+    );
+  }
+
+  Widget _buildBrowse() {
+    final showSkeleton = _loading && _posts.isEmpty;
+    return Column(
+      children: [
+        _SearchBarButton(onTap: () => setState(() => _searchMode = true)),
+        Expanded(
+          child: showSkeleton
+              ? const _GridSkeleton()
+              : _posts.isEmpty
+                  ? _EmptyState(onCreate: () => context.go(Routes.appCreate))
+                  : GridView.builder(
+                      controller: _scroll,
+                      padding: const EdgeInsets.all(2),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        mainAxisSpacing: 2,
+                        crossAxisSpacing: 2,
+                      ),
+                      itemCount: _posts.length + (_hasMore ? 1 : 0),
+                      itemBuilder: (_, i) {
+                        if (i == _posts.length) {
+                          return const Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          );
+                        }
+                        final p = _posts[i];
+                        return GestureDetector(
+                          onTap: () => _openFeed(p),
+                          child: p.imageUrl != null && p.imageUrl!.isNotEmpty
+                              ? Image.network(p.imageUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) =>
+                                      Container(color: AppColors.surface))
+                              : Container(
+                                  color: AppColors.surface,
+                                  padding: const EdgeInsets.all(8),
+                                  child: Text(
+                                    p.caption,
+                                    maxLines: 6,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 11,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                        );
+                      },
+                    ),
+        ),
+      ],
     );
   }
 }
 
-class _Search extends StatelessWidget {
-  const _Search({required this.controller});
+class _SearchBarButton extends StatelessWidget {
+  const _SearchBarButton({required this.onTap});
 
-  final TextEditingController controller;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: SizedBox(
-        height: 44,
-        child: TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            hintText: 'Search people, tags, places…',
-            hintStyle: const TextStyle(
-                fontFamily: 'Inter', color: AppColors.textTertiary, fontSize: 14),
-            prefixIcon: const Icon(LucideIcons.search,
-                size: 18, color: AppColors.textTertiary),
-            filled: true,
-            fillColor: const Color(0xFFF1F3F5),
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(vertical: 8),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F3F5),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Row(
+            children: [
+              Icon(LucideIcons.search, size: 18, color: AppColors.textTertiary),
+              SizedBox(width: 8),
+              Text(
+                'Search posts...',
+                style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 14,
+                    color: AppColors.textTertiary),
+              ),
+            ],
           ),
         ),
       ),
