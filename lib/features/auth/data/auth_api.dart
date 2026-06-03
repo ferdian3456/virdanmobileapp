@@ -71,6 +71,10 @@ class AuthApi {
     await _dio.post<Map<String, dynamic>>('/users/logout');
   }
 
+  Future<void> deleteAccount() async {
+    await _dio.delete<Map<String, dynamic>>('/users/me');
+  }
+
   Future<UserMe> me() async {
     final res = await _dio.get<Map<String, dynamic>>('/users/me');
     return UserMe.fromJson(res.data!);
