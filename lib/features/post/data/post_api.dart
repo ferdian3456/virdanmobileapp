@@ -108,6 +108,26 @@ class PostApi {
     await _dio.delete<Map<String, dynamic>>('/posts/$postId/saves');
   }
 
+  /// Search posts by caption within one server (active-server scoped).
+  /// [cancelToken] lets the caller drop a stale in-flight request when the
+  /// query changes. Server enforces min 2 chars; callers should gate on that.
+  Future<CursorPage<Post>> searchPosts({
+    required String serverId,
+    required String query,
+    String? cursor,
+    int limit = 20,
+    CancelToken? cancelToken,
+  }) async {
+    final params = <String, dynamic>{'q': query, 'limit': limit};
+    if (cursor != null && cursor.isNotEmpty) params['cursor'] = cursor;
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/servers/$serverId/posts/search',
+      queryParameters: params,
+      cancelToken: cancelToken,
+    );
+    return CursorPage.fromJson(res.data ?? const {}, Post.fromJson);
+  }
+
   /// Saved (bookmarked) posts for the current user within one server.
   /// Per-server scoped, ordered by save time (newest first).
   Future<CursorPage<Post>> savedForServer({
