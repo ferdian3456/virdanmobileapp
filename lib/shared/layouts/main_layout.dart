@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/notifications/notification_api.dart';
 import '../../core/router/routes.dart';
 import '../../core/theme/tokens.dart';
+import '../../features/chat/data/chat_ws.dart';
 import '../../features/server/data/server_repository.dart';
 
 /// Shell for /app/*. Renders a bottom tab bar; selected index is derived from
@@ -28,6 +29,9 @@ class MainLayout extends ConsumerWidget {
     final location = GoRouterState.of(context).matchedLocation;
     var currentIndex = _tabs.indexWhere((t) => location.startsWith(t.route));
     if (currentIndex < 0) currentIndex = 0;
+
+    // Keep WS connected for the lifetime of authenticated navigation.
+    ref.watch(chatWsServiceProvider);
 
     final activeServerId = ref.watch(myServersProvider.select((s) => s.activeServerId));
     final unreadCount = activeServerId == null

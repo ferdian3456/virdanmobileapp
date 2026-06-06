@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +12,7 @@ import '../../../core/util/avatar_color.dart';
 import '../../../core/util/relative_time.dart';
 import '../../server/data/server_repository.dart';
 import '../data/chat_api.dart';
+import '../data/chat_ws.dart';
 import '../domain/chat_models.dart';
 
 enum _ChatFilter { all, unread }
@@ -27,18 +30,44 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   String _query = '';
   List<DmConversationItem> _conversations = const [];
   bool _loading = false;
+  final Map<String, bool> _typingMap = {};
+  final Map<String, Timer> _typingTimers = {};
+  StreamSubscription<WsEvent>? _wsSub;
 
   @override
   void initState() {
     super.initState();
     _search.addListener(() => setState(() => _query = _search.text));
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _load();
+      _subscribeTyping();
+    });
   }
 
   @override
   void dispose() {
+    _wsSub?.cancel();
+    for (final t in _typingTimers.values) {
+      t.cancel();
+    }
     _search.dispose();
     super.dispose();
+  }
+
+  void _subscribeTyping() {
+    _wsSub = ref.read(chatWsServiceProvider).events.listen((event) {
+      if (!mounted || event.type != WsEventType.typing) return;
+      final convoId = event.payload['conversationId'] as String?;
+      final isTyping = event.payload['isTyping'] as bool? ?? false;
+      if (convoId == null) return;
+      setState(() => _typingMap[convoId] = isTyping);
+      _typingTimers[convoId]?.cancel();
+      if (isTyping) {
+        _typingTimers[convoId] = Timer(const Duration(seconds: 4), () {
+          if (mounted) setState(() => _typingMap[convoId] = false);
+        });
+      }
+    });
   }
 
   Future<void> _load() async {
@@ -134,6 +163,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                                 itemCount: visible.length,
                                 itemBuilder: (_, i) => _ThreadRow(
                                   conversation: visible[i],
+                                  isTyping:
+                                      _typingMap[visible[i].id] ?? false,
                                   onTap: () => _openConversation(visible[i]),
                                 ),
                               ),
@@ -350,9 +381,14 @@ class _Chip extends StatelessWidget {
 }
 
 class _ThreadRow extends StatelessWidget {
-  const _ThreadRow({required this.conversation, required this.onTap});
+  const _ThreadRow({
+    required this.conversation,
+    required this.isTyping,
+    required this.onTap,
+  });
 
   final DmConversationItem conversation;
+  final bool isTyping;
   final VoidCallback onTap;
 
   @override
@@ -431,15 +467,22 @@ class _ThreadRow extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          c.lastMessagePreview ?? '',
+                          isTyping
+                              ? 'mengetik...'
+                              : (c.lastMessagePreview ?? ''),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 14,
-                            color: unread
-                                ? AppColors.textPrimary
-                                : AppColors.textSecondary,
+                            fontStyle: isTyping
+                                ? FontStyle.italic
+                                : FontStyle.normal,
+                            color: isTyping
+                                ? AppColors.primary
+                                : (unread
+                                    ? AppColors.textPrimary
+                                    : AppColors.textSecondary),
                             fontWeight: unread
                                 ? FontWeight.w600
                                 : FontWeight.w400,

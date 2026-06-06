@@ -6,11 +6,14 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/errors/show_api_error_toast.dart';
 import '../../../core/feedback/v_skeleton.dart';
+import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/util/app_assets.dart';
 import '../../../core/util/avatar_color.dart';
 import '../../../core/widgets/v_app_bar.dart';
+import '../../chat/data/chat_api.dart';
+import '../../chat/domain/chat_models.dart';
 import '../../post/data/post_api.dart';
 import '../../post/domain/post.dart';
 import '../data/profile_api.dart';
@@ -34,6 +37,7 @@ class _UserProfilePageState extends ConsumerState<UserProfilePage> {
   bool _loadingProfile = false;
   List<Post> _posts = const [];
   bool _loadingPosts = false;
+  bool _startingChat = false;
 
   @override
   void initState() {
@@ -71,6 +75,28 @@ class _UserProfilePageState extends ConsumerState<UserProfilePage> {
     }
   }
 
+  Future<void> _startChat() async {
+    setState(() => _startingChat = true);
+    try {
+      final convo = await ref
+          .read(chatApiProvider)
+          .getOrCreateConversation(widget.serverId, widget.userId);
+      if (!mounted) return;
+      context.push(
+        Routes.chatConversation(convo.id),
+        extra: ChatConversationArgs(
+          peerNickname: _profile?.nickname ?? '',
+          peerAvatarUrl: _profile?.avatarUrl,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showApiErrorToast(ref, e);
+    } finally {
+      if (mounted) setState(() => _startingChat = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final profile = _profile;
@@ -98,6 +124,42 @@ class _UserProfilePageState extends ConsumerState<UserProfilePage> {
                   bio: profile?.bio,
                   avatarUrl: profile?.avatarUrl,
                   initial: initial,
+                ),
+              ),
+            if (!_loadingProfile && profile != null)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                  child: SizedBox(
+                    height: 44,
+                    child: OutlinedButton(
+                      onPressed: _startingChat ? null : _startChat,
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.primary),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: _startingChat
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primary,
+                              ),
+                            )
+                          : const Text(
+                              'Kirim Pesan',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                    ),
+                  ),
                 ),
               ),
             const SliverToBoxAdapter(child: _GridDivider()),
