@@ -9,7 +9,9 @@ import '../../features/auth/presentation/login_page.dart';
 import '../../features/auth/presentation/register_page.dart';
 import '../../features/auth/presentation/verify_otp_page.dart';
 import '../../features/auth/presentation/verify_password_page.dart';
+import '../../features/chat/domain/chat_models.dart';
 import '../../features/chat/presentation/chat_page.dart';
+import '../../features/chat/presentation/conversation_page.dart';
 import '../../features/explore/presentation/explore_page.dart';
 import '../../features/notifications/presentation/notifications_page.dart';
 import '../../features/onboarding/presentation/onboarding_server_choice_page.dart';
@@ -64,7 +66,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           matched.startsWith('/profile/') ||
           matched.startsWith('/settings') ||
           matched.startsWith('/chat') ||
-          matched.startsWith('/join');
+          matched.startsWith('/join') ||
+          matched.startsWith('/conversations');
 
       if (!isAuthed &&
           (isProtectedApp || isOnboarding || isStandaloneProtected)) {
@@ -153,6 +156,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: Routes.appJoin, builder: (_, _) => const JoinByInvitePage()),
       GoRoute(path: Routes.appChat, builder: (_, _) => const ChatPage()),
+      GoRoute(
+        path: '/chat/conversation/:conversationId',
+        builder: (_, state) {
+          final args = state.extra is ChatConversationArgs
+              ? state.extra! as ChatConversationArgs
+              : null;
+          return ConversationPage(
+            conversationId: state.pathParameters['conversationId']!,
+            peerNickname: args?.peerNickname,
+            peerAvatarUrl: args?.peerAvatarUrl,
+          );
+        },
+      ),
       GoRoute(path: Routes.appEditProfile, builder: (_, _) => const EditProfilePage()),
 
       GoRoute(

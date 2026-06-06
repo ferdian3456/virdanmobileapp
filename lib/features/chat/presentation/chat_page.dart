@@ -1,31 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../core/errors/show_api_error_toast.dart';
+import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/util/avatar_color.dart';
-import '../../../mocks/chat_mock.dart';
+import '../../../core/util/relative_time.dart';
+import '../../server/data/server_repository.dart';
+import '../data/chat_api.dart';
+import '../domain/chat_models.dart';
 
-/// Mirrors Quasar ChatPage.vue: header (back + Messages), search input,
-/// filter chips (All / Unread / Requests with counts), thread rows
-/// (avatar + name + lastMessage + time + unread dot + typing indicator),
-/// mock disclaimer footer.
-class ChatPage extends StatefulWidget {
+enum _ChatFilter { all, unread }
+
+class ChatPage extends ConsumerStatefulWidget {
   const ChatPage({super.key});
 
   @override
-  State<ChatPage> createState() => _ChatPageState();
+  ConsumerState<ChatPage> createState() => _ChatPageState();
 }
 
-class _ChatPageState extends State<ChatPage> {
+class _ChatPageState extends ConsumerState<ChatPage> {
   final _search = TextEditingController();
-  ChatFilter _filter = ChatFilter.all;
+  _ChatFilter _filter = _ChatFilter.all;
   String _query = '';
+  List<DmConversationItem> _conversations = const [];
+  bool _loading = false;
 
   @override
   void initState() {
     super.initState();
     _search.addListener(() => setState(() => _query = _search.text));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   @override
@@ -34,27 +41,55 @@ class _ChatPageState extends State<ChatPage> {
     super.dispose();
   }
 
-  List<ChatThread> get _visible {
+  Future<void> _load() async {
+    final serverId = ref.read(myServersProvider).activeServerId;
+    if (serverId == null) return;
+
+    setState(() => _loading = true);
+    try {
+      final page =
+          await ref.read(chatApiProvider).listConversations(serverId);
+      if (!mounted) return;
+      setState(() => _conversations = page.data);
+    } catch (e) {
+      if (!mounted) return;
+      showApiErrorToast(ref, e, onRetry: _load);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  List<DmConversationItem> get _visible {
     final q = _query.trim().toLowerCase();
-    var list = mockChatThreads.toList();
-    if (_filter == ChatFilter.unread) {
-      list = list.where((t) => t.unread).toList();
-    } else if (_filter == ChatFilter.requests) {
-      list = list.where((t) => t.isRequest).toList();
+    var list = _conversations.toList();
+    if (_filter == _ChatFilter.unread) {
+      list = list.where((c) => c.unreadCount > 0).toList();
     }
     if (q.isEmpty) return list;
     return list
-        .where((t) =>
-            t.username.toLowerCase().contains(q) ||
-            (t.fullname ?? '').toLowerCase().contains(q) ||
-            t.lastMessage.toLowerCase().contains(q))
+        .where((c) =>
+            c.peer.nickname.toLowerCase().contains(q) ||
+            c.peer.username.toLowerCase().contains(q) ||
+            (c.lastMessagePreview ?? '').toLowerCase().contains(q))
         .toList();
+  }
+
+  void _openConversation(DmConversationItem c) {
+    context.push(
+      Routes.chatConversation(c.id),
+      extra: ChatConversationArgs(
+        peerNickname: c.peer.nickname,
+        peerAvatarUrl: c.peer.avatarUrl,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final unreadCount = mockChatThreads.where((t) => t.unread).length;
-    final requestCount = mockChatThreads.where((t) => t.isRequest).length;
+    final activeServerId = ref.watch(
+      myServersProvider.select((s) => s.activeServerId),
+    );
+    final unreadCount = _conversations.where((c) => c.unreadCount > 0).length;
     final visible = _visible;
 
     return Scaffold(
@@ -63,36 +98,69 @@ class _ChatPageState extends State<ChatPage> {
         bottom: false,
         child: Column(
           children: [
-            _Header(onBack: () => context.canPop() ? context.pop() : context.go('/app/home')),
+            _Header(
+              onBack: () => context.canPop()
+                  ? context.pop()
+                  : context.go('/app/home'),
+            ),
             _Search(controller: _search),
             _FilterStrip(
               active: _filter,
               unreadCount: unreadCount,
-              requestCount: requestCount,
               onTap: (f) => setState(() => _filter = f),
             ),
             Expanded(
-              child: visible.isEmpty
-                  ? const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Text(
-                          'No conversations yet.',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: EdgeInsets.zero,
-                      itemCount: visible.length,
-                      itemBuilder: (_, i) => _ThreadRow(thread: visible[i]),
-                    ),
+              child: activeServerId == null
+                  ? const _EmptyNoServer()
+                  : _loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : visible.isEmpty
+                          ? const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(24),
+                                child: Text(
+                                  'Belum ada percakapan.',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : RefreshIndicator(
+                              onRefresh: _load,
+                              child: ListView.builder(
+                                padding: EdgeInsets.zero,
+                                itemCount: visible.length,
+                                itemBuilder: (_, i) => _ThreadRow(
+                                  conversation: visible[i],
+                                  onTap: () => _openConversation(visible[i]),
+                                ),
+                              ),
+                            ),
             ),
-            const _MockNote(),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyNoServer extends StatelessWidget {
+  const _EmptyNoServer();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Text(
+          'Bergabung ke server terlebih dahulu untuk memulai percakapan.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            color: AppColors.textSecondary,
+          ),
         ),
       ),
     );
@@ -153,9 +221,11 @@ class _Search extends StatelessWidget {
         child: TextField(
           controller: controller,
           decoration: InputDecoration(
-            hintText: 'Search messages…',
+            hintText: 'Cari pesan...',
             hintStyle: const TextStyle(
-                fontFamily: 'Inter', color: AppColors.textTertiary, fontSize: 14),
+                fontFamily: 'Inter',
+                color: AppColors.textTertiary,
+                fontSize: 14),
             prefixIcon: const Icon(LucideIcons.search,
                 size: 18, color: AppColors.textTertiary),
             filled: true,
@@ -177,14 +247,12 @@ class _FilterStrip extends StatelessWidget {
   const _FilterStrip({
     required this.active,
     required this.unreadCount,
-    required this.requestCount,
     required this.onTap,
   });
 
-  final ChatFilter active;
+  final _ChatFilter active;
   final int unreadCount;
-  final int requestCount;
-  final ValueChanged<ChatFilter> onTap;
+  final ValueChanged<_ChatFilter> onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -195,24 +263,17 @@ class _FilterStrip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
           _Chip(
-            label: 'All',
+            label: 'Semua',
             count: 0,
-            active: active == ChatFilter.all,
-            onTap: () => onTap(ChatFilter.all),
+            active: active == _ChatFilter.all,
+            onTap: () => onTap(_ChatFilter.all),
           ),
           const SizedBox(width: 8),
           _Chip(
-            label: 'Unread',
+            label: 'Belum Dibaca',
             count: unreadCount,
-            active: active == ChatFilter.unread,
-            onTap: () => onTap(ChatFilter.unread),
-          ),
-          const SizedBox(width: 8),
-          _Chip(
-            label: 'Requests',
-            count: requestCount,
-            active: active == ChatFilter.requests,
-            onTap: () => onTap(ChatFilter.requests),
+            active: active == _ChatFilter.unread,
+            onTap: () => onTap(_ChatFilter.unread),
           ),
         ],
       ),
@@ -261,9 +322,12 @@ class _Chip extends StatelessWidget {
               if (count > 0) ...[
                 const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: active ? Colors.white.withValues(alpha: 0.2) : AppColors.primary,
+                    color: active
+                        ? Colors.white.withValues(alpha: 0.2)
+                        : AppColors.primary,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
@@ -286,15 +350,25 @@ class _Chip extends StatelessWidget {
 }
 
 class _ThreadRow extends StatelessWidget {
-  const _ThreadRow({required this.thread});
+  const _ThreadRow({required this.conversation, required this.onTap});
 
-  final ChatThread thread;
+  final DmConversationItem conversation;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final initial = thread.username.characters.first.toUpperCase();
+    final c = conversation;
+    final peer = c.peer;
+    final initial = peer.nickname.isNotEmpty
+        ? peer.nickname.characters.first.toUpperCase()
+        : '?';
+    final timeLabel = c.lastMessageAt != null
+        ? formatRelativeTime(c.lastMessageAt!.toIso8601String())
+        : '';
+    final unread = c.unreadCount > 0;
+
     return InkWell(
-      onTap: () {},
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
         child: Row(
@@ -304,12 +378,13 @@ class _ThreadRow extends StatelessWidget {
               height: 56,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: avatarColorFor(thread.username),
+                color: avatarColorFor(peer.username),
                 shape: BoxShape.circle,
               ),
-              child: thread.avatarUrl != null && thread.avatarUrl!.isNotEmpty
+              child: peer.avatarUrl != null && peer.avatarUrl!.isNotEmpty
                   ? ClipOval(
-                      child: Image.network(thread.avatarUrl!, fit: BoxFit.cover))
+                      child: Image.network(peer.avatarUrl!,
+                          width: 56, height: 56, fit: BoxFit.cover))
                   : Text(
                       initial,
                       style: const TextStyle(
@@ -329,7 +404,7 @@ class _ThreadRow extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          thread.fullname ?? thread.username,
+                          peer.nickname,
                           style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 15,
@@ -342,7 +417,7 @@ class _ThreadRow extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        thread.timeLabel,
+                        timeLabel,
                         style: const TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 12,
@@ -356,24 +431,22 @@ class _ThreadRow extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          thread.typing ? 'typing…' : thread.lastMessage,
+                          c.lastMessagePreview ?? '',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 14,
-                            color: thread.typing
-                                ? AppColors.primary
-                                : (thread.unread
-                                    ? AppColors.textPrimary
-                                    : AppColors.textSecondary),
-                            fontWeight:
-                                thread.unread ? FontWeight.w600 : FontWeight.w400,
-                            fontStyle: thread.typing ? FontStyle.italic : FontStyle.normal,
+                            color: unread
+                                ? AppColors.textPrimary
+                                : AppColors.textSecondary,
+                            fontWeight: unread
+                                ? FontWeight.w600
+                                : FontWeight.w400,
                           ),
                         ),
                       ),
-                      if (thread.unread)
+                      if (unread)
                         Container(
                           width: 8,
                           height: 8,
@@ -389,31 +462,6 @@ class _ThreadRow extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MockNote extends StatelessWidget {
-  const _MockNote();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      color: const Color(0xFFF8F9FA),
-      child: const SafeArea(
-        top: false,
-        child: Text(
-          "Messages backend isn't built yet — these conversations are placeholder data.",
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 12,
-            color: AppColors.textTertiary,
-          ),
         ),
       ),
     );

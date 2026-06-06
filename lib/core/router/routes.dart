@@ -22,6 +22,9 @@ abstract final class Routes {
   static const appChat = '/chat';
   static const appEditProfile = '/profile/edit';
 
+  static String chatConversation(String conversationId) =>
+      '/chat/conversation/$conversationId';
+
   static const settings = '/settings';
   static const settingsEmail = '/settings/email';
   static const settingsPassword = '/settings/password';
