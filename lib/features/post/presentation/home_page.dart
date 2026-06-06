@@ -311,9 +311,9 @@ class _HomeHeader extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: const Icon(LucideIcons.send, size: 22, color: AppColors.textTertiary),
+            icon: const Icon(LucideIcons.send, size: 22, color: AppColors.textPrimary),
             tooltip: 'Messages',
-            onPressed: null,
+            onPressed: () => context.push(Routes.appChat),
           ),
         ],
       ),
