@@ -174,7 +174,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                           : RefreshIndicator(
                               onRefresh: _load,
                               child: ListView.builder(
-                                padding: EdgeInsets.zero,
+                                padding: const EdgeInsets.only(top: 8),
                                 itemCount: visible.length,
                                 itemBuilder: (_, i) => _ThreadRow(
                                   conversation: visible[i],
