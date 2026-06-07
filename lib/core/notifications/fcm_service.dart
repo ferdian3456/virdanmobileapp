@@ -49,23 +49,36 @@ class FcmService {
 
   void _listenForeground() {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      final notification = message.notification;
-      final android = message.notification?.android;
-      if (notification == null || android == null) return;
+      final data = message.data;
+      final notifDetails = NotificationDetails(
+        android: AndroidNotificationDetails(
+          _androidChannel.id,
+          _androidChannel.name,
+          channelDescription: _androidChannel.description,
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+      );
 
+      // Data-only DM push — show using data fields
+      if (data['type'] == 'message') {
+        _localNotifications.show(
+          data['conversationId'].hashCode,
+          data['senderUsername'] as String?,
+          data['preview'] as String?,
+          notifDetails,
+        );
+        return;
+      }
+
+      // Notification-block messages (other push types)
+      final notification = message.notification;
+      if (notification == null) return;
       _localNotifications.show(
         notification.hashCode,
         notification.title,
         notification.body,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            _androidChannel.id,
-            _androidChannel.name,
-            channelDescription: _androidChannel.description,
-            importance: Importance.high,
-            priority: Priority.high,
-          ),
-        ),
+        notifDetails,
       );
     });
   }
