@@ -80,7 +80,7 @@ class ChatWsService {
             final payload = (json['payload'] as Map<String, dynamic>?) ?? {};
             final wsType = switch (type) {
               'message.new' => WsEventType.messageNew,
-              'read' => WsEventType.read,
+              'message.read' => WsEventType.read,
               'typing' => WsEventType.typing,
               _ => WsEventType.unknown,
             };
