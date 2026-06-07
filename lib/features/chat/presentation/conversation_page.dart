@@ -240,20 +240,19 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
                   avatarUrl: widget.peerAvatarUrl,
                   size: 30,
                 ),
-                if (_peerOnline)
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      width: 9,
-                      height: 9,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF28A745),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 1.5),
-                      ),
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 9,
+                    height: 9,
+                    decoration: BoxDecoration(
+                      color: _peerOnline ? const Color(0xFF28A745) : const Color(0xFFADB5BD),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
                     ),
                   ),
+                ),
               ],
             ),
             const SizedBox(width: 8),
