@@ -164,8 +164,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               : null;
           return ConversationPage(
             conversationId: state.pathParameters['conversationId']!,
+            peerUserId: args?.peerUserId,
             peerNickname: args?.peerNickname,
             peerAvatarUrl: args?.peerAvatarUrl,
+            peerIsOnline: args?.peerIsOnline ?? false,
           );
         },
       ),

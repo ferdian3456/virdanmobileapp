@@ -27,6 +27,7 @@ class DmConversationItem {
     required this.peerUserId,
     required this.peer,
     required this.unreadCount,
+    required this.isOnline,
     this.lastMessagePreview,
     this.lastMessageAt,
   });
@@ -38,6 +39,7 @@ class DmConversationItem {
         peerUserId: j['peerUserId'] as String,
         peer: DmIdentity.fromJson(j['peer'] as Map<String, dynamic>),
         unreadCount: j['unreadCount'] as int,
+        isOnline: j['isOnline'] as bool? ?? false,
         lastMessagePreview: j['lastMessagePreview'] as String?,
         lastMessageAt: j['lastMessageAt'] == null
             ? null
@@ -49,6 +51,7 @@ class DmConversationItem {
   final String peerUserId;
   final DmIdentity peer;
   final int unreadCount;
+  final bool isOnline;
   final String? lastMessagePreview;
   final DateTime? lastMessageAt;
 }
@@ -120,7 +123,7 @@ class DmMessagePage {
 
 // ── WS event types ──
 
-enum WsEventType { messageNew, read, typing, unknown }
+enum WsEventType { messageNew, read, typing, presence, unknown }
 
 @immutable
 class WsEvent {
@@ -135,10 +138,14 @@ class WsEvent {
 @immutable
 class ChatConversationArgs {
   const ChatConversationArgs({
+    required this.peerUserId,
     required this.peerNickname,
     this.peerAvatarUrl,
+    this.peerIsOnline = false,
   });
 
+  final String peerUserId;
   final String peerNickname;
   final String? peerAvatarUrl;
+  final bool peerIsOnline;
 }

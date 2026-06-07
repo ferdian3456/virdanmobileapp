@@ -82,6 +82,7 @@ class ChatWsService {
               'message.new' => WsEventType.messageNew,
               'message.read' => WsEventType.read,
               'typing' => WsEventType.typing,
+              'presence' => WsEventType.presence,
               _ => WsEventType.unknown,
             };
             _controller.add(WsEvent(type: wsType, payload: payload));

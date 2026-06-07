@@ -32,6 +32,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   bool _loading = false;
   final Map<String, bool> _typingMap = {};
   final Map<String, Timer> _typingTimers = {};
+  final Map<String, bool> _onlineMap = {};
   StreamSubscription<WsEvent>? _wsSub;
 
   @override
@@ -60,6 +61,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       switch (event.type) {
         case WsEventType.messageNew:
           _load();
+        case WsEventType.presence:
+          final userId = event.payload['userId'] as String?;
+          final online = event.payload['online'] as bool? ?? false;
+          if (userId != null) setState(() => _onlineMap[userId] = online);
         case WsEventType.typing:
           final convoId = event.payload['conversationId'] as String?;
           final isTyping = event.payload['isTyping'] as bool? ?? false;
@@ -114,8 +119,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     await context.push(
       Routes.chatConversation(c.id),
       extra: ChatConversationArgs(
+        peerUserId: c.peerUserId,
         peerNickname: c.peer.nickname,
         peerAvatarUrl: c.peer.avatarUrl,
+        peerIsOnline: _onlineMap[c.peerUserId] ?? c.isOnline,
       ),
     );
     if (mounted) _load();
@@ -171,8 +178,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                                 itemCount: visible.length,
                                 itemBuilder: (_, i) => _ThreadRow(
                                   conversation: visible[i],
-                                  isTyping:
-                                      _typingMap[visible[i].id] ?? false,
+                                  isTyping: _typingMap[visible[i].id] ?? false,
+                                  isOnline: _onlineMap[visible[i].peerUserId] ?? visible[i].isOnline,
                                   onTap: () => _openConversation(visible[i]),
                                 ),
                               ),
@@ -392,11 +399,13 @@ class _ThreadRow extends StatelessWidget {
   const _ThreadRow({
     required this.conversation,
     required this.isTyping,
+    required this.isOnline,
     required this.onTap,
   });
 
   final DmConversationItem conversation;
   final bool isTyping;
+  final bool isOnline;
   final VoidCallback onTap;
 
   @override
@@ -417,27 +426,45 @@ class _ThreadRow extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
         child: Row(
           children: [
-            Container(
-              width: 56,
-              height: 56,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: avatarColorFor(peer.username),
-                shape: BoxShape.circle,
-              ),
-              child: peer.avatarUrl != null && peer.avatarUrl!.isNotEmpty
-                  ? ClipOval(
-                      child: Image.network(peer.avatarUrl!,
-                          width: 56, height: 56, fit: BoxFit.cover))
-                  : Text(
-                      initial,
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
+            Stack(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: avatarColorFor(peer.username),
+                    shape: BoxShape.circle,
+                  ),
+                  child: peer.avatarUrl != null && peer.avatarUrl!.isNotEmpty
+                      ? ClipOval(
+                          child: Image.network(peer.avatarUrl!,
+                              width: 56, height: 56, fit: BoxFit.cover))
+                      : Text(
+                          initial,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
+                if (isOnline)
+                  Positioned(
+                    right: 2,
+                    bottom: 2,
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF28A745),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
                       ),
                     ),
+                  ),
+              ],
             ),
             const SizedBox(width: 12),
             Expanded(

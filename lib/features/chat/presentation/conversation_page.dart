@@ -19,13 +19,17 @@ class ConversationPage extends ConsumerStatefulWidget {
   const ConversationPage({
     super.key,
     required this.conversationId,
+    this.peerUserId,
     this.peerNickname,
     this.peerAvatarUrl,
+    this.peerIsOnline = false,
   });
 
   final String conversationId;
+  final String? peerUserId;
   final String? peerNickname;
   final String? peerAvatarUrl;
+  final bool peerIsOnline;
 
   @override
   ConsumerState<ConversationPage> createState() => _ConversationPageState();
@@ -41,6 +45,7 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
   bool _loadingOlder = false;
   bool _sending = false;
   bool _peerTyping = false;
+  late bool _peerOnline;
   Timer? _typingTimer;
   Timer? _typingDebounce;
   StreamSubscription<WsEvent>? _wsSub;
@@ -49,6 +54,7 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
   @override
   void initState() {
     super.initState();
+    _peerOnline = widget.peerIsOnline;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initUser();
       _load();
@@ -151,6 +157,12 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
               });
             }
           }
+        case WsEventType.presence:
+          final userId = event.payload['userId'] as String?;
+          final online = event.payload['online'] as bool? ?? false;
+          if (userId != null && userId == widget.peerUserId) {
+            setState(() => _peerOnline = online);
+          }
         case WsEventType.read:
           break;
         case WsEventType.unknown:
@@ -221,22 +233,55 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
         titleWidget: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _Avatar(
-              seed: peerNickname,
-              avatarUrl: widget.peerAvatarUrl,
-              size: 30,
+            Stack(
+              children: [
+                _Avatar(
+                  seed: peerNickname,
+                  avatarUrl: widget.peerAvatarUrl,
+                  size: 30,
+                ),
+                if (_peerOnline)
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 9,
+                      height: 9,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF28A745),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 1.5),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(width: 8),
             Flexible(
-              child: Text(
-                peerNickname,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-                overflow: TextOverflow.ellipsis,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    peerNickname,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (_peerOnline)
+                    const Text(
+                      'Online',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 11,
+                        color: Color(0xFF28A745),
+                      ),
+                    ),
+                ],
               ),
             ),
           ],

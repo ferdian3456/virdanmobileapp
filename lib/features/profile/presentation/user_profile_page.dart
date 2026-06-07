@@ -85,6 +85,7 @@ class _UserProfilePageState extends ConsumerState<UserProfilePage> {
       context.push(
         Routes.chatConversation(convo.id),
         extra: ChatConversationArgs(
+          peerUserId: widget.userId,
           peerNickname: _profile?.nickname ?? '',
           peerAvatarUrl: _profile?.avatarUrl,
         ),
