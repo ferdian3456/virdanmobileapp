@@ -40,7 +40,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     _search.addListener(() => setState(() => _query = _search.text));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _load();
-      _subscribeTyping();
+      _subscribeWs();
     });
   }
 
@@ -54,18 +54,25 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     super.dispose();
   }
 
-  void _subscribeTyping() {
+  void _subscribeWs() {
     _wsSub = ref.read(chatWsServiceProvider).events.listen((event) {
-      if (!mounted || event.type != WsEventType.typing) return;
-      final convoId = event.payload['conversationId'] as String?;
-      final isTyping = event.payload['isTyping'] as bool? ?? false;
-      if (convoId == null) return;
-      setState(() => _typingMap[convoId] = isTyping);
-      _typingTimers[convoId]?.cancel();
-      if (isTyping) {
-        _typingTimers[convoId] = Timer(const Duration(seconds: 4), () {
-          if (mounted) setState(() => _typingMap[convoId] = false);
-        });
+      if (!mounted) return;
+      switch (event.type) {
+        case WsEventType.messageNew:
+          _load();
+        case WsEventType.typing:
+          final convoId = event.payload['conversationId'] as String?;
+          final isTyping = event.payload['isTyping'] as bool? ?? false;
+          if (convoId == null) return;
+          setState(() => _typingMap[convoId] = isTyping);
+          _typingTimers[convoId]?.cancel();
+          if (isTyping) {
+            _typingTimers[convoId] = Timer(const Duration(seconds: 4), () {
+              if (mounted) setState(() => _typingMap[convoId] = false);
+            });
+          }
+        default:
+          break;
       }
     });
   }
@@ -103,14 +110,15 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         .toList();
   }
 
-  void _openConversation(DmConversationItem c) {
-    context.push(
+  Future<void> _openConversation(DmConversationItem c) async {
+    await context.push(
       Routes.chatConversation(c.id),
       extra: ChatConversationArgs(
         peerNickname: c.peer.nickname,
         peerAvatarUrl: c.peer.avatarUrl,
       ),
     );
+    if (mounted) _load();
   }
 
   @override

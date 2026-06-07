@@ -62,10 +62,8 @@ class ChatWsService {
     if (token == null || !_shouldConnect) return;
 
     try {
-      _socket = await WebSocket.connect(
-        _wsUrl,
-        headers: {'Authorization': 'Bearer $token'},
-      );
+      final wsUri = '$_wsUrl?token=${Uri.encodeComponent(token)}';
+      _socket = await WebSocket.connect(wsUri);
 
       if (!_shouldConnect) {
         await _socket?.close();
