@@ -5,6 +5,8 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import '../../../core/errors/show_api_error_toast.dart';
 import '../../../core/router/routes.dart';
+import '../../auth/data/auth_repository.dart';
+import '../../auth/domain/auth_state.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/v_app_bar.dart';
 import '../data/post_api.dart';
@@ -190,8 +192,17 @@ class _ExploreFeedPageState extends ConsumerState<ExploreFeedPage> {
                     onLikeTap: () => _toggleLike(p.id),
                     onSaveTap: () => _toggleSave(p.id),
                     onCommentTap: () => context.push('/posts/${p.id}/comments'),
-                    onAuthorTap: () =>
-                        context.push(Routes.userProfile(p.serverId, p.authorId)),
+                    onAuthorTap: () {
+                      final currentUserId = switch (ref.read(authRepositoryProvider)) {
+                        AsyncData(value: AuthAuthenticated(:final user)) => user.id,
+                        _ => null,
+                      };
+                      if (p.authorId == currentUserId) {
+                        context.go(Routes.appProfile);
+                      } else {
+                        context.push(Routes.userProfile(p.serverId, p.authorId));
+                      }
+                    },
                   );
                 },
               ),

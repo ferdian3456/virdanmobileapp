@@ -10,6 +10,8 @@ import '../../../core/theme/typography.dart';
 import '../../../core/util/avatar_color.dart';
 import '../../../core/util/relative_time.dart';
 import '../../../core/widgets/v_app_bar.dart';
+import '../../auth/data/auth_repository.dart';
+import '../../auth/domain/auth_state.dart';
 import '../../server/data/server_repository.dart';
 import '../data/post_api.dart';
 import '../domain/post.dart';
@@ -95,7 +97,15 @@ class _CommentsPageState extends ConsumerState<CommentsPage> {
   void _openAuthor(Comment c) {
     final serverId = ref.read(myServersProvider).activeServerId;
     if (serverId == null) return;
-    context.push(Routes.userProfile(serverId, c.authorId));
+    final currentUserId = switch (ref.read(authRepositoryProvider)) {
+      AsyncData(value: AuthAuthenticated(:final user)) => user.id,
+      _ => null,
+    };
+    if (c.authorId == currentUserId) {
+      context.go(Routes.appProfile);
+    } else {
+      context.push(Routes.userProfile(serverId, c.authorId));
+    }
   }
 
   List<_TreeNode> _buildTree() {

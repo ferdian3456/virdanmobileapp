@@ -109,8 +109,10 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
                         onLikeTap: _toggleLike,
                         onSaveTap: _toggleSave,
                         onCommentTap: () => context.push('/posts/${_post!.id}/comments'),
-                        onAuthorTap: () => context.push(
-                            Routes.userProfile(_post!.serverId, _post!.authorId)),
+                        onAuthorTap: () => _post!.authorId == currentUserId
+                            ? context.go(Routes.appProfile)
+                            : context.push(
+                                Routes.userProfile(_post!.serverId, _post!.authorId)),
                         onMoreTap: _post!.authorId == currentUserId
                             ? () => showPostOptions(
                                   context: context,

@@ -372,8 +372,9 @@ class _FeedBody extends ConsumerWidget {
             onLikeTap: () => onLikeTap(p.id),
             onSaveTap: () => onSaveTap(p.id),
             onCommentTap: () => GoRouter.of(context).push('/posts/${p.id}/comments'),
-            onAuthorTap: () =>
-                GoRouter.of(context).push(Routes.userProfile(p.serverId, p.authorId)),
+            onAuthorTap: () => p.authorId == currentUserId
+                ? GoRouter.of(context).go(Routes.appProfile)
+                : GoRouter.of(context).push(Routes.userProfile(p.serverId, p.authorId)),
             onMoreTap: p.authorId == currentUserId
                 ? () => showPostOptions(
                       context: context,
