@@ -15,6 +15,11 @@ class Post {
     this.isSaved = false,
     this.authorAvatarUrl,
     this.imageUrl,
+    this.videoUrl,
+    this.thumbnailUrl,
+    this.mediaType,
+    this.mediaWidth,
+    this.mediaHeight,
   });
 
   factory Post.fromJson(Map<String, dynamic> json) {
@@ -32,6 +37,11 @@ class Post {
           (author?['avatarUrl'] as String?),
       caption: (json['caption'] as String?) ?? '',
       imageUrl: json['imageUrl'] as String?,
+      videoUrl: json['videoUrl'] as String?,
+      thumbnailUrl: json['thumbnailUrl'] as String?,
+      mediaType: json['mediaType'] as String?,
+      mediaWidth: (json['mediaWidth'] as num?)?.toInt(),
+      mediaHeight: (json['mediaHeight'] as num?)?.toInt(),
       likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
       commentCount: (json['commentCount'] as num?)?.toInt() ?? 0,
       isLiked: (json['userLiked'] as bool?) ??
@@ -51,11 +61,26 @@ class Post {
   final String? authorAvatarUrl;
   final String caption;
   final String? imageUrl;
+  final String? videoUrl;
+  final String? thumbnailUrl;
+  final String? mediaType;
+  final int? mediaWidth;
+  final int? mediaHeight;
   final int likeCount;
   final int commentCount;
   final bool isLiked;
   final bool isSaved;
   final String createdAt;
+
+  bool get isVideo => mediaType == 'video';
+  bool get isImage => mediaType == 'image' || (imageUrl != null && mediaType == null);
+
+  double? get mediaAspectRatio {
+    if (mediaWidth != null && mediaHeight != null && mediaHeight! > 0) {
+      return mediaWidth! / mediaHeight!;
+    }
+    return null;
+  }
 
   Post copyWith({
     int? likeCount,
@@ -71,6 +96,11 @@ class Post {
       authorAvatarUrl: authorAvatarUrl,
       caption: caption,
       imageUrl: imageUrl,
+      videoUrl: videoUrl,
+      thumbnailUrl: thumbnailUrl,
+      mediaType: mediaType,
+      mediaWidth: mediaWidth,
+      mediaHeight: mediaHeight,
       likeCount: likeCount ?? this.likeCount,
       commentCount: commentCount ?? this.commentCount,
       isLiked: isLiked ?? this.isLiked,

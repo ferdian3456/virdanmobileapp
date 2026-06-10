@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
@@ -7,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image/image.dart' as img;
+import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:photo_manager/photo_manager.dart';
 
@@ -68,6 +70,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
   final _captionCtrl = TextEditingController();
 
   AssetEntity? _selectedAsset;
+  File? _videoFile;
 
   bool _isProcessing = false;
   bool _isUploading = false;
@@ -229,11 +232,9 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
     setState(() {
       _sourceBytes = rebaked;
       _decoded = decoded;
-      _step = CpStep.crop;
-      _aspectId = '1:1';
-      _zoom = 1.0;
-      _translate = Offset.zero;
-      _stageW = 0;
+      _croppedBytes = rebaked;
+      _step = CpStep.detail;
+      _videoFile = null;
     });
   }
 
@@ -357,7 +358,8 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
 
   bool get _canPost {
     final activeId = ref.read(myServersProvider).activeServerId;
-    return _croppedBytes != null &&
+    final hasMedia = _croppedBytes != null || _videoFile != null;
+    return hasMedia &&
         _captionCtrl.text.trim().isNotEmpty &&
         activeId != null;
   }
@@ -373,10 +375,19 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
     }
     setState(() => _isUploading = true);
     try {
-      final form = FormData.fromMap({
-        'caption': _captionCtrl.text.trim(),
-        'image': MultipartFile.fromBytes(_croppedBytes!, filename: 'post.jpg'),
-      });
+      final FormData form;
+      if (_videoFile != null) {
+        final fileName = _videoFile!.path.split('/').last;
+        form = FormData.fromMap({
+          'caption': _captionCtrl.text.trim(),
+          'video': await MultipartFile.fromFile(_videoFile!.path, filename: fileName),
+        });
+      } else {
+        form = FormData.fromMap({
+          'caption': _captionCtrl.text.trim(),
+          'image': MultipartFile.fromBytes(_croppedBytes!, filename: 'post.jpg'),
+        });
+      }
       await ref.read(apiDioProvider).post<Map<String, dynamic>>(
             '/servers/$serverId/posts',
             data: form,
@@ -399,12 +410,10 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
 
   void _onBack() {
     if (_step == CpStep.detail) {
-      setState(() => _step = CpStep.crop);
-      return;
-    }
-    if (_step == CpStep.crop) {
       setState(() {
         _step = CpStep.source;
+        _videoFile = null;
+        _croppedBytes = null;
         _sourceBytes = null;
         _decoded = null;
       });
@@ -478,7 +487,15 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
                 onFlip: _flipCamera,
                 onMount: _startCamera,
               ),
-            SourceTab.video => const _VideoStage(),
+            SourceTab.video => _VideoStage(
+                onVideoPicked: (file) {
+                  setState(() {
+                    _videoFile = file;
+                    _step = CpStep.detail;
+                    _croppedBytes = null; // Clear image if any
+                  });
+                },
+              ),
           },
         ),
         _SourceTabs(active: _tab, onTap: _onSourceTabChanged),
@@ -563,7 +580,27 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
               height: 200,
               child: _croppedBytes != null
                   ? Image.memory(_croppedBytes!, fit: BoxFit.cover)
-                  : Container(color: const Color(0xFFF1F3F5)),
+                  : _videoFile != null
+                      ? Container(
+                          color: Colors.black,
+                          child: const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(LucideIcons.video, color: Colors.white, size: 40),
+                              SizedBox(height: 8),
+                              Text(
+                                'Video Selected',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : Container(color: const Color(0xFFF1F3F5)),
             ),
           ),
         ),
@@ -1328,7 +1365,19 @@ class _Shutter extends StatelessWidget {
 }
 
 class _VideoStage extends StatelessWidget {
-  const _VideoStage();
+  const _VideoStage({required this.onVideoPicked});
+
+  final ValueChanged<File> onVideoPicked;
+
+  Future<void> _pickVideo(BuildContext context, ImageSource source) async {
+    final picker = ImagePicker();
+    final xFile = await picker.pickVideo(
+      source: source,
+      maxDuration: const Duration(seconds: 180),
+    );
+    if (xFile == null) return;
+    onVideoPicked(File(xFile.path));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1337,15 +1386,70 @@ class _VideoStage extends StatelessWidget {
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(LucideIcons.video, size: 44, color: AppColors.textTertiary),
-            SizedBox(height: 12),
-            Text(
-              'Video posts coming soon',
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Column(
+                  children: [
+                    IconButton.filled(
+                      icon: const Icon(LucideIcons.camera, size: 32),
+                      iconSize: 32,
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.all(20),
+                      ),
+                      onPressed: () => _pickVideo(context, ImageSource.camera),
+                      tooltip: 'Record live video',
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Record Video',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 40),
+                Column(
+                  children: [
+                    IconButton.filled(
+                      icon: const Icon(LucideIcons.video, size: 32),
+                      iconSize: 32,
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.all(20),
+                      ),
+                      onPressed: () => _pickVideo(context, ImageSource.gallery),
+                      tooltip: 'Pick video from gallery',
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Choose Video',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Max 3 minutes, 100 MB',
               style: TextStyle(
                 fontFamily: 'Inter',
-                fontSize: 14,
-                color: AppColors.textSecondary,
+                fontSize: 12,
+                color: AppColors.textTertiary,
               ),
             ),
           ],

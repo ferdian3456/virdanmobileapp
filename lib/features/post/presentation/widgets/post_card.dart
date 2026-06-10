@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../../../core/theme/tokens.dart';
 import '../../../../core/util/relative_time.dart';
@@ -103,21 +104,8 @@ class PostCard extends StatelessWidget {
               ],
             ),
           ),
-          // Image
-          if (post.imageUrl != null && post.imageUrl!.isNotEmpty)
-            AspectRatio(
-              aspectRatio: 1,
-              child: ColoredBox(
-                color: const Color(0xFFF1F3F5),
-                child: Image.network(
-                  post.imageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const Center(
-                    child: Icon(LucideIcons.imageOff, color: AppColors.textTertiary),
-                  ),
-                ),
-              ),
-            ),
+          // Media (image or video thumbnail)
+          PostMediaWidget(post: post),
           // Actions
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -242,6 +230,197 @@ class _ActionButton extends StatelessWidget {
                 ),
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class PostMediaWidget extends StatefulWidget {
+  const PostMediaWidget({super.key, required this.post});
+
+  final Post post;
+
+  @override
+  State<PostMediaWidget> createState() => _PostMediaWidgetState();
+}
+
+class _PostMediaWidgetState extends State<PostMediaWidget> {
+  bool _playVideo = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final ratio = widget.post.mediaAspectRatio ?? 1.0;
+    final clampedRatio = ratio.clamp(9 / 16, 16 / 9);
+
+    if (widget.post.isVideo) {
+      if (_playVideo && widget.post.videoUrl != null) {
+        return FeedVideoPlayer(
+          videoUrl: widget.post.videoUrl!,
+          aspectRatio: clampedRatio,
+        );
+      }
+
+      final thumbUrl = widget.post.thumbnailUrl;
+      return GestureDetector(
+        onTap: () {
+          setState(() {
+            _playVideo = true;
+          });
+        },
+        child: AspectRatio(
+          aspectRatio: clampedRatio,
+          child: ColoredBox(
+            color: const Color(0xFFF1F3F5),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (thumbUrl != null && thumbUrl.isNotEmpty)
+                  Image.network(
+                    thumbUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => const Center(
+                      child: Icon(LucideIcons.imageOff, color: AppColors.textTertiary),
+                    ),
+                  ),
+                Center(
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 36),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final imgUrl = widget.post.imageUrl;
+    if (imgUrl != null && imgUrl.isNotEmpty) {
+      return AspectRatio(
+        aspectRatio: clampedRatio,
+        child: ColoredBox(
+          color: const Color(0xFFF1F3F5),
+          child: Image.network(
+            imgUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => const Center(
+              child: Icon(LucideIcons.imageOff, color: AppColors.textTertiary),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+}
+
+class FeedVideoPlayer extends StatefulWidget {
+  const FeedVideoPlayer({
+    super.key,
+    required this.videoUrl,
+    required this.aspectRatio,
+  });
+
+  final String videoUrl;
+  final double aspectRatio;
+
+  @override
+  State<FeedVideoPlayer> createState() => _FeedVideoPlayerState();
+}
+
+class _FeedVideoPlayerState extends State<FeedVideoPlayer> {
+  late VideoPlayerController _controller;
+  bool _initialized = false;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
+      ..initialize().then((_) {
+        if (mounted) {
+          setState(() {
+            _initialized = true;
+          });
+          _controller.play();
+          _controller.setLooping(true);
+        }
+      }).catchError((_) {
+        if (mounted) {
+          setState(() {
+            _hasError = true;
+          });
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_hasError) {
+      return AspectRatio(
+        aspectRatio: widget.aspectRatio,
+        child: const ColoredBox(
+          color: Colors.black,
+          child: Center(
+            child: Icon(LucideIcons.videoOff, color: Colors.white, size: 36),
+          ),
+        ),
+      );
+    }
+
+    if (!_initialized) {
+      return AspectRatio(
+        aspectRatio: widget.aspectRatio,
+        child: const ColoredBox(
+          color: Colors.black,
+          child: Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          ),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (_controller.value.isPlaying) {
+            _controller.pause();
+          } else {
+            _controller.play();
+          }
+        });
+      },
+      child: AspectRatio(
+        aspectRatio: widget.aspectRatio,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            VideoPlayer(_controller),
+            if (!_controller.value.isPlaying)
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 36),
+              ),
           ],
         ),
       ),
