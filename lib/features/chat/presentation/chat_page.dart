@@ -72,7 +72,6 @@ class _ChatPageState extends State<ChatPage> {
               onTap: (f) => setState(() => _filter = f),
             ),
             Expanded(
-<<<<<<< Updated upstream
               child: visible.isEmpty
                   ? const Center(
                       child: Padding(
@@ -91,38 +90,6 @@ class _ChatPageState extends State<ChatPage> {
                       itemCount: visible.length,
                       itemBuilder: (_, i) => _ThreadRow(thread: visible[i]),
                     ),
-=======
-              child: activeServerId == null
-                  ? const _EmptyNoServer()
-                  : _loading
-                      ? const Center(child: CircularProgressIndicator())
-                      : visible.isEmpty
-                          ? const Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(24),
-                                child: Text(
-                                  'No conversations yet.',
-                                  style: TextStyle(
-                                    fontFamily: 'Inter',
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : RefreshIndicator(
-                              onRefresh: _load,
-                              child: ListView.builder(
-                                padding: const EdgeInsets.only(top: 8),
-                                itemCount: visible.length,
-                                itemBuilder: (_, i) => _ThreadRow(
-                                  conversation: visible[i],
-                                  isTyping: _typingMap[visible[i].id] ?? false,
-                                  isOnline: _onlineMap[visible[i].peerUserId] ?? visible[i].isOnline,
-                                  onTap: () => _openConversation(visible[i]),
-                                ),
-                              ),
-                            ),
->>>>>>> Stashed changes
             ),
             const _MockNote(),
           ],
@@ -132,30 +99,6 @@ class _ChatPageState extends State<ChatPage> {
   }
 }
 
-<<<<<<< Updated upstream
-=======
-class _EmptyNoServer extends StatelessWidget {
-  const _EmptyNoServer();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(24),
-        child: Text(
-          'Join a server first to start a conversation.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: 'Inter',
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
->>>>>>> Stashed changes
 class _Header extends StatelessWidget {
   const _Header({required this.onBack});
 
@@ -210,11 +153,7 @@ class _Search extends StatelessWidget {
         child: TextField(
           controller: controller,
           decoration: InputDecoration(
-<<<<<<< Updated upstream
-            hintText: 'Search messages…',
-=======
             hintText: 'Search messages...',
->>>>>>> Stashed changes
             hintStyle: const TextStyle(
                 fontFamily: 'Inter', color: AppColors.textTertiary, fontSize: 14),
             prefixIcon: const Icon(LucideIcons.search,
@@ -417,13 +356,7 @@ class _ThreadRow extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-<<<<<<< Updated upstream
-                          thread.typing ? 'typing…' : thread.lastMessage,
-=======
-                          isTyping
-                              ? 'typing...'
-                              : (c.lastMessagePreview ?? ''),
->>>>>>> Stashed changes
+                          thread.typing ? 'typing...' : thread.lastMessage,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
