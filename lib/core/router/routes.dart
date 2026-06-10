@@ -20,6 +20,7 @@ abstract final class Routes {
   static const appCreateServer = '/app/create-server';
   static const appJoin = '/join';
   static const appChat = '/chat';
+  static String chatConversation(String id) => '/chat/$id';
   static const appEditProfile = '/profile/edit';
 
   static const settings = '/settings';
