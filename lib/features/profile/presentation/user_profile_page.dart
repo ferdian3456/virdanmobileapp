@@ -6,11 +6,14 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/errors/show_api_error_toast.dart';
 import '../../../core/feedback/v_skeleton.dart';
+import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/util/app_assets.dart';
 import '../../../core/util/avatar_color.dart';
 import '../../../core/widgets/v_app_bar.dart';
+import '../../chat/data/chat_api.dart';
+import '../../chat/domain/chat_models.dart';
 import '../../post/data/post_api.dart';
 import '../../post/domain/post.dart';
 import '../data/profile_api.dart';
@@ -34,11 +37,36 @@ class _UserProfilePageState extends ConsumerState<UserProfilePage> {
   bool _loadingProfile = false;
   List<Post> _posts = const [];
   bool _loadingPosts = false;
+  bool _startingConversation = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _startConversation() async {
+    setState(() => _startingConversation = true);
+    try {
+      final convo = await ref
+          .read(chatApiProvider)
+          .getOrCreateConversation(widget.serverId, widget.userId);
+      if (!mounted) return;
+      final profile = _profile;
+      await context.push(
+        Routes.chatConversation(convo.id),
+        extra: ChatConversationArgs(
+          peerUserId: widget.userId,
+          peerNickname: profile?.nickname ?? convo.peer.nickname,
+          peerAvatarUrl: profile?.avatarUrl ?? convo.peer.avatarUrl,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showApiErrorToast(ref, e);
+    } finally {
+      if (mounted) setState(() => _startingConversation = false);
+    }
   }
 
   Future<void> _load() async {
@@ -98,6 +126,8 @@ class _UserProfilePageState extends ConsumerState<UserProfilePage> {
                   bio: profile?.bio,
                   avatarUrl: profile?.avatarUrl,
                   initial: initial,
+                  onMessage: _startingConversation ? null : _startConversation,
+                  messageLoading: _startingConversation,
                 ),
               ),
             const SliverToBoxAdapter(child: _GridDivider()),
@@ -151,6 +181,8 @@ class _Identity extends StatelessWidget {
     required this.bio,
     required this.avatarUrl,
     required this.initial,
+    required this.onMessage,
+    required this.messageLoading,
   });
 
   final String nickname;
@@ -158,6 +190,8 @@ class _Identity extends StatelessWidget {
   final String? bio;
   final String? avatarUrl;
   final String initial;
+  final VoidCallback? onMessage;
+  final bool messageLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -197,6 +231,34 @@ class _Identity extends StatelessWidget {
             const SizedBox(height: 12),
             Text(bio!, style: AppTextStyles.body.copyWith(height: 1.4)),
           ],
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onMessage,
+              icon: messageLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(LucideIcons.send, size: 16),
+              label: const Text('Message'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                textStyle: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
