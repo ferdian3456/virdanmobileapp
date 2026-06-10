@@ -69,7 +69,9 @@ class _ExploreServersPageState extends ConsumerState<ExploreServersPage> {
       final cats = await ref.read(serverApiProvider).categories();
       if (!mounted) return;
       setState(() => _categories = cats);
-    } catch (_) {
+    } catch (e) {
+      if (!mounted) return;
+      showApiErrorToast(ref, e);
     } finally {
       if (mounted) setState(() => _categoriesLoading = false);
     }

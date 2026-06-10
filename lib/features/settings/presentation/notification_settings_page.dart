@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/errors/show_api_error_toast.dart';
 import '../../../core/http/dio_client.dart';
 import '../../../core/notifications/notification_api.dart';
 import '../../../core/theme/tokens.dart';
@@ -46,18 +47,25 @@ class _NotificationSettingsPageState extends ConsumerState<NotificationSettingsP
     }
   }
 
-  Future<void> _savePrefs() async {
+  Future<void> _savePrefs({
+    required bool prevLikes,
+    required bool prevComments,
+    required bool prevReplies,
+  }) async {
     try {
       await ref.read(notificationApiProvider).updateNotificationPreferences(
             notifLike: _likes,
             notifComment: _comments,
             notifReply: _replies,
           );
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal menyimpan preferensi.')),
-      );
+      setState(() {
+        _likes = prevLikes;
+        _comments = prevComments;
+        _replies = prevReplies;
+      });
+      showApiErrorToast(ref, e);
     }
   }
 
@@ -72,24 +80,27 @@ class _NotificationSettingsPageState extends ConsumerState<NotificationSettingsP
           _Switch(
             value: _likes,
             onChanged: (v) {
+              final prev = (_likes, _comments, _replies);
               setState(() => _likes = v);
-              _savePrefs();
+              _savePrefs(prevLikes: prev.$1, prevComments: prev.$2, prevReplies: prev.$3);
             },
             title: 'Likes',
           ),
           _Switch(
             value: _comments,
             onChanged: (v) {
+              final prev = (_likes, _comments, _replies);
               setState(() => _comments = v);
-              _savePrefs();
+              _savePrefs(prevLikes: prev.$1, prevComments: prev.$2, prevReplies: prev.$3);
             },
             title: 'Comments',
           ),
           _Switch(
             value: _replies,
             onChanged: (v) {
+              final prev = (_likes, _comments, _replies);
               setState(() => _replies = v);
-              _savePrefs();
+              _savePrefs(prevLikes: prev.$1, prevComments: prev.$2, prevReplies: prev.$3);
             },
             title: 'Replies',
           ),

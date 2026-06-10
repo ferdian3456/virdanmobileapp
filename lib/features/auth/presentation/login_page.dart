@@ -11,7 +11,6 @@ import '../../../core/theme/typography.dart';
 import '../../../core/widgets/v_button.dart';
 import '../../../core/widgets/v_input.dart';
 import '../../../shared/layouts/blank_layout.dart';
-import '../data/auth_repository.dart';
 import 'controllers/login_controller.dart';
 import 'controllers/signup_controller.dart';
 
@@ -82,6 +81,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             password: _passwordCtrl.text,
           );
       if (!mounted) return;
+      ref.read(toastControllerProvider.notifier).clear();
       ref.read(toastControllerProvider.notifier).success(title: 'Login successful');
     } catch (e) {
       if (!mounted) return;
@@ -175,13 +175,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             ],
           ),
           const SizedBox(height: AppSpacing.xl),
-          // React to repo-driven errors (network races during refresh).
-          Consumer(builder: (_, ref, _) {
-            ref.listen<AsyncValue>(authRepositoryProvider, (_, next) {
-              if (next.hasError) showApiErrorToast(ref, next.error!);
-            });
-            return const SizedBox.shrink();
-          }),
         ],
       ),
     );
