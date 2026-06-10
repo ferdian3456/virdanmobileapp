@@ -234,16 +234,8 @@ class _Identity extends StatelessWidget {
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton.icon(
+            child: OutlinedButton(
               onPressed: onMessage,
-              icon: messageLoading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(LucideIcons.send, size: 16),
-              label: const Text('Message'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primary,
                 side: const BorderSide(color: AppColors.primary),
@@ -257,6 +249,13 @@ class _Identity extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
+              child: messageLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Send Message'),
             ),
           ),
         ],
