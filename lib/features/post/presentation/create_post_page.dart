@@ -32,11 +32,14 @@ class _Aspect {
   final double? ratio; // width / height; null = free
 }
 
+// Only aspects within the feed's displayable range [MIN 4:5, MAX 1.91] are
+// offered. The feed (PostMediaWidget) clamps ratio to that band and renders
+// BoxFit.cover, so cropping to a ratio outside it would get re-cropped in the
+// feed — breaking what-you-see-is-what-you-get. 9:16 and free are intentionally
+// excluded for that reason.
 const _aspects = <_Aspect>[
-  _Aspect('free', 'Free', null),
   _Aspect('1:1', '1:1', 1),
   _Aspect('4:5', '4:5', 4 / 5),
-  _Aspect('9:16', '9:16', 9 / 16),
   _Aspect('16:9', '16:9', 16 / 9),
 ];
 
@@ -66,6 +69,8 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
   double _frameH = 0;
 
   Uint8List? _croppedBytes;
+  int _croppedW = 0;
+  int _croppedH = 0;
   final _captionCtrl = TextEditingController();
 
   AssetEntity? _selectedAsset;
@@ -195,14 +200,47 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
     try {
       final shot = await ctrl.takePicture();
       final bytes = await shot.readAsBytes();
+      // Grab the sensor metadata BEFORE stopping the controller — needed to
+      // correct the still's orientation below.
+      final desc = ctrl.description;
       // Stop camera AFTER reading bytes so the controller stays alive for
       // the takePicture / readAsBytes await chain.
       await _stopCamera();
       if (!mounted) return;
-      _loadBytes(bytes);
+      _loadBytes(_normalizeCameraBytes(bytes, desc));
     } catch (e) {
       if (!mounted) return;
       showApiErrorToast(ref, e);
+    }
+  }
+
+  /// Corrects the orientation of a camera still.
+  ///
+  /// Camera2/CameraX on many Android devices return the captured JPEG in the
+  /// sensor's native (landscape) orientation with no usable EXIF orientation
+  /// tag, so the still ends up rotated 90deg versus the live preview (which the
+  /// plugin rotates for display). [_loadBytes]'s bakeOrientation is a no-op in
+  /// that case. Detect it — a portrait-locked capture that decoded to landscape
+  /// pixels — and rotate by the sensor orientation. The front lens is rotated
+  /// the opposite way. Devices that DO embed correct EXIF are handled by
+  /// bakeOrientation and skipped here (already portrait, width <= height).
+  Uint8List _normalizeCameraBytes(Uint8List bytes, CameraDescription desc) {
+    try {
+      final decoded = img.decodeImage(bytes);
+      if (decoded == null) return bytes;
+      var oriented = img.bakeOrientation(decoded);
+      final quarterTurn =
+          desc.sensorOrientation == 90 || desc.sensorOrientation == 270;
+      if (quarterTurn && oriented.width > oriented.height) {
+        final angle = desc.lensDirection == CameraLensDirection.front
+            ? (360 - desc.sensorOrientation) % 360
+            : desc.sensorOrientation;
+        oriented = img.copyRotate(oriented, angle: angle);
+      }
+      return Uint8List.fromList(img.encodeJpg(oriented, quality: 95));
+    } catch (_) {
+      // Fall back to the raw bytes; _loadBytes still applies bakeOrientation.
+      return bytes;
     }
   }
 
@@ -289,13 +327,19 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
     // Apply EXIF rotation so width/height match what users see — camera
     // captures often carry an orientation tag that Image.memory honors but
     // img.decodeImage doesn't until we bake it in.
-    decoded = img.bakeOrientation(decoded);
-    final rebaked = Uint8List.fromList(img.encodeJpg(decoded, quality: 95));
+    final baked = img.bakeOrientation(decoded);
+    final rebaked = Uint8List.fromList(img.encodeJpg(baked, quality: 95));
     setState(() {
       _sourceBytes = rebaked;
-      _decoded = decoded;
+      _decoded = baked;
       _croppedBytes = rebaked;
-      _step = CpStep.detail;
+      _croppedW = baked.width;
+      _croppedH = baked.height;
+      // Start the crop stage fresh for each new image.
+      _aspectId = '1:1';
+      _zoom = 1.0;
+      _stageW = 0; // force _recalcStage on next layout
+      _step = CpStep.crop;
       _videoFile = null;
     });
   }
@@ -404,6 +448,8 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
       if (!mounted) return;
       setState(() {
         _croppedBytes = Uint8List.fromList(encoded);
+        _croppedW = cropped.width;
+        _croppedH = cropped.height;
         _step = CpStep.detail;
       });
     } catch (e) {
@@ -471,10 +517,24 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
   /* ─── Header back ─── */
 
   void _onBack() {
+    // detail -> crop for photos (re-frame); video has no crop, go to source.
     if (_step == CpStep.detail) {
+      if (_decoded != null) {
+        setState(() => _step = CpStep.crop);
+        return;
+      }
       setState(() {
         _step = CpStep.source;
         _videoFile = null;
+        _croppedBytes = null;
+      });
+      if (_tab == SourceTab.photo) _startCamera();
+      return;
+    }
+    // crop -> source (re-pick / re-shoot).
+    if (_step == CpStep.crop) {
+      setState(() {
+        _step = CpStep.source;
         _croppedBytes = null;
         _sourceBytes = null;
         _decoded = null;
@@ -646,13 +706,17 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Container(
-              constraints: const BoxConstraints(
-                maxWidth: 240,
-                maxHeight: 320,
-              ),
+              constraints: const BoxConstraints(maxWidth: 240),
               color: const Color(0xFFF1F3F5),
               child: _croppedBytes != null
-                  ? Image.memory(_croppedBytes!, fit: BoxFit.contain)
+                  ? AspectRatio(
+                      // Mirror the feed exactly: same clamp + BoxFit.cover so
+                      // the preview is what-you-see-is-what-you-get.
+                      aspectRatio: _croppedH > 0
+                          ? (_croppedW / _croppedH).clamp(4 / 5, 1.91).toDouble()
+                          : 1,
+                      child: Image.memory(_croppedBytes!, fit: BoxFit.cover),
+                    )
                   : _videoFile != null
                       ? _PreviewVideoPlayer(videoFile: _videoFile!)
                       : const SizedBox(height: 200),
