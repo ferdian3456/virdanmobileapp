@@ -251,18 +251,63 @@ class _PostMediaWidgetState extends State<PostMediaWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final ratio = widget.post.mediaAspectRatio ?? 1.0;
-    final clampedRatio = ratio.clamp(9 / 16, 16 / 9);
+    final ratio = widget.post.mediaAspectRatio;
+    final clampedRatio = ratio?.clamp(9 / 16, 16 / 9) ?? 1.0;
 
     if (widget.post.isVideo) {
       if (_playVideo && widget.post.videoUrl != null) {
         return FeedVideoPlayer(
           videoUrl: widget.post.videoUrl!,
           aspectRatio: clampedRatio,
+          thumbnailUrl: widget.post.thumbnailUrl,
         );
       }
 
       final thumbUrl = widget.post.thumbnailUrl;
+      if (ratio == null) {
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              _playVideo = true;
+            });
+          },
+          child: Container(
+            color: const Color(0xFFF1F3F5),
+            width: double.infinity,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                if (thumbUrl != null && thumbUrl.isNotEmpty)
+                  Image.network(
+                    thumbUrl,
+                    fit: BoxFit.fitWidth,
+                    width: double.infinity,
+                    errorBuilder: (_, _, _) => const Center(
+                      child: SizedBox(
+                        height: 200,
+                        child: Icon(LucideIcons.imageOff, color: AppColors.textTertiary),
+                      ),
+                    ),
+                  )
+                else
+                  const SizedBox(height: 200),
+                Center(
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 36),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
       return GestureDetector(
         onTap: () {
           setState(() {
@@ -304,6 +349,24 @@ class _PostMediaWidgetState extends State<PostMediaWidget> {
 
     final imgUrl = widget.post.imageUrl;
     if (imgUrl != null && imgUrl.isNotEmpty) {
+      if (ratio == null) {
+        return Container(
+          color: const Color(0xFFF1F3F5),
+          width: double.infinity,
+          child: Image.network(
+            imgUrl,
+            fit: BoxFit.fitWidth,
+            width: double.infinity,
+            errorBuilder: (_, _, _) => const Center(
+              child: SizedBox(
+                height: 200,
+                child: Icon(LucideIcons.imageOff, color: AppColors.textTertiary),
+              ),
+            ),
+          ),
+        );
+      }
+
       return AspectRatio(
         aspectRatio: clampedRatio,
         child: ColoredBox(
@@ -328,10 +391,12 @@ class FeedVideoPlayer extends StatefulWidget {
     super.key,
     required this.videoUrl,
     required this.aspectRatio,
+    this.thumbnailUrl,
   });
 
   final String videoUrl;
   final double aspectRatio;
+  final String? thumbnailUrl;
 
   @override
   State<FeedVideoPlayer> createState() => _FeedVideoPlayerState();
@@ -371,27 +436,38 @@ class _FeedVideoPlayerState extends State<FeedVideoPlayer> {
 
   @override
   Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: widget.aspectRatio,
+      child: _buildPlayerContent(),
+    );
+  }
+
+  Widget _buildPlayerContent() {
     if (_hasError) {
-      return AspectRatio(
-        aspectRatio: widget.aspectRatio,
-        child: const ColoredBox(
-          color: Colors.black,
-          child: Center(
-            child: Icon(LucideIcons.videoOff, color: Colors.white, size: 36),
-          ),
+      return const ColoredBox(
+        color: Colors.black,
+        child: Center(
+          child: Icon(LucideIcons.videoOff, color: Colors.white, size: 36),
         ),
       );
     }
 
     if (!_initialized) {
-      return AspectRatio(
-        aspectRatio: widget.aspectRatio,
-        child: const ColoredBox(
-          color: Colors.black,
-          child: Center(
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          if (widget.thumbnailUrl != null && widget.thumbnailUrl!.isNotEmpty)
+            Image.network(
+              widget.thumbnailUrl!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => const ColoredBox(color: Colors.black),
+            )
+          else
+            const ColoredBox(color: Colors.black),
+          const Center(
             child: CircularProgressIndicator(color: Colors.white),
           ),
-        ),
+        ],
       );
     }
 
@@ -405,14 +481,14 @@ class _FeedVideoPlayerState extends State<FeedVideoPlayer> {
           }
         });
       },
-      child: AspectRatio(
-        aspectRatio: widget.aspectRatio,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            VideoPlayer(_controller),
-            if (!_controller.value.isPlaying)
-              Container(
+      child: Stack(
+        alignment: Alignment.center,
+        fit: StackFit.expand,
+        children: [
+          VideoPlayer(_controller),
+          if (!_controller.value.isPlaying)
+            Center(
+              child: Container(
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
@@ -421,8 +497,8 @@ class _FeedVideoPlayerState extends State<FeedVideoPlayer> {
                 ),
                 child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 36),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
