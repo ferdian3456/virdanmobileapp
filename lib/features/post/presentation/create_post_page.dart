@@ -237,6 +237,12 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
             : desc.sensorOrientation;
         oriented = img.copyRotate(oriented, angle: angle);
       }
+      // Front lens: the live preview is mirrored (selfie/mirror view) but the
+      // still is captured un-mirrored. Mirror it back so what the user framed
+      // == what gets posted (WYSIWYG).
+      if (desc.lensDirection == CameraLensDirection.front) {
+        oriented = img.flipHorizontal(oriented);
+      }
       return Uint8List.fromList(img.encodeJpg(oriented, quality: 95));
     } catch (_) {
       // Fall back to the raw bytes; _loadBytes still applies bakeOrientation.
