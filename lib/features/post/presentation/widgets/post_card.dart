@@ -252,7 +252,7 @@ class _PostMediaWidgetState extends State<PostMediaWidget> {
   @override
   Widget build(BuildContext context) {
     final ratio = widget.post.mediaAspectRatio;
-    final clampedRatio = ratio?.clamp(9 / 16, 16 / 9) ?? 1.0;
+    final clampedRatio = ratio?.clamp(4 / 5, 1.91) ?? (4 / 5);
 
     if (widget.post.isVideo) {
       if (_playVideo && widget.post.videoUrl != null) {
