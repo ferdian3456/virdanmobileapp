@@ -1,16 +1,15 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
-
 import 'package:camera/camera.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image/image.dart' as img;
-import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:photo_manager/photo_manager.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../../core/errors/show_api_error_toast.dart';
 import '../../../core/feedback/toast/toast_controller.dart';
@@ -75,12 +74,15 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
   bool _isProcessing = false;
   bool _isUploading = false;
 
-  // Camera
+  // Camera & Video Recording
   CameraController? _camCtrl;
   List<CameraDescription> _cameras = const [];
   int _camIndex = 0;
   bool _camInitializing = false;
   String? _camError;
+  bool _isRecordingVideo = false;
+  Timer? _recordingTimer;
+  int _recordingSeconds = 0;
 
   @override
   void initState() {
@@ -92,6 +94,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _recordingTimer?.cancel();
     _stopCamera();
     _captionCtrl.dispose();
     super.dispose();
@@ -102,7 +105,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
     if (s == AppLifecycleState.inactive || s == AppLifecycleState.paused) {
       _stopCamera();
     } else if (s == AppLifecycleState.resumed &&
-        _tab == SourceTab.photo &&
+        (_tab == SourceTab.photo || _tab == SourceTab.video) &&
         _step == CpStep.source) {
       _startCamera();
     }
@@ -144,10 +147,11 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
         return;
       }
       final desc = _cameras[_camIndex % _cameras.length];
+      final isVideoMode = _tab == SourceTab.video;
       final ctrl = CameraController(
         desc,
         ResolutionPreset.high,
-        enableAudio: false,
+        enableAudio: isVideoMode,
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
       await ctrl.initialize();
@@ -155,6 +159,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
         await ctrl.dispose();
         return;
       }
+      await ctrl.lockCaptureOrientation(DeviceOrientation.portraitUp);
       setState(() => _camCtrl = ctrl);
     } catch (e) {
       if (!mounted) return;
@@ -201,12 +206,69 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
     }
   }
 
+  Future<void> _startVideoRecording() async {
+    final ctrl = _camCtrl;
+    if (ctrl == null || !ctrl.value.isInitialized || _isRecordingVideo) return;
+    try {
+      await ctrl.startVideoRecording();
+      setState(() {
+        _isRecordingVideo = true;
+        _recordingSeconds = 0;
+      });
+      _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        setState(() {
+          _recordingSeconds++;
+        });
+        if (_recordingSeconds >= 180) { // Limit 3 minutes
+          _stopVideoRecording();
+        }
+      });
+    } catch (e) {
+      ref.read(toastControllerProvider.notifier).error(title: 'Could not start recording.');
+    }
+  }
+
+  Future<void> _stopVideoRecording() async {
+    final ctrl = _camCtrl;
+    if (ctrl == null || !ctrl.value.isInitialized || !_isRecordingVideo) return;
+    _recordingTimer?.cancel();
+    try {
+      final file = await ctrl.stopVideoRecording();
+      await _stopCamera();
+      setState(() {
+        _isRecordingVideo = false;
+        _videoFile = File(file.path);
+        _sourceBytes = null;
+        _decoded = null;
+        _croppedBytes = null;
+        _step = CpStep.detail;
+      });
+    } catch (e) {
+      ref.read(toastControllerProvider.notifier).error(title: 'Could not stop recording.');
+      setState(() {
+        _isRecordingVideo = false;
+      });
+    }
+  }
+
   /* ─── Source picking ─── */
 
   Future<void> _loadFromSelectedAsset() async {
     final asset = _selectedAsset;
     if (asset == null) return;
     try {
+      if (asset.type == AssetType.video) {
+        final file = await asset.file;
+        if (file == null || !mounted) return;
+        setState(() {
+          _videoFile = file;
+          _sourceBytes = null;
+          _decoded = null;
+          _croppedBytes = null;
+          _step = CpStep.detail;
+        });
+        return;
+      }
       final bytes = await asset.originBytes;
       if (bytes == null || !mounted) return;
       _loadBytes(bytes);
@@ -242,8 +304,8 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
     final prev = _tab;
     if (prev == next) return;
     setState(() => _tab = next);
-    if (prev == SourceTab.photo) _stopCamera();
-    if (next == SourceTab.photo && _step == CpStep.source) {
+    if (prev == SourceTab.photo || prev == SourceTab.video) _stopCamera();
+    if ((next == SourceTab.photo || next == SourceTab.video) && _step == CpStep.source) {
       _startCamera();
     }
   }
@@ -488,13 +550,21 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
                 onMount: _startCamera,
               ),
             SourceTab.video => _VideoStage(
-                onVideoPicked: (file) {
-                  setState(() {
-                    _videoFile = file;
-                    _step = CpStep.detail;
-                    _croppedBytes = null; // Clear image if any
-                  });
+                controller: _camCtrl,
+                initializing: _camInitializing,
+                isRecording: _isRecordingVideo,
+                recordingSeconds: _recordingSeconds,
+                errorText: _camError,
+                onRecordTap: () {
+                  if (_isRecordingVideo) {
+                    _stopVideoRecording();
+                  } else {
+                    _startVideoRecording();
+                  }
                 },
+                onPickGallery: () => _onSourceTabChanged(SourceTab.gallery),
+                onFlip: _flipCamera,
+                onMount: _startCamera,
               ),
           },
         ),
@@ -574,33 +644,18 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
       children: [
         Center(
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: SizedBox(
-              width: 200,
-              height: 200,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              constraints: const BoxConstraints(
+                maxWidth: 240,
+                maxHeight: 320,
+              ),
+              color: const Color(0xFFF1F3F5),
               child: _croppedBytes != null
-                  ? Image.memory(_croppedBytes!, fit: BoxFit.cover)
+                  ? Image.memory(_croppedBytes!, fit: BoxFit.contain)
                   : _videoFile != null
-                      ? Container(
-                          color: Colors.black,
-                          child: const Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(LucideIcons.video, color: Colors.white, size: 40),
-                              SizedBox(height: 8),
-                              Text(
-                                'Video Selected',
-                                style: TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : Container(color: const Color(0xFFF1F3F5)),
+                      ? _PreviewVideoPlayer(videoFile: _videoFile!)
+                      : const SizedBox(height: 200),
             ),
           ),
         ),
@@ -895,7 +950,7 @@ class _GalleryPickerState extends State<_GalleryPicker> {
         return;
       }
       final albums = await PhotoManager.getAssetPathList(
-        type: RequestType.image,
+        type: RequestType.common,
         onlyAll: true,
         filterOption: FilterOptionGroup(
           orders: [
@@ -1364,95 +1419,225 @@ class _Shutter extends StatelessWidget {
   }
 }
 
-class _VideoStage extends StatelessWidget {
-  const _VideoStage({required this.onVideoPicked});
+class _VideoStage extends StatefulWidget {
+  const _VideoStage({
+    required this.controller,
+    required this.initializing,
+    required this.isRecording,
+    required this.recordingSeconds,
+    required this.errorText,
+    required this.onRecordTap,
+    required this.onPickGallery,
+    required this.onFlip,
+    required this.onMount,
+  });
 
-  final ValueChanged<File> onVideoPicked;
+  final CameraController? controller;
+  final bool initializing;
+  final bool isRecording;
+  final int recordingSeconds;
+  final String? errorText;
+  final VoidCallback onRecordTap;
+  final VoidCallback onPickGallery;
+  final VoidCallback onFlip;
+  final VoidCallback onMount;
 
-  Future<void> _pickVideo(BuildContext context, ImageSource source) async {
-    final picker = ImagePicker();
-    final xFile = await picker.pickVideo(
-      source: source,
-      maxDuration: const Duration(seconds: 180),
-    );
-    if (xFile == null) return;
-    onVideoPicked(File(xFile.path));
+  @override
+  State<_VideoStage> createState() => _VideoStageState();
+}
+
+class _VideoStageState extends State<_VideoStage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => widget.onMount());
+  }
+
+  String _formatDuration(int totalSecs) {
+    final m = totalSecs ~/ 60;
+    final s = totalSecs % 60;
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final ctrl = widget.controller;
+    final ready = ctrl != null && ctrl.value.isInitialized;
     return Container(
-      color: const Color(0xFFF8F9FA),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Column(
-                  children: [
-                    IconButton.filled(
-                      icon: const Icon(LucideIcons.camera, size: 32),
-                      iconSize: 32,
-                      style: IconButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.all(20),
-                      ),
-                      onPressed: () => _pickVideo(context, ImageSource.camera),
-                      tooltip: 'Record live video',
+      color: Colors.black,
+      child: Stack(
+        children: [
+          if (ready)
+            Positioned.fill(
+              child: LayoutBuilder(
+                builder: (context, c) {
+                  final preview = ctrl.value.previewSize;
+                  final pw = preview?.height ?? c.maxWidth;
+                  final ph = preview?.width ?? c.maxHeight;
+                  return FittedBox(
+                    fit: BoxFit.cover,
+                    clipBehavior: Clip.hardEdge,
+                    child: SizedBox(
+                      width: pw,
+                      height: ph,
+                      child: CameraPreview(ctrl),
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Record Video',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
-                      ),
+                  );
+                },
+              ),
+            ),
+          if (!ready) Positioned.fill(child: Container(color: Colors.black)),
+          if (widget.errorText != null)
+            Positioned.fill(
+              child: ColoredBox(
+                color: const Color(0xCC000000),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(LucideIcons.cameraOff,
+                            size: 36, color: Colors.white),
+                        const SizedBox(height: 12),
+                        Text(
+                          widget.errorText!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 14,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        OutlinedButton(
+                          onPressed: widget.onPickGallery,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Colors.white54),
+                          ),
+                          child: const Text('Pick from gallery instead'),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-                const SizedBox(width: 40),
-                Column(
-                  children: [
-                    IconButton.filled(
-                      icon: const Icon(LucideIcons.video, size: 32),
-                      iconSize: 32,
-                      style: IconButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.all(20),
+              ),
+            ),
+          if (widget.initializing && !ready)
+            const Positioned.fill(
+              child: Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+            ),
+          // Timer overlay when recording
+          if (widget.isRecording)
+            Positioned(
+              top: 24,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                      onPressed: () => _pickVideo(context, ImageSource.gallery),
-                      tooltip: 'Pick video from gallery',
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Choose Video',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+                      const SizedBox(width: 8),
+                      Text(
+                        _formatDuration(widget.recordingSeconds),
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          // Controls
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 24,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _CamSideBtn(
+                  icon: LucideIcons.image,
+                  onTap: widget.onPickGallery,
+                ),
+                _VideoShutter(
+                  enabled: ready,
+                  isRecording: widget.isRecording,
+                  onTap: widget.onRecordTap,
+                ),
+                _CamSideBtn(
+                  icon: LucideIcons.refreshCw,
+                  onTap: ready && !widget.isRecording ? widget.onFlip : () {},
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            const Text(
-              'Max 3 minutes, 100 MB',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 12,
-                color: AppColors.textTertiary,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VideoShutter extends StatelessWidget {
+  const _VideoShutter({
+    required this.enabled,
+    required this.isRecording,
+    required this.onTap,
+  });
+
+  final bool enabled;
+  final bool isRecording;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: enabled ? 1 : 0.5,
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: enabled ? onTap : null,
+          child: Container(
+            width: 72,
+            height: 72,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 4),
+            ),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: isRecording ? 28 : 56,
+              height: isRecording ? 28 : 56,
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(isRecording ? 4 : 28),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -1731,6 +1916,102 @@ class _ToggleRow extends StatelessWidget {
               onChanged: null,
               activeThumbColor: AppColors.primary,
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PreviewVideoPlayer extends StatefulWidget {
+  const _PreviewVideoPlayer({required this.videoFile});
+
+  final File videoFile;
+
+  @override
+  State<_PreviewVideoPlayer> createState() => _PreviewVideoPlayerState();
+}
+
+class _PreviewVideoPlayerState extends State<_PreviewVideoPlayer> {
+  late VideoPlayerController _controller;
+  bool _initialized = false;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.file(widget.videoFile)
+      ..initialize().then((_) {
+        if (mounted) {
+          setState(() {
+            _initialized = true;
+          });
+          _controller.setLooping(true);
+          _controller.play(); // Auto-play when entering preview screen
+        }
+      }).catchError((_) {
+        if (mounted) {
+          setState(() {
+            _hasError = true;
+          });
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_hasError) {
+      return Container(
+        color: Colors.black,
+        alignment: Alignment.center,
+        height: 200,
+        child: const Icon(LucideIcons.videoOff, color: Colors.white, size: 32),
+      );
+    }
+
+    if (!_initialized) {
+      return Container(
+        color: Colors.black,
+        alignment: Alignment.center,
+        height: 200,
+        child: const CircularProgressIndicator(color: Colors.white),
+      );
+    }
+
+    final ratio = _controller.value.aspectRatio.clamp(9 / 16, 16 / 9);
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (_controller.value.isPlaying) {
+            _controller.pause();
+          } else {
+            _controller.play();
+          }
+        });
+      },
+      child: AspectRatio(
+        aspectRatio: ratio,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            VideoPlayer(_controller),
+            if (!_controller.value.isPlaying)
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 32),
+              ),
           ],
         ),
       ),
