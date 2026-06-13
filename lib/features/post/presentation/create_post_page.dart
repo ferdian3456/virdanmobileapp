@@ -75,6 +75,11 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
 
   AssetEntity? _selectedAsset;
   File? _videoFile;
+  // True when the active video was recorded by the front lens. The recorded
+  // file is un-mirrored while the live camera view is mirrored (selfie view),
+  // so the preview is flipped horizontally to match what the user framed.
+  // FE preview only — the posted/feed video needs a server-side mirror flag.
+  bool _videoFromFront = false;
 
   bool _isProcessing = false;
   bool _isUploading = false;
@@ -278,10 +283,14 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
     _recordingTimer?.cancel();
     try {
       final file = await ctrl.stopVideoRecording();
+      // Read the lens before disposing the controller.
+      final fromFront =
+          ctrl.description.lensDirection == CameraLensDirection.front;
       await _stopCamera();
       setState(() {
         _isRecordingVideo = false;
         _videoFile = File(file.path);
+        _videoFromFront = fromFront;
         _sourceBytes = null;
         _decoded = null;
         _croppedBytes = null;
@@ -306,6 +315,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
         if (file == null || !mounted) return;
         setState(() {
           _videoFile = file;
+          _videoFromFront = false; // gallery videos play as-is, no mirror
           _sourceBytes = null;
           _decoded = null;
           _croppedBytes = null;
@@ -724,7 +734,10 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
                       child: Image.memory(_croppedBytes!, fit: BoxFit.cover),
                     )
                   : _videoFile != null
-                      ? _PreviewVideoPlayer(videoFile: _videoFile!)
+                      ? _PreviewVideoPlayer(
+                          videoFile: _videoFile!,
+                          mirror: _videoFromFront,
+                        )
                       : const SizedBox(height: 200),
             ),
           ),
@@ -1994,9 +2007,10 @@ class _ToggleRow extends StatelessWidget {
 }
 
 class _PreviewVideoPlayer extends StatefulWidget {
-  const _PreviewVideoPlayer({required this.videoFile});
+  const _PreviewVideoPlayer({required this.videoFile, required this.mirror});
 
   final File videoFile;
+  final bool mirror;
 
   @override
   State<_PreviewVideoPlayer> createState() => _PreviewVideoPlayerState();
@@ -2071,7 +2085,11 @@ class _PreviewVideoPlayerState extends State<_PreviewVideoPlayer> {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            VideoPlayer(_controller),
+            // Mirror only the video texture for front-lens recordings; the
+            // play-icon overlay below stays unflipped.
+            widget.mirror
+                ? Transform.flip(flipX: true, child: VideoPlayer(_controller))
+                : VideoPlayer(_controller),
             if (!_controller.value.isPlaying)
               Container(
                 width: 48,
