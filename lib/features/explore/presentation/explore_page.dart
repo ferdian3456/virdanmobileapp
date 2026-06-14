@@ -155,27 +155,63 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
                           );
                         }
                         final p = _posts[i];
-                        return GestureDetector(
-                          onTap: () => _openFeed(p),
-                          child: p.imageUrl != null && p.imageUrl!.isNotEmpty
-                              ? Image.network(p.imageUrl!,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) =>
-                                      Container(color: AppColors.surface))
-                              : Container(
-                                  color: AppColors.surface,
-                                  padding: const EdgeInsets.all(8),
-                                  child: Text(
-                                    p.caption,
-                                    maxLines: 6,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontSize: 11,
-                                      color: AppColors.textPrimary,
-                                    ),
+                        final hasImage = p.imageUrl != null && p.imageUrl!.isNotEmpty;
+                        final hasVideoThumb = p.isVideo && p.thumbnailUrl != null && p.thumbnailUrl!.isNotEmpty;
+
+                        Widget mediaWidget;
+                        if (hasImage) {
+                          mediaWidget = Image.network(
+                            p.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Container(color: AppColors.surface),
+                          );
+                        } else if (hasVideoThumb) {
+                          mediaWidget = Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.network(
+                                p.thumbnailUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => Container(color: AppColors.surface),
+                              ),
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.5),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.play_arrow_rounded,
+                                    color: Colors.white,
+                                    size: 16,
                                   ),
                                 ),
+                              ),
+                            ],
+                          );
+                        } else {
+                          mediaWidget = Container(
+                            color: AppColors.surface,
+                            padding: const EdgeInsets.all(8),
+                            child: Text(
+                              p.caption,
+                              maxLines: 6,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 11,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          );
+                        }
+
+                        return GestureDetector(
+                          onTap: () => _openFeed(p),
+                          child: mediaWidget,
                         );
                       },
                     ),

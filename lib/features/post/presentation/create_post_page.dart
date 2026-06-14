@@ -504,6 +504,9 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
         final fileName = _videoFile!.path.split('/').last;
         form = FormData.fromMap({
           'caption': _captionCtrl.text.trim(),
+          // Front-camera clips record un-mirrored; flag so the feed mirrors
+          // playback to match the selfie preview the user framed.
+          'mirror': _videoFromFront ? 'true' : 'false',
           'video': await MultipartFile.fromFile(_videoFile!.path, filename: fileName),
         });
       } else {

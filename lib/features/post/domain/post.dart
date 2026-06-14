@@ -20,6 +20,7 @@ class Post {
     this.mediaType,
     this.mediaWidth,
     this.mediaHeight,
+    this.mirrored,
   });
 
   factory Post.fromJson(Map<String, dynamic> json) {
@@ -42,6 +43,7 @@ class Post {
       mediaType: json['mediaType'] as String?,
       mediaWidth: (json['mediaWidth'] as num?)?.toInt(),
       mediaHeight: (json['mediaHeight'] as num?)?.toInt(),
+      mirrored: json['mirrored'] as bool?,
       likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
       commentCount: (json['commentCount'] as num?)?.toInt() ?? 0,
       isLiked: (json['userLiked'] as bool?) ??
@@ -66,6 +68,10 @@ class Post {
   final String? mediaType;
   final int? mediaWidth;
   final int? mediaHeight;
+  // True/false for front/back camera videos; null for images. Front-camera
+  // clips are stored un-mirrored, so the feed flips playback to match the
+  // selfie preview the author framed.
+  final bool? mirrored;
   final int likeCount;
   final int commentCount;
   final bool isLiked;
@@ -101,6 +107,7 @@ class Post {
       mediaType: mediaType,
       mediaWidth: mediaWidth,
       mediaHeight: mediaHeight,
+      mirrored: mirrored,
       likeCount: likeCount ?? this.likeCount,
       commentCount: commentCount ?? this.commentCount,
       isLiked: isLiked ?? this.isLiked,

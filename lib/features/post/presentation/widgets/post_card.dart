@@ -249,10 +249,17 @@ class PostMediaWidget extends StatefulWidget {
 class _PostMediaWidgetState extends State<PostMediaWidget> {
   bool _playVideo = false;
 
+  // Front-camera videos are stored un-mirrored; flip thumbnail + playback so
+  // the feed matches the selfie preview the author framed. Only the media is
+  // flipped, never the play-button overlay.
+  Widget _mirror(bool on, Widget child) =>
+      on ? Transform.flip(flipX: true, child: child) : child;
+
   @override
   Widget build(BuildContext context) {
     final ratio = widget.post.mediaAspectRatio;
     final clampedRatio = ratio?.clamp(4 / 5, 1.91) ?? (4 / 5);
+    final mirror = widget.post.mirrored == true;
 
     if (widget.post.isVideo) {
       if (_playVideo && widget.post.videoUrl != null) {
@@ -260,6 +267,7 @@ class _PostMediaWidgetState extends State<PostMediaWidget> {
           videoUrl: widget.post.videoUrl!,
           aspectRatio: clampedRatio,
           thumbnailUrl: widget.post.thumbnailUrl,
+          mirror: mirror,
         );
       }
 
@@ -278,14 +286,17 @@ class _PostMediaWidgetState extends State<PostMediaWidget> {
               alignment: Alignment.center,
               children: [
                 if (thumbUrl != null && thumbUrl.isNotEmpty)
-                  Image.network(
-                    thumbUrl,
-                    fit: BoxFit.fitWidth,
-                    width: double.infinity,
-                    errorBuilder: (_, _, _) => const Center(
-                      child: SizedBox(
-                        height: 200,
-                        child: Icon(LucideIcons.imageOff, color: AppColors.textTertiary),
+                  _mirror(
+                    mirror,
+                    Image.network(
+                      thumbUrl,
+                      fit: BoxFit.fitWidth,
+                      width: double.infinity,
+                      errorBuilder: (_, _, _) => const Center(
+                        child: SizedBox(
+                          height: 200,
+                          child: Icon(LucideIcons.imageOff, color: AppColors.textTertiary),
+                        ),
                       ),
                     ),
                   )
@@ -322,11 +333,14 @@ class _PostMediaWidgetState extends State<PostMediaWidget> {
               fit: StackFit.expand,
               children: [
                 if (thumbUrl != null && thumbUrl.isNotEmpty)
-                  Image.network(
-                    thumbUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const Center(
-                      child: Icon(LucideIcons.imageOff, color: AppColors.textTertiary),
+                  _mirror(
+                    mirror,
+                    Image.network(
+                      thumbUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const Center(
+                        child: Icon(LucideIcons.imageOff, color: AppColors.textTertiary),
+                      ),
                     ),
                   ),
                 Center(
@@ -392,11 +406,13 @@ class FeedVideoPlayer extends StatefulWidget {
     required this.videoUrl,
     required this.aspectRatio,
     this.thumbnailUrl,
+    this.mirror = false,
   });
 
   final String videoUrl;
   final double aspectRatio;
   final String? thumbnailUrl;
+  final bool mirror;
 
   @override
   State<FeedVideoPlayer> createState() => _FeedVideoPlayerState();
@@ -457,10 +473,13 @@ class _FeedVideoPlayerState extends State<FeedVideoPlayer> {
         fit: StackFit.expand,
         children: [
           if (widget.thumbnailUrl != null && widget.thumbnailUrl!.isNotEmpty)
-            Image.network(
-              widget.thumbnailUrl!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => const ColoredBox(color: Colors.black),
+            Transform.flip(
+              flipX: widget.mirror,
+              child: Image.network(
+                widget.thumbnailUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const ColoredBox(color: Colors.black),
+              ),
             )
           else
             const ColoredBox(color: Colors.black),
@@ -485,7 +504,7 @@ class _FeedVideoPlayerState extends State<FeedVideoPlayer> {
         alignment: Alignment.center,
         fit: StackFit.expand,
         children: [
-          VideoPlayer(_controller),
+          Transform.flip(flipX: widget.mirror, child: VideoPlayer(_controller)),
           if (!_controller.value.isPlaying)
             Center(
               child: Container(
