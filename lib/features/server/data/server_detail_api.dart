@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/http/dio_client.dart';
 
@@ -137,6 +138,28 @@ class ServerDetailApi {
     await _dio.put<Map<String, dynamic>>(
       '/servers/$id/settings',
       data: {'isPrivate': isPrivate},
+    );
+  }
+
+  Future<void> updateAvatar(String id, XFile file) async {
+    final form = FormData.fromMap({
+      'avatar': await MultipartFile.fromFile(file.path, filename: file.name),
+    });
+    await _dio.put<Map<String, dynamic>>(
+      '/servers/$id/avatar',
+      data: form,
+      options: Options(contentType: 'multipart/form-data'),
+    );
+  }
+
+  Future<void> updateBanner(String id, XFile file) async {
+    final form = FormData.fromMap({
+      'banner': await MultipartFile.fromFile(file.path, filename: file.name),
+    });
+    await _dio.put<Map<String, dynamic>>(
+      '/servers/$id/banner',
+      data: form,
+      options: Options(contentType: 'multipart/form-data'),
     );
   }
 

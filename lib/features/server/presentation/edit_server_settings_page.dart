@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/errors/show_api_error_toast.dart';
@@ -8,6 +11,7 @@ import '../../../core/feedback/toast/toast_controller.dart';
 import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
+import '../../../core/util/avatar_color.dart';
 import '../../../core/widgets/v_app_bar.dart';
 import '../../../core/widgets/v_button.dart';
 import '../../../core/widgets/v_input.dart';
@@ -32,6 +36,9 @@ class _EditServerSettingsPageState extends ConsumerState<EditServerSettingsPage>
   final _shortName = TextEditingController();
   final _description = TextEditingController();
   bool _isPrivate = false;
+  final _picker = ImagePicker();
+  XFile? _avatar;
+  XFile? _banner;
 
   @override
   void initState() {
@@ -67,6 +74,24 @@ class _EditServerSettingsPageState extends ConsumerState<EditServerSettingsPage>
     }
   }
 
+  Future<void> _pickAvatar() async {
+    final file = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      imageQuality: 85,
+    );
+    if (file != null && mounted) setState(() => _avatar = file);
+  }
+
+  Future<void> _pickBanner() async {
+    final file = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1600,
+      imageQuality: 85,
+    );
+    if (file != null && mounted) setState(() => _banner = file);
+  }
+
   Future<void> _save() async {
     final s = _server;
     if (s == null) return;
@@ -85,6 +110,12 @@ class _EditServerSettingsPageState extends ConsumerState<EditServerSettingsPage>
       }
       if (_isPrivate != s.isPrivate) {
         futures.add(api.updateSettings(s.id, isPrivate: _isPrivate));
+      }
+      if (_avatar != null) {
+        futures.add(api.updateAvatar(s.id, _avatar!));
+      }
+      if (_banner != null) {
+        futures.add(api.updateBanner(s.id, _banner!));
       }
       await Future.wait(futures);
       if (!mounted) return;
@@ -149,6 +180,99 @@ class _EditServerSettingsPageState extends ConsumerState<EditServerSettingsPage>
     }
   }
 
+  Widget _bannerPlaceholder() {
+    return const DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF0056CC), Color(0xFF007BFF)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: SizedBox.expand(),
+    );
+  }
+
+  Widget _bannerPreview() {
+    if (_banner != null) {
+      return Image.file(File(_banner!.path), fit: BoxFit.cover);
+    }
+    final url = _server?.bannerUrl;
+    if (url != null && url.isNotEmpty) {
+      return Image.network(
+        url,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _bannerPlaceholder(),
+      );
+    }
+    return _bannerPlaceholder();
+  }
+
+  Widget _avatarFallback(double size) {
+    final s = _server;
+    final seed = (s != null && s.shortName.isNotEmpty)
+        ? s.shortName
+        : (s?.name ?? '?');
+    return Container(
+      width: size,
+      height: size,
+      color: avatarColorFor(seed),
+      alignment: Alignment.center,
+      child: Text(
+        seed.isNotEmpty ? seed[0].toUpperCase() : '?',
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: size * 0.4,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+
+  Widget _avatarPreview() {
+    const size = 64.0;
+    Widget inner;
+    if (_avatar != null) {
+      inner = Image.file(File(_avatar!.path),
+          width: size, height: size, fit: BoxFit.cover);
+    } else {
+      final url = _server?.avatarUrl;
+      if (url != null && url.isNotEmpty) {
+        inner = Image.network(
+          url,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _avatarFallback(size),
+        );
+      } else {
+        inner = _avatarFallback(size);
+      }
+    }
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+      ),
+      child: ClipOval(child: inner),
+    );
+  }
+
+  Widget _editBadge() {
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.55),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 1.5),
+      ),
+      child: const Icon(LucideIcons.camera, size: 14, color: Colors.white),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -159,6 +283,50 @@ class _EditServerSettingsPageState extends ConsumerState<EditServerSettingsPage>
           : ListView(
               padding: const EdgeInsets.symmetric(vertical: 16),
               children: [
+                _SectionCard(
+                  title: 'Appearance',
+                  children: [
+                    GestureDetector(
+                      onTap: _pickBanner,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        child: Stack(
+                          children: [
+                            SizedBox(
+                              height: 110,
+                              width: double.infinity,
+                              child: _bannerPreview(),
+                            ),
+                            Positioned(right: 8, bottom: 8, child: _editBadge()),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: _pickAvatar,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              _avatarPreview(),
+                              Positioned(right: -4, bottom: -4, child: _editBadge()),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Text(
+                            'Tap the banner or icon to change your server images.',
+                            style: AppTextStyles.caption
+                                .copyWith(color: AppColors.textSecondary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
                 _SectionCard(
                   title: 'General',
                   children: [

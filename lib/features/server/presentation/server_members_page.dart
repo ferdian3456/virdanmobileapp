@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/errors/show_api_error_toast.dart';
 import '../../../core/feedback/toast/toast_controller.dart';
+import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/util/avatar_color.dart';
 import '../../../core/widgets/v_app_bar.dart';
@@ -155,12 +156,18 @@ class _ServerMembersPageState extends ConsumerState<ServerMembersPage> {
           .transferOwnership(widget.serverId, target.userId);
       await ref.read(serverMembersApiProvider).leaveServer(widget.serverId);
       if (!mounted) return;
-      await ref.read(myServersProvider.notifier).fetch(force: true);
-      if (!mounted) return;
-      ref.read(toastControllerProvider.notifier).success(
-            title: 'Ownership transferred. You have left ${_detail?.name ?? 'the server'}.',
-          );
-      if (context.canPop()) context.pop();
+      // We are no longer a member. Capture the providers, then leave this page
+      // before refreshing: refetching server detail/role in place would 403, and
+      // the router's myServers refresh listener would rebuild this page into a
+      // "not a member" error state. Navigate out, then refresh the servers list.
+      final serverName = _detail?.name ?? 'the server';
+      final toast = ref.read(toastControllerProvider.notifier);
+      final myServers = ref.read(myServersProvider.notifier);
+      context.go(Routes.settingsServers);
+      toast.success(
+        title: 'Ownership transferred. You have left $serverName.',
+      );
+      await myServers.fetch(force: true);
     } catch (e) {
       if (mounted) {
         setState(() => _transferring = false);
@@ -189,7 +196,13 @@ class _ServerMembersPageState extends ConsumerState<ServerMembersPage> {
               child: CustomScrollView(
                 slivers: [
                   SliverToBoxAdapter(
-                    child: _ServerHeader(detail: _detail, myRole: _myRole),
+                    child: _ServerHeader(
+                      detail: _detail,
+                      myRole: _myRole,
+                      onEdit: _myRole == 'Owner'
+                          ? () => context.push(Routes.serverSettings(widget.serverId))
+                          : null,
+                    ),
                   ),
 
                   if (widget.transferMode)
@@ -336,10 +349,11 @@ class _ServerMembersPageState extends ConsumerState<ServerMembersPage> {
 }
 
 class _ServerHeader extends StatelessWidget {
-  const _ServerHeader({this.detail, required this.myRole});
+  const _ServerHeader({this.detail, required this.myRole, this.onEdit});
 
   final ServerDetail? detail;
   final String myRole;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -353,22 +367,28 @@ class _ServerHeader extends StatelessWidget {
           clipBehavior: Clip.none,
           alignment: Alignment.bottomCenter,
           children: [
-            // Banner
-            SizedBox(
-              height: 120,
-              width: double.infinity,
-              child: bannerUrl != null && bannerUrl.isNotEmpty
-                  ? Image.network(bannerUrl, fit: BoxFit.cover)
-                  : const DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFF0056CC), Color(0xFF007BFF)],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
+            // Banner — rounded card with horizontal margin (avatar overlaps it).
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.xl),
+                child: SizedBox(
+                  height: 120,
+                  width: double.infinity,
+                  child: bannerUrl != null && bannerUrl.isNotEmpty
+                      ? Image.network(bannerUrl, fit: BoxFit.cover)
+                      : const DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Color(0xFF0056CC), Color(0xFF007BFF)],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
+                          ),
+                          child: SizedBox.expand(),
                         ),
-                      ),
-                      child: SizedBox.expand(),
-                    ),
+                ),
+              ),
             ),
             // Avatar overlapping banner
             Positioned(
@@ -378,6 +398,25 @@ class _ServerHeader extends StatelessWidget {
                 avatarUrl: d?.avatarUrl,
               ),
             ),
+            // Edit-server shortcut (owner only).
+            if (onEdit != null)
+              Positioned(
+                top: 8,
+                right: 24,
+                child: Material(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: onEdit,
+                    child: const Padding(
+                      padding: EdgeInsets.all(7),
+                      child: Icon(LucideIcons.settings,
+                          size: 18, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
 
