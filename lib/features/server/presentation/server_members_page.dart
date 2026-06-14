@@ -167,8 +167,8 @@ class _ServerMembersPageState extends ConsumerState<ServerMembersPage> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: VAppBar(
-        title: _detail?.name ?? 'Members',
+      appBar: const VAppBar(
+        title: 'Server Detail',
         leading: VAppBarLeading.back,
       ),
       body: _loading
@@ -243,7 +243,7 @@ class _ServerMembersPageState extends ConsumerState<ServerMembersPage> {
                   ],
 
                   if (admins.isNotEmpty) ...[
-                    _sectionHeader('ADMINS  —  ${admins.length}'),
+                    _sectionHeader('ADMINS — ${admins.length}'),
                     SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (_, i) {
@@ -267,7 +267,7 @@ class _ServerMembersPageState extends ConsumerState<ServerMembersPage> {
                   ],
 
                   if (members.isNotEmpty) ...[
-                    _sectionHeader('MEMBERS  —  ${members.length}'),
+                    _sectionHeader('MEMBERS — ${members.length}'),
                     SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (_, i) {
@@ -308,7 +308,7 @@ class _ServerMembersPageState extends ConsumerState<ServerMembersPage> {
   Widget _sectionHeader(String title) {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 6),
         child: Text(
           title,
           style: const TextStyle(
@@ -333,87 +333,212 @@ class _ServerHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final d = detail;
+    final bannerUrl = d?.bannerUrl;
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        SizedBox(
-          height: 100,
-          width: double.infinity,
-          child: d?.bannerUrl != null
-              ? Image.network(d!.bannerUrl!, fit: BoxFit.cover)
-              : DecoratedBox(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF007BFF), Color(0xFF0056CC)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
-                  child: const SizedBox.expand(),
-                ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                d?.name ?? '',
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF0F172A),
-                ),
-              ),
-              if (d != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  '${myRole.toUpperCase()} · ${d.memberCount} member${d.memberCount == 1 ? '' : 's'}',
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-              if (myRole == 'Owner' || myRole == 'Admin') ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF0F7FF),
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(LucideIcons.shield,
-                          size: 16, color: AppColors.primary),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          myRole == 'Owner'
-                              ? 'As owner, you can manage members and transfer ownership.'
-                              : 'As admin, you can remove members from this server.',
-                          style: const TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 13,
-                            color: AppColors.primary,
-                          ),
+        Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.bottomCenter,
+          children: [
+            // Banner
+            SizedBox(
+              height: 120,
+              width: double.infinity,
+              child: bannerUrl != null && bannerUrl.isNotEmpty
+                  ? Image.network(bannerUrl, fit: BoxFit.cover)
+                  : const DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF0056CC), Color(0xFF007BFF)],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
                         ),
                       ),
-                    ],
+                      child: SizedBox.expand(),
+                    ),
+            ),
+            // Avatar overlapping banner
+            Positioned(
+              bottom: -28,
+              child: _ServerAvatar(
+                name: d?.name ?? '',
+                avatarUrl: d?.avatarUrl,
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 36), // space for avatar overlap
+
+        // Server name + verified
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              d?.name ?? '',
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F172A),
+                letterSpacing: -0.4,
+              ),
+            ),
+            const SizedBox(width: 5),
+            const Icon(LucideIcons.badgeCheck,
+                size: 18, color: AppColors.primary),
+          ],
+        ),
+        const SizedBox(height: 6),
+
+        // Role chip + member count
+        if (d != null)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _RoleChip(role: myRole),
+              const SizedBox(width: 8),
+              const Text(
+                '·',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 13,
+                  color: AppColors.textTertiary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '${d.memberCount} member${d.memberCount == 1 ? '' : 's'}',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+
+        const SizedBox(height: 16),
+
+        // Info banner (owner/admin only)
+        if (myRole == 'Owner' || myRole == 'Admin')
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0F7FF),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 1),
+                  child: Icon(LucideIcons.shieldCheck,
+                      size: 15, color: AppColors.primary),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    myRole == 'Owner'
+                        ? 'You can promote members to admin, demote admins, and remove anyone.'
+                        : 'You can remove members from this server.',
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 13,
+                      color: AppColors.primary,
+                      height: 1.4,
+                    ),
                   ),
                 ),
               ],
-            ],
+            ),
+          ),
+
+        const SizedBox(height: 16),
+        const Divider(height: 1, color: Color(0xFFE9ECEF)),
+      ],
+    );
+  }
+}
+
+class _ServerAvatar extends StatelessWidget {
+  const _ServerAvatar({required this.name, this.avatarUrl});
+
+  final String name;
+  final String? avatarUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 56.0;
+    final url = avatarUrl;
+    Widget inner;
+    if (url != null && url.isNotEmpty) {
+      inner = ClipOval(
+        child: Image.network(url, width: size, height: size, fit: BoxFit.cover),
+      );
+    } else {
+      inner = CircleAvatar(
+        radius: size / 2,
+        backgroundColor: avatarColorFor(name),
+        child: Text(
+          name.isNotEmpty ? name[0].toUpperCase() : '?',
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
           ),
         ),
-        const SizedBox(height: 12),
-        const Divider(height: 1),
-      ],
+      );
+    }
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 3),
+      ),
+      child: ClipOval(child: inner),
+    );
+  }
+}
+
+class _RoleChip extends StatelessWidget {
+  const _RoleChip({required this.role});
+
+  final String role;
+
+  @override
+  Widget build(BuildContext context) {
+    Color bg;
+    Color fg;
+    switch (role) {
+      case 'Owner':
+        bg = AppColors.primary;
+        fg = Colors.white;
+      case 'Admin':
+        bg = const Color(0xFFFFF8E1);
+        fg = const Color(0xFFD97706);
+      default:
+        bg = const Color(0xFFF1F3F5);
+        fg = AppColors.textSecondary;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(5)),
+      child: Text(
+        role.toUpperCase(),
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: fg,
+          letterSpacing: 0.5,
+        ),
+      ),
     );
   }
 }
@@ -485,23 +610,26 @@ class _MemberRow extends StatelessWidget {
                         ),
                       ),
                       if (isCurrentUser) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 5, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F3F5),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'You',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
+                        const SizedBox(width: 5),
+                        _InlineChip(
+                          label: 'YOU',
+                          bg: const Color(0xFFF1F3F5),
+                          fg: AppColors.textSecondary,
+                        ),
+                      ],
+                      if (member.isOwner) ...[
+                        const SizedBox(width: 5),
+                        _InlineChip(
+                          label: 'OWNER',
+                          bg: AppColors.primary,
+                          fg: Colors.white,
+                        ),
+                      ] else if (member.isAdmin) ...[
+                        const SizedBox(width: 5),
+                        _InlineChip(
+                          label: 'ADMIN',
+                          bg: const Color(0xFFFFF8E1),
+                          fg: const Color(0xFFD97706),
                         ),
                       ],
                     ],
@@ -530,6 +658,35 @@ class _MemberRow extends StatelessWidget {
                     const BoxConstraints(minWidth: 36, minHeight: 36),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InlineChip extends StatelessWidget {
+  const _InlineChip({required this.label, required this.bg, required this.fg});
+
+  final String label;
+  final Color bg;
+  final Color fg;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+          color: fg,
+          letterSpacing: 0.4,
         ),
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/errors/show_api_error_toast.dart';
 import '../../../core/feedback/toast/toast_controller.dart';
@@ -33,14 +34,14 @@ class _ServersPageState extends ConsumerState<ServersPage> {
     if (!mounted) return;
 
     if (role == 'Owner') {
-      final go = await _showOwnerLeaveDialog(server.name);
+      final go = await _showLeaveSheet(server.name, isOwner: true);
       if (go == true && mounted) {
         context.push(Routes.settingsServerMembers(server.id));
       }
       return;
     }
 
-    final confirmed = await _showLeaveDialog(server.name);
+    final confirmed = await _showLeaveSheet(server.name, isOwner: false);
     if (confirmed != true || !mounted) return;
 
     setState(() => _leaving.add(server.id));
@@ -56,45 +57,99 @@ class _ServersPageState extends ConsumerState<ServersPage> {
     }
   }
 
-  Future<bool?> _showLeaveDialog(String name) => showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog.adaptive(
-          title: Text('Leave $name?'),
-          content: const Text('You will stop receiving posts from this server.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: TextButton.styleFrom(foregroundColor: AppColors.error),
-              child: const Text('Leave server'),
-            ),
-          ],
-        ),
-      );
-
-  Future<bool?> _showOwnerLeaveDialog(String name) => showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog.adaptive(
-          title: Text('Leave $name?'),
-          content: const Text(
-            'You own this server. Transfer ownership to a member first, then you can leave.',
+  Future<bool?> _showLeaveSheet(String name, {required bool isOwner}) {
+    return showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xxl)),
+      ),
+      builder: (ctx) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(LucideIcons.logOut, size: 26, color: AppColors.error),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Leave $name?',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0F172A),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                isOwner
+                    ? 'You own this server. Leaving will prompt you to transfer ownership first.'
+                    : "You'll stop receiving posts and need to rejoin to access it again.",
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.error,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text(
+                    'Leave server',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
-              child: const Text('Transfer ownership'),
-            ),
-          ],
         ),
-      );
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -114,11 +169,26 @@ class _ServersPageState extends ConsumerState<ServersPage> {
               ),
             )
           : ListView.separated(
-              itemCount: servers.length,
-              separatorBuilder: (_, _) =>
-                  const Divider(height: 1, indent: 72, endIndent: 16),
+              itemCount: servers.length + 1,
+              separatorBuilder: (_, i) => i == 0
+                  ? const SizedBox.shrink()
+                  : const Divider(height: 1, color: Color(0xFFF1F3F5)),
               itemBuilder: (_, i) {
-                final s = servers[i];
+                if (i == 0) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                    child: Text(
+                      'Communities you\'ve joined. Tap a server to manage members, or leave anytime.',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        height: 1.5,
+                      ),
+                    ),
+                  );
+                }
+                final s = servers[i - 1];
                 return _ServerRow(
                   server: s,
                   leaving: _leaving.contains(s.id),
@@ -151,37 +221,68 @@ class _ServerRow extends ConsumerWidget {
     return InkWell(
       onTap: onRowTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
             _ServerAvatar(name: server.name, avatarUrl: server.avatarUrl),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    server.name,
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF0F172A),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          server.name,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF0F172A),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(LucideIcons.badgeCheck,
+                          size: 15, color: AppColors.primary),
+                    ],
                   ),
-                  if (role.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    _RoleChip(role: role),
-                  ],
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      if (role.isNotEmpty) ...[
+                        _RoleChip(role: role),
+                        const SizedBox(width: 6),
+                        const Text(
+                          '·',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                      Text(
+                        '${server.memberCount} member${server.memberCount == 1 ? '' : 's'}',
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             if (leaving)
               const SizedBox(
-                width: 52,
+                width: 64,
                 child: Center(
                   child: SizedBox(
                     width: 18,
@@ -191,13 +292,17 @@ class _ServerRow extends ConsumerWidget {
                 ),
               )
             else
-              TextButton(
+              OutlinedButton(
                 onPressed: onLeaveTap,
-                style: TextButton.styleFrom(
+                style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.error,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  side: const BorderSide(color: AppColors.error),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                   textStyle: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 13,
@@ -224,21 +329,21 @@ class _ServerAvatar extends StatelessWidget {
     final url = avatarUrl;
     if (url != null && url.isNotEmpty) {
       return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.network(url, width: 44, height: 44, fit: BoxFit.cover),
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(url, width: 48, height: 48, fit: BoxFit.cover),
       );
     }
     final color = avatarColorFor(name);
     return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)),
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
       alignment: Alignment.center,
       child: Text(
         name.isNotEmpty ? name[0].toUpperCase() : '?',
         style: const TextStyle(
           fontFamily: 'Inter',
-          fontSize: 18,
+          fontSize: 20,
           fontWeight: FontWeight.w700,
           color: Colors.white,
         ),
@@ -258,18 +363,21 @@ class _RoleChip extends StatelessWidget {
     Color fg;
     switch (role) {
       case 'Owner':
-        bg = const Color(0xFFFFF3E0);
-        fg = const Color(0xFFE65100);
+        bg = AppColors.primary;
+        fg = Colors.white;
       case 'Admin':
-        bg = const Color(0xFFE3F2FD);
-        fg = AppColors.primary;
+        bg = Colors.transparent;
+        fg = const Color(0xFFD97706);
       default:
-        bg = const Color(0xFFF1F3F5);
+        bg = Colors.transparent;
         fg = AppColors.textSecondary;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(4),
+      ),
       child: Text(
         role.toUpperCase(),
         style: TextStyle(

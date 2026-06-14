@@ -425,15 +425,20 @@ class _Row extends StatelessWidget {
                 ),
               )
             else if (badge != null)
-              Padding(
-                padding: const EdgeInsets.only(right: 4),
+              Container(
+                margin: const EdgeInsets.only(right: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Text(
                   badge!,
                   style: const TextStyle(
                     fontFamily: 'Inter',
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
                   ),
                 ),
               ),

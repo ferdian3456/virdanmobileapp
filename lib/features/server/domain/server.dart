@@ -9,6 +9,7 @@ class Server {
     required this.shortName,
     this.avatarUrl,
     this.joinedAt,
+    this.memberCount = 0,
   });
 
   factory Server.fromJson(Map<String, dynamic> json) {
@@ -18,6 +19,7 @@ class Server {
       shortName: (json['shortName'] as String?) ?? '',
       avatarUrl: json['avatarUrl'] as String?,
       joinedAt: json['joinedAt'] as String?,
+      memberCount: (json['memberCount'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -26,6 +28,7 @@ class Server {
   final String shortName;
   final String? avatarUrl;
   final String? joinedAt;
+  final int memberCount;
 }
 
 /// Category entry from `GET /api/servers/categories`.

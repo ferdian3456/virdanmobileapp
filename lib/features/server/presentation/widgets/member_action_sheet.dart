@@ -7,6 +7,7 @@ import '../../../../core/errors/show_api_error_toast.dart';
 import '../../../../core/feedback/toast/toast_controller.dart';
 import '../../../../core/router/routes.dart';
 import '../../../../core/theme/tokens.dart';
+import '../../../../core/util/avatar_color.dart';
 import '../../data/server_members_api.dart';
 import '../../domain/server_member.dart';
 
@@ -48,18 +49,7 @@ Future<bool> _showAdminSheet(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(
-              target.nickname,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
+          _SheetHeader(member: target, role: 'Admin'),
           _SheetRow(
             icon: LucideIcons.crown,
             label: 'Make Owner',
@@ -172,18 +162,7 @@ Future<bool> _showMemberSheet(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(
-              target.nickname,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
+          _SheetHeader(member: target, role: 'Member'),
           if (viewerRole == 'Owner')
             _SheetRow(
               icon: LucideIcons.shield,
@@ -277,6 +256,107 @@ Future<bool> _confirmDialog(
     ),
   );
   return result ?? false;
+}
+
+class _SheetHeader extends StatelessWidget {
+  const _SheetHeader({required this.member, required this.role});
+
+  final ServerMember member;
+  final String role;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = member.avatarUrl;
+    Widget avatar;
+    if (url != null && url.isNotEmpty) {
+      avatar = CircleAvatar(radius: 20, backgroundImage: NetworkImage(url));
+    } else {
+      avatar = CircleAvatar(
+        radius: 20,
+        backgroundColor: avatarColorFor(member.nickname),
+        child: Text(
+          member.nickname.isNotEmpty ? member.nickname[0].toUpperCase() : '?',
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+      );
+    }
+
+    Color chipBg;
+    Color chipFg;
+    switch (role) {
+      case 'Admin':
+        chipBg = const Color(0xFFFFF8E1);
+        chipFg = const Color(0xFFD97706);
+      default:
+        chipBg = const Color(0xFFF1F3F5);
+        chipFg = AppColors.textSecondary;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+      child: Row(
+        children: [
+          avatar,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        member.nickname,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0F172A),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: chipBg,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        role.toUpperCase(),
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: chipFg,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  '@${member.username}',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SheetRow extends StatelessWidget {
