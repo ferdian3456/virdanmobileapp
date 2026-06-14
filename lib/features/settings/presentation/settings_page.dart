@@ -129,6 +129,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       disabled: true,
                     ),
                   ]),
+                  _Section(title: 'COMMUNITY', children: [
+                    _Row(
+                      icon: LucideIcons.server,
+                      label: 'Servers',
+                      badge: ref.watch(myServersProvider).servers.length.toString(),
+                      onTap: () => context.push(Routes.settingsServers),
+                    ),
+                  ]),
                   _Section(title: 'PREFERENCES', children: const [
                     _Row(
                       icon: LucideIcons.globe,

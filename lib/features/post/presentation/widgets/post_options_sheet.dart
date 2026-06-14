@@ -22,6 +22,7 @@ Future<void> showPostOptions({
   required Post post,
   required ValueChanged<Post> onEdited,
   required VoidCallback onDeleted,
+  bool isAuthor = true,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -46,15 +47,16 @@ Future<void> showPostOptions({
               ),
             ),
           ),
-          _OptionRow(
-            icon: LucideIcons.pencil,
-            label: 'Edit post',
-            color: const Color(0xFF0F172A),
-            onTap: () {
-              Navigator.pop(sheetCtx);
-              _openEdit(context, post, onEdited);
-            },
-          ),
+          if (isAuthor)
+            _OptionRow(
+              icon: LucideIcons.pencil,
+              label: 'Edit post',
+              color: const Color(0xFF0F172A),
+              onTap: () {
+                Navigator.pop(sheetCtx);
+                _openEdit(context, post, onEdited);
+              },
+            ),
           _OptionRow(
             icon: LucideIcons.trash2,
             label: 'Delete post',

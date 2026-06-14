@@ -13,6 +13,7 @@ import '../../../core/util/app_assets.dart';
 import '../../../core/widgets/v_button.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_state.dart';
+import '../../server/data/server_members_api.dart';
 import '../../server/data/server_repository.dart';
 import '../../server/domain/server.dart';
 import '../data/server_feed_provider.dart';
@@ -343,6 +344,12 @@ class _FeedBody extends ConsumerWidget {
       AsyncData(value: AuthAuthenticated(:final user)) => user.id,
       _ => null,
     };
+    final activeServerId =
+        ref.watch(myServersProvider.select((s) => s.activeServerId));
+    final myRole = activeServerId != null
+        ? (ref.watch(myRoleInServerProvider(activeServerId)).asData?.value ?? '')
+        : '';
+    final isModerator = myRole == 'Owner' || myRole == 'Admin';
     if (feed.isLoading && feed.posts.isEmpty) return const _FeedSkeleton();
     if (feed.posts.isEmpty) {
       return _EmptyFeedState(onCreate: onCreatePost);
@@ -375,11 +382,12 @@ class _FeedBody extends ConsumerWidget {
             onAuthorTap: () => p.authorId == currentUserId
                 ? GoRouter.of(context).go(Routes.appProfile)
                 : GoRouter.of(context).push(Routes.userProfile(p.serverId, p.authorId)),
-            onMoreTap: p.authorId == currentUserId
+            onMoreTap: (p.authorId == currentUserId || isModerator)
                 ? () => showPostOptions(
                       context: context,
                       ref: ref,
                       post: p,
+                      isAuthor: p.authorId == currentUserId,
                       onEdited: (u) =>
                           ref.read(serverFeedProvider.notifier).replacePost(u),
                       onDeleted: () =>

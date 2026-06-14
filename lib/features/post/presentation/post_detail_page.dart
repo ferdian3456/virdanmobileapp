@@ -8,6 +8,7 @@ import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/v_app_bar.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_state.dart';
+import '../../server/data/server_members_api.dart';
 import '../data/post_api.dart';
 import '../data/server_feed_provider.dart';
 import '../domain/post.dart';
@@ -26,6 +27,7 @@ class PostDetailPage extends ConsumerStatefulWidget {
 class _PostDetailPageState extends ConsumerState<PostDetailPage> {
   Post? _post;
   bool _loading = false;
+  bool _isModeratorInThisServer = false;
 
   @override
   void initState() {
@@ -39,6 +41,17 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
       final post = await ref.read(postApiProvider).getById(widget.postId);
       if (!mounted) return;
       setState(() => _post = post);
+      try {
+        final role =
+            await ref.read(serverMembersApiProvider).getMyRole(post.serverId);
+        if (mounted) {
+          setState(() {
+            _isModeratorInThisServer = role == 'Owner' || role == 'Admin';
+          });
+        }
+      } catch (_) {
+        // Non-critical: falls back to author-only delete gate.
+      }
     } catch (e) {
       if (!mounted) return;
       showApiErrorToast(ref, e, onRetry: _load);
@@ -113,11 +126,14 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
                             ? context.go(Routes.appProfile)
                             : context.push(
                                 Routes.userProfile(_post!.serverId, _post!.authorId)),
-                        onMoreTap: _post!.authorId == currentUserId
+                        onMoreTap: (_post!.authorId == currentUserId ||
+                                _isModeratorInThisServer)
                             ? () => showPostOptions(
                                   context: context,
                                   ref: ref,
                                   post: _post!,
+                                  isAuthor:
+                                      _post!.authorId == currentUserId,
                                   onEdited: (u) => setState(() => _post = u),
                                   onDeleted: () {
                                     ref

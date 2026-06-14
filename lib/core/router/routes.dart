@@ -31,6 +31,8 @@ abstract final class Routes {
   static const settingsHelp = '/settings/help';
   static const settingsTerms = '/settings/terms';
   static const settingsPrivacyPolicy = '/settings/privacy-policy';
+  static const settingsServers = '/settings/servers';
+  static String settingsServerMembers(String id) => '/settings/servers/$id/members';
 
   static const devSmoke = '/dev/smoke';
 

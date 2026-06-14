@@ -32,6 +32,8 @@ import '../../features/server/presentation/edit_server_settings_page.dart';
 import '../../features/server/presentation/explore_servers_page.dart';
 import '../../features/server/presentation/join_by_invite_page.dart';
 import '../../features/server/presentation/server_detail_page.dart';
+import '../../features/server/presentation/server_members_page.dart';
+import '../../features/server/presentation/servers_page.dart';
 import '../../features/settings/presentation/change_email_page.dart';
 import '../../features/settings/presentation/change_password_page.dart';
 import '../../features/settings/presentation/help_center_page.dart';
@@ -224,6 +226,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.settingsPrivacyPolicy,
         builder: (_, _) => const PrivacyPolicyPage(),
+      ),
+      GoRoute(
+        path: Routes.settingsServers,
+        builder: (_, _) => const ServersPage(),
+      ),
+      GoRoute(
+        path: '/settings/servers/:serverId/members',
+        builder: (_, state) =>
+            ServerMembersPage(serverId: state.pathParameters['serverId']!),
       ),
     ],
     errorBuilder: (_, state) => _NotFoundPage(uri: state.uri.toString()),
