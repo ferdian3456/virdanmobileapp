@@ -157,13 +157,18 @@ class _ServerMembersPageState extends ConsumerState<ServerMembersPage> {
       await ref.read(serverMembersApiProvider).leaveServer(widget.serverId);
       if (!mounted) return;
       // We are no longer a member. Capture the providers, then leave this page
-      // before refreshing: refetching server detail/role in place would 403, and
-      // the router's myServers refresh listener would rebuild this page into a
-      // "not a member" error state. Navigate out, then refresh the servers list.
+      // BEFORE refreshing: popping first removes this page so the router's
+      // myServers refresh listener can't rebuild it into a "not a member" error.
+      // Pop (not go) preserves the back stack, so the servers page back button
+      // still returns to settings.
       final serverName = _detail?.name ?? 'the server';
       final toast = ref.read(toastControllerProvider.notifier);
       final myServers = ref.read(myServersProvider.notifier);
-      context.go(Routes.settingsServers);
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go(Routes.settingsServers);
+      }
       toast.success(
         title: 'Ownership transferred. You have left $serverName.',
       );

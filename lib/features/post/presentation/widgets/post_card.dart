@@ -3,6 +3,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../../core/theme/tokens.dart';
+import '../../../../core/util/avatar_color.dart';
 import '../../../../core/util/relative_time.dart';
 import '../../domain/post.dart';
 
@@ -170,8 +171,8 @@ class PostCard extends StatelessWidget {
       width: 36,
       height: 36,
       alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        color: AppColors.primary,
+      decoration: BoxDecoration(
+        color: avatarColorFor(post.authorNickname),
         shape: BoxShape.circle,
       ),
       child: Text(
