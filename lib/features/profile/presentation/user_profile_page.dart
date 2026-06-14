@@ -16,6 +16,7 @@ import '../../chat/data/chat_api.dart';
 import '../../chat/domain/chat_models.dart';
 import '../../post/data/post_api.dart';
 import '../../post/domain/post.dart';
+import '../../post/presentation/widgets/post_grid_tile.dart';
 import '../data/profile_api.dart';
 
 /// Read-only view of another member's per-server profile: identity block plus
@@ -148,25 +149,9 @@ class _UserProfilePageState extends ConsumerState<UserProfilePage> {
                 itemCount: _posts.length,
                 itemBuilder: (_, i) {
                   final p = _posts[i];
-                  return GestureDetector(
+                  return PostGridTile(
+                    post: p,
                     onTap: () => context.push('/posts/${p.id}'),
-                    child: p.imageUrl != null && p.imageUrl!.isNotEmpty
-                        ? Image.network(p.imageUrl!, fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => Container(color: AppColors.surface))
-                        : Container(
-                            color: AppColors.surface,
-                            padding: const EdgeInsets.all(8),
-                            child: Text(
-                              p.caption,
-                              maxLines: 6,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 11,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ),
                   );
                 },
               ),

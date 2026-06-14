@@ -12,6 +12,7 @@ import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../post/data/post_api.dart';
 import '../../post/domain/post.dart';
+import '../../post/presentation/widgets/post_grid_tile.dart';
 import '../data/server_detail_api.dart';
 
 class ServerDetailPage extends ConsumerStatefulWidget {
@@ -200,33 +201,9 @@ class _ServerDetailPageState extends ConsumerState<ServerDetailPage> {
           itemCount: _posts.length,
           itemBuilder: (_, i) {
             final post = _posts[i];
-            return GestureDetector(
+            return PostGridTile(
+              post: post,
               onTap: () => context.push('/posts/${post.id}'),
-              child: post.imageUrl != null && post.imageUrl!.isNotEmpty
-                  ? Image.network(
-                      post.imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Container(
-                        color: AppColors.surface,
-                        child: const Center(
-                          child: Icon(LucideIcons.imageOff, color: AppColors.textTertiary),
-                        ),
-                      ),
-                    )
-                  : Container(
-                      color: AppColors.surface,
-                      padding: const EdgeInsets.all(8),
-                      child: Text(
-                        post.caption,
-                        maxLines: 6,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 11,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
             );
           },
         ),

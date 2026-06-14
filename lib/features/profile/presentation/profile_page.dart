@@ -16,6 +16,7 @@ import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../post/data/post_api.dart';
 import '../../post/domain/post.dart';
+import '../../post/presentation/widgets/post_grid_tile.dart';
 import '../../server/data/server_repository.dart';
 import '../data/profile_api.dart';
 
@@ -182,25 +183,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   itemCount: _posts.length,
                   itemBuilder: (_, i) {
                     final p = _posts[i];
-                    return GestureDetector(
+                    return PostGridTile(
+                      post: p,
                       onTap: () => context.push('/posts/${p.id}'),
-                      child: p.imageUrl != null && p.imageUrl!.isNotEmpty
-                          ? Image.network(p.imageUrl!, fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => Container(color: AppColors.surface))
-                          : Container(
-                              color: AppColors.surface,
-                              padding: const EdgeInsets.all(8),
-                              child: Text(
-                                p.caption,
-                                style: const TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 11,
-                                  color: AppColors.textPrimary,
-                                ),
-                                maxLines: 6,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
                     );
                   },
                 )
@@ -222,25 +207,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   itemCount: _saved.length,
                   itemBuilder: (_, i) {
                     final p = _saved[i];
-                    return GestureDetector(
+                    return PostGridTile(
+                      post: p,
                       onTap: () => context.push('/posts/${p.id}'),
-                      child: p.imageUrl != null && p.imageUrl!.isNotEmpty
-                          ? Image.network(p.imageUrl!, fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => Container(color: AppColors.surface))
-                          : Container(
-                              color: AppColors.surface,
-                              padding: const EdgeInsets.all(8),
-                              child: Text(
-                                p.caption,
-                                style: const TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 11,
-                                  color: AppColors.textPrimary,
-                                ),
-                                maxLines: 6,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
                     );
                   },
                 ),

@@ -9,6 +9,7 @@ import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
 import '../../post/domain/post.dart';
 import '../../post/presentation/explore_feed_page.dart';
+import '../../post/presentation/widgets/post_grid_tile.dart';
 import '../../server/data/server_repository.dart';
 import '../data/post_search_provider.dart';
 import '../data/recent_search_store.dart';
@@ -390,28 +391,7 @@ class _Results extends StatelessWidget {
           );
         }
         final p = state.results[i];
-        return GestureDetector(
-          onTap: () => onTap(p),
-          child: p.imageUrl != null && p.imageUrl!.isNotEmpty
-              ? Image.network(p.imageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) =>
-                      Container(color: AppColors.surface))
-              : Container(
-                  color: AppColors.surface,
-                  padding: const EdgeInsets.all(8),
-                  child: Text(
-                    p.caption,
-                    maxLines: 6,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 11,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-        );
+        return PostGridTile(post: p, onTap: () => onTap(p));
       },
     );
   }
