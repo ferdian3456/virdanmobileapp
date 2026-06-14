@@ -8,7 +8,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/errors/show_api_error_toast.dart';
 import '../../../core/feedback/toast/toast_controller.dart';
-import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/util/avatar_color.dart';
@@ -31,7 +30,6 @@ class _EditServerSettingsPageState extends ConsumerState<EditServerSettingsPage>
   ServerDetail? _server;
   bool _loading = false;
   bool _saving = false;
-  bool _deleting = false;
   final _name = TextEditingController();
   final _shortName = TextEditingController();
   final _description = TextEditingController();
@@ -128,41 +126,6 @@ class _EditServerSettingsPageState extends ConsumerState<EditServerSettingsPage>
       showApiErrorToast(ref, e);
     } finally {
       if (mounted) setState(() => _saving = false);
-    }
-  }
-
-  Future<void> _confirmDelete() async {
-    final confirmed = await showAdaptiveDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog.adaptive(
-        title: const Text('Delete server?'),
-        content: const Text(
-          'All posts, comments and members will be gone permanently. This cannot be undone.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    setState(() => _deleting = true);
-    try {
-      await ref.read(serverDetailApiProvider).delete(widget.serverId);
-      if (!mounted) return;
-      await ref.read(myServersProvider.notifier).fetch(force: true);
-      if (!mounted) return;
-      ref.read(toastControllerProvider.notifier).success(title: 'Server deleted');
-      context.go(Routes.appHome);
-    } catch (e) {
-      if (!mounted) return;
-      showApiErrorToast(ref, e);
-    } finally {
-      if (mounted) setState(() => _deleting = false);
     }
   }
 
@@ -280,10 +243,14 @@ class _EditServerSettingsPageState extends ConsumerState<EditServerSettingsPage>
       appBar: const VAppBar(title: 'Server settings', leading: VAppBarLeading.back),
       body: _loading && _server == null
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              children: [
-                _SectionCard(
+          : SafeArea(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      children: [
+                        _SectionCard(
                   title: 'Appearance',
                   children: [
                     GestureDetector(
@@ -375,31 +342,23 @@ class _EditServerSettingsPageState extends ConsumerState<EditServerSettingsPage>
                     ),
                   ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-                  child: VButton(
-                    label: 'Save changes',
-                    loading: _saving,
-                    loadingLabel: 'Saving...',
-                    fullWidth: true,
-                    size: VButtonSize.lg,
-                    onPressed: _saving ? null : _save,
+                        const SizedBox(height: 8),
+                      ],
+                    ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: VButton(
-                    label: 'Delete server',
-                    variant: VButtonVariant.destructive,
-                    loading: _deleting,
-                    loadingLabel: 'Deleting...',
-                    fullWidth: true,
-                    onPressed: _deleting ? null : _confirmDelete,
-                    leading: const Icon(LucideIcons.trash2, size: 18),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    child: VButton(
+                      label: 'Save changes',
+                      loading: _saving,
+                      loadingLabel: 'Saving...',
+                      fullWidth: true,
+                      size: VButtonSize.lg,
+                      onPressed: _saving ? null : _save,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
-              ],
+                ],
+              ),
             ),
     );
   }
