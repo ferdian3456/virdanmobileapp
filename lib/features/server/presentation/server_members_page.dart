@@ -46,11 +46,17 @@ class _ServerMembersPageState extends ConsumerState<ServerMembersPage> {
   }
 
   Future<void> _load() async {
+    debugPrint('[ServerMembersPage] _load() serverId="${widget.serverId}"');
+    if (widget.serverId.isEmpty) {
+      debugPrint('[ServerMembersPage] ABORT: serverId is empty');
+      setState(() => _loading = false);
+      return;
+    }
     setState(() => _loading = true);
     try {
       final results = await Future.wait([
         ref.read(serverDetailApiProvider).getById(widget.serverId),
-        ref.read(serverMembersApiProvider).getMembers(widget.serverId, limit: 50),
+        ref.read(serverMembersApiProvider).getMembers(widget.serverId, limit: 20),
         ref.read(serverMembersApiProvider).getMyRole(widget.serverId),
       ]);
       if (!mounted) return;

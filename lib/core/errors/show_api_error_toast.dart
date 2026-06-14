@@ -11,6 +11,7 @@ import 'error_mapper.dart';
 /// mutations (POST/PUT/DELETE) — accidental double-write is worse than a
 /// missing retry button.
 void showApiErrorToast(WidgetRef ref, Object error, {VoidCallback? onRetry}) {
+  debugPrint('[API ERROR] ${error.runtimeType}: $error');
   final mapped = mapException(error);
   String title;
   String? caption;
