@@ -117,7 +117,12 @@ class _ServerMembersPageState extends ConsumerState<ServerMembersPage> {
       viewerRole: _myRole,
       currentUserId: uid,
     );
-    if (changed && mounted) _load();
+    if (changed && mounted) {
+      _load();
+      // Refresh the joined-servers list so the servers page / settings reflect
+      // the new member count and roles (kick, promote, demote).
+      ref.read(myServersProvider.notifier).fetch(force: true);
+    }
   }
 
   Future<void> _onTransferTap(ServerMember target) async {
@@ -150,7 +155,7 @@ class _ServerMembersPageState extends ConsumerState<ServerMembersPage> {
           .transferOwnership(widget.serverId, target.userId);
       await ref.read(serverMembersApiProvider).leaveServer(widget.serverId);
       if (!mounted) return;
-      await ref.read(myServersProvider.notifier).fetch();
+      await ref.read(myServersProvider.notifier).fetch(force: true);
       if (!mounted) return;
       ref.read(toastControllerProvider.notifier).success(
             title: 'Ownership transferred. You have left ${_detail?.name ?? 'the server'}.',

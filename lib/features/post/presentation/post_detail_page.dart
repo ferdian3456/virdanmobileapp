@@ -115,7 +115,10 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
             ? const Center(child: CircularProgressIndicator())
             : _post == null
                 ? const Center(child: Text('Post not found'))
-                : ListView(
+                : RefreshIndicator.adaptive(
+                    onRefresh: _load,
+                    child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     children: [
                       PostCard(
                         post: _post!,
@@ -149,6 +152,7 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
                             : null,
                       ),
                     ],
+                  ),
                   ),
       ),
     );

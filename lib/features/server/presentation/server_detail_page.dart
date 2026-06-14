@@ -58,6 +58,10 @@ class _ServerDetailPageState extends ConsumerState<ServerDetailPage> {
     }
   }
 
+  Future<void> _refresh() async {
+    await Future.wait([_loadServer(), _loadPosts(reset: true)]);
+  }
+
   Future<void> _loadServer() async {
     setState(() => _loadingServer = true);
     try {
@@ -135,8 +139,11 @@ class _ServerDetailPageState extends ConsumerState<ServerDetailPage> {
                   ? const _ServerHeaderSkeleton()
                   : server == null
                       ? const Center(child: Text('Server not found.'))
-                      : CustomScrollView(
+                      : RefreshIndicator.adaptive(
+                          onRefresh: _refresh,
+                          child: CustomScrollView(
                           controller: _scroll,
+                          physics: const AlwaysScrollableScrollPhysics(),
                           slivers: [
                             SliverToBoxAdapter(child: _Banner(server: server)),
                             SliverToBoxAdapter(child: _Info(server: server)),
@@ -148,6 +155,7 @@ class _ServerDetailPageState extends ConsumerState<ServerDetailPage> {
                             ),
                             if (_activeTab == 0) ..._postsSlivers() else _membersStub(),
                           ],
+                        ),
                         ),
             ),
           ],

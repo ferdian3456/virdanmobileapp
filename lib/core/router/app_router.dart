@@ -233,8 +233,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/settings/servers/:serverId/members',
-        builder: (_, state) =>
-            ServerMembersPage(serverId: state.pathParameters['serverId']!),
+        builder: (_, state) => ServerMembersPage(
+          serverId: state.pathParameters['serverId']!,
+          transferMode: state.uri.queryParameters['transfer'] == 'true',
+        ),
       ),
     ],
     errorBuilder: (_, state) => _NotFoundPage(uri: state.uri.toString()),

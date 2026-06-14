@@ -103,6 +103,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     if (i == 1 && !_savedLoaded) _loadSaved();
   }
 
+  Future<void> _refresh() async {
+    await _load();
+    if (_tab == 1) await _loadSaved();
+  }
+
   @override
   Widget build(BuildContext context) {
     final email = switch (ref.watch(authRepositoryProvider)) {
@@ -123,7 +128,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
-        child: CustomScrollView(
+        child: RefreshIndicator.adaptive(
+          onRefresh: _refresh,
+          child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(
               child: _Header(
@@ -237,6 +245,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   },
                 ),
           ],
+        ),
         ),
       ),
     );

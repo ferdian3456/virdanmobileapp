@@ -60,6 +60,11 @@ final serverMembersApiProvider = Provider<ServerMembersApi>((ref) {
 
 /// Returns the caller's role ("Owner" | "Admin" | "Member") in a specific server.
 /// Used to gate moderation UI (delete others' posts, kick, etc.).
-final myRoleInServerProvider = FutureProvider.family<String, String>((ref, serverId) {
+///
+/// autoDispose so the role is refetched whenever the watching page is reopened —
+/// otherwise a cached role survives logout/login or a role change and the wrong
+/// badge (e.g. OWNER for a non-owner) is shown.
+final myRoleInServerProvider =
+    FutureProvider.autoDispose.family<String, String>((ref, serverId) {
   return ref.read(serverMembersApiProvider).getMyRole(serverId);
 });

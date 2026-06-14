@@ -133,7 +133,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     _Row(
                       icon: LucideIcons.server,
                       label: 'Servers',
-                      badge: ref.watch(myServersProvider).servers.length.toString(),
                       onTap: () => context.push(Routes.settingsServers),
                     ),
                   ]),

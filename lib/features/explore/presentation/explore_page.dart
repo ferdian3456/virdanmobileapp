@@ -95,6 +95,11 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
     }
   }
 
+  Future<void> _refresh() async {
+    await ref.read(myServersProvider.notifier).fetch(force: true);
+    if (mounted) await _load(reset: true);
+  }
+
   void _openFeed(Post p) {
     final serverId = ref.read(myServersProvider).activeServerId;
     if (serverId == null) return;
@@ -134,7 +139,9 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
               ? const _GridSkeleton()
               : _posts.isEmpty
                   ? _EmptyState(onCreate: () => context.go(Routes.appCreate))
-                  : GridView.builder(
+                  : RefreshIndicator.adaptive(
+                      onRefresh: _refresh,
+                      child: GridView.builder(
                       controller: _scroll,
                       padding: const EdgeInsets.all(2),
                       gridDelegate:
@@ -214,6 +221,7 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
                           child: mediaWidget,
                         );
                       },
+                    ),
                     ),
         ),
       ],

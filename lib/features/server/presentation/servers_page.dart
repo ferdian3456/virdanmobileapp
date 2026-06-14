@@ -23,6 +23,14 @@ class ServersPage extends ConsumerStatefulWidget {
 class _ServersPageState extends ConsumerState<ServersPage> {
   final Set<String> _leaving = {};
 
+  Future<void> _refresh() async {
+    try {
+      await ref.read(myServersProvider.notifier).fetch(force: true);
+    } catch (e) {
+      if (mounted) showApiErrorToast(ref, e);
+    }
+  }
+
   Future<void> _onLeaveTap(Server server) async {
     String role;
     try {
@@ -33,23 +41,38 @@ class _ServersPageState extends ConsumerState<ServersPage> {
     }
     if (!mounted) return;
 
-    if (role == 'Owner') {
-      final go = await _showLeaveSheet(server.name, isOwner: true);
+    final isOwner = role == 'Owner';
+    final alone = server.memberCount <= 1;
+
+    // Owner with other members: must transfer ownership first. Send them to the
+    // member picker in transfer mode (tap a member -> transfer + leave).
+    if (isOwner && !alone) {
+      final go = await _showLeaveSheet(server.name, isOwner: true, ownerAlone: false);
       if (go == true && mounted) {
-        context.push(Routes.settingsServerMembers(server.id));
+        // Await the picker so the list reflects the transfer/leave on return.
+        await context.push(Routes.settingsServerMembers(server.id, transfer: true));
+        if (mounted) await ref.read(myServersProvider.notifier).fetch(force: true);
       }
       return;
     }
 
-    final confirmed = await _showLeaveSheet(server.name, isOwner: false);
+    // Non-owner leave, or sole-owner leave (the backend deletes the now-empty
+    // server in that case).
+    final confirmed = await _showLeaveSheet(
+      server.name,
+      isOwner: isOwner,
+      ownerAlone: isOwner && alone,
+    );
     if (confirmed != true || !mounted) return;
 
     setState(() => _leaving.add(server.id));
     try {
       await ref.read(serverMembersApiProvider).leaveServer(server.id);
       if (!mounted) return;
-      await ref.read(myServersProvider.notifier).fetch();
-      ref.read(toastControllerProvider.notifier).success(title: 'Left ${server.name}.');
+      await ref.read(myServersProvider.notifier).fetch(force: true);
+      ref.read(toastControllerProvider.notifier).success(
+            title: isOwner && alone ? '${server.name} deleted.' : 'Left ${server.name}.',
+          );
     } catch (e) {
       if (mounted) showApiErrorToast(ref, e);
     } finally {
@@ -57,7 +80,11 @@ class _ServersPageState extends ConsumerState<ServersPage> {
     }
   }
 
-  Future<bool?> _showLeaveSheet(String name, {required bool isOwner}) {
+  Future<bool?> _showLeaveSheet(
+    String name, {
+    required bool isOwner,
+    bool ownerAlone = false,
+  }) {
     return showModalBottomSheet<bool>(
       context: context,
       showDragHandle: true,
@@ -93,9 +120,11 @@ class _ServersPageState extends ConsumerState<ServersPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                isOwner
-                    ? 'You own this server. Leaving will prompt you to transfer ownership first.'
-                    : "You'll stop receiving posts and need to rejoin to access it again.",
+                ownerAlone
+                    ? "You're the only member. Leaving permanently deletes this server and all of its posts."
+                    : isOwner
+                        ? 'You own this server. Leaving will prompt you to transfer ownership first.'
+                        : "You'll stop receiving posts and need to rejoin to access it again.",
                 style: const TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 14,
@@ -116,9 +145,9 @@ class _ServersPageState extends ConsumerState<ServersPage> {
                     ),
                   ),
                   onPressed: () => Navigator.pop(ctx, true),
-                  child: const Text(
-                    'Leave server',
-                    style: TextStyle(
+                  child: Text(
+                    ownerAlone ? 'Delete server' : 'Leave server',
+                    style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -157,18 +186,27 @@ class _ServersPageState extends ConsumerState<ServersPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const VAppBar(title: 'Servers', leading: VAppBarLeading.back),
-      body: servers.isEmpty
-          ? const Center(
-              child: Text(
-                'You have not joined any server.',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 15,
-                  color: AppColors.textSecondary,
+      body: RefreshIndicator.adaptive(
+        onRefresh: _refresh,
+        child: servers.isEmpty
+          ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: const [
+                SizedBox(height: 160),
+                Center(
+                  child: Text(
+                    'You have not joined any server.',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 15,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 ),
-              ),
+              ],
             )
           : ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
               itemCount: servers.length + 1,
               separatorBuilder: (_, i) => i == 0
                   ? const SizedBox.shrink()
@@ -197,6 +235,7 @@ class _ServersPageState extends ConsumerState<ServersPage> {
                 );
               },
             ),
+      ),
     );
   }
 }
@@ -328,8 +367,7 @@ class _ServerAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final url = avatarUrl;
     if (url != null && url.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+      return ClipOval(
         child: Image.network(url, width: 48, height: 48, fit: BoxFit.cover),
       );
     }
@@ -337,7 +375,7 @@ class _ServerAvatar extends StatelessWidget {
     return Container(
       width: 48,
       height: 48,
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       alignment: Alignment.center,
       child: Text(
         name.isNotEmpty ? name[0].toUpperCase() : '?',

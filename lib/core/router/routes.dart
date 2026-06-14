@@ -32,7 +32,8 @@ abstract final class Routes {
   static const settingsTerms = '/settings/terms';
   static const settingsPrivacyPolicy = '/settings/privacy-policy';
   static const settingsServers = '/settings/servers';
-  static String settingsServerMembers(String id) => '/settings/servers/$id/members';
+  static String settingsServerMembers(String id, {bool transfer = false}) =>
+      '/settings/servers/$id/members${transfer ? '?transfer=true' : ''}';
 
   static const devSmoke = '/dev/smoke';
 

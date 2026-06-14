@@ -23,6 +23,9 @@ Future<void> showDeleteAccountSheet({
   return showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
+    // Size to content instead of the default 9/16-height cap, which clipped the
+    // last few pixels of the action button on shorter screens (RenderFlex overflow).
+    isScrollControlled: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xxl)),
     ),
@@ -126,12 +129,12 @@ class _DeleteAccountSheetState extends ConsumerState<_DeleteAccountSheet> {
                 children: [
                   _ConsequenceRow(
                     icon: LucideIcons.trash2,
-                    text: 'Servers you own are permanently deleted',
+                    text: 'Your posts and comments are permanently deleted',
                   ),
                   _ConsequenceDivider(),
                   _ConsequenceRow(
                     icon: LucideIcons.doorOpen,
-                    text: "You're removed from every other server",
+                    text: "You're removed from every server you joined",
                   ),
                   _ConsequenceDivider(),
                   _ConsequenceRow(

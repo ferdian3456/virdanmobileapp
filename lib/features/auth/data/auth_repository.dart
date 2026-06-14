@@ -43,30 +43,44 @@ class AuthRepository extends AsyncNotifier<AuthState> {
   }
 
   /// Persists tokens + fetches `me`. Called after signup-complete and login.
+  ///
+  /// On failure the state reverts to anonymous and the error is rethrown — NOT
+  /// swallowed into an error-state — so the caller's catch runs instead of the
+  /// page reading the call as a success.
   Future<void> applyTokensAndFetchUser(SessionTokens tokens) async {
     await _storage.writeTokens(
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
     );
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    try {
       final user = await _api.me();
-      return AuthAuthenticated(user: user);
-    });
+      state = AsyncData(AuthAuthenticated(user: user));
+    } catch (_) {
+      state = const AsyncData(AuthAnonymous());
+      rethrow;
+    }
     await _afterAuth();
   }
 
+  /// Logs in and fetches `me`. On failure the state reverts to anonymous and the
+  /// error is rethrown so the login page can surface it. Using AsyncValue.guard
+  /// here would swallow the error into the state and the page would show a false
+  /// "Login successful".
   Future<void> login({required String email, required String password}) async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    try {
       final tokens = await _api.login(email: email, password: password);
       await _storage.writeTokens(
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
       );
       final user = await _api.me();
-      return AuthAuthenticated(user: user);
-    });
+      state = AsyncData(AuthAuthenticated(user: user));
+    } catch (_) {
+      state = const AsyncData(AuthAnonymous());
+      rethrow;
+    }
     await _afterAuth();
   }
 

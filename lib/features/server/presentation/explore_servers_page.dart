@@ -77,6 +77,10 @@ class _ExploreServersPageState extends ConsumerState<ExploreServersPage> {
     }
   }
 
+  Future<void> _refresh() async {
+    await Future.wait([_loadCategories(), _loadServers(reset: true)]);
+  }
+
   Future<void> _loadServers({required bool reset}) async {
     if (reset) {
       if (_loading) return;
@@ -151,8 +155,11 @@ class _ExploreServersPageState extends ConsumerState<ExploreServersPage> {
           children: [
             _Header(onBack: () => context.pop()),
             Expanded(
-              child: CustomScrollView(
+              child: RefreshIndicator.adaptive(
+                onRefresh: _refresh,
+                child: CustomScrollView(
                 controller: _scroll,
+                physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
                   SliverToBoxAdapter(child: _Hero()),
                   SliverToBoxAdapter(child: _Search(controller: _search)),
@@ -201,6 +208,7 @@ class _ExploreServersPageState extends ConsumerState<ExploreServersPage> {
                     ),
                   const SliverToBoxAdapter(child: SizedBox(height: 24)),
                 ],
+                ),
               ),
             ),
           ],

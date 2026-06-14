@@ -114,7 +114,10 @@ class _UserProfilePageState extends ConsumerState<UserProfilePage> {
       appBar: VAppBar(title: title),
       body: SafeArea(
         bottom: false,
-        child: CustomScrollView(
+        child: RefreshIndicator.adaptive(
+          onRefresh: _load,
+          child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             if (_loadingProfile && profile == null)
               const SliverToBoxAdapter(child: _HeaderSkeleton())
@@ -168,6 +171,7 @@ class _UserProfilePageState extends ConsumerState<UserProfilePage> {
                 },
               ),
           ],
+        ),
         ),
       ),
     );
