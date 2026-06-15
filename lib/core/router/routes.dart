@@ -32,6 +32,7 @@ abstract final class Routes {
   static const settingsTerms = '/settings/terms';
   static const settingsPrivacyPolicy = '/settings/privacy-policy';
   static const settingsServers = '/settings/servers';
+  static const settingsPayments = '/settings/payments';
   static String settingsServerMembers(String id, {bool transfer = false}) =>
       '/settings/servers/$id/members${transfer ? '?transfer=true' : ''}';
 
@@ -39,6 +40,7 @@ abstract final class Routes {
 
   static String serverDetail(String id) => '/server/$id';
   static String serverSettings(String id) => '/server/$id/settings';
+  static String serverPlusCheckout(String id) => '/server/$id/plus/checkout';
   static String postDetail(String id) => '/posts/$id';
   static String postEdit(String id) => '/posts/$id/edit';
   static String postComments(String id) => '/posts/$id/comments';

@@ -5,9 +5,11 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/errors/show_api_error_toast.dart';
 import '../../../core/feedback/v_skeleton.dart';
+import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/util/avatar_color.dart';
+import '../../plus/presentation/widgets/plus_upgrade_card.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../post/data/post_api.dart';
@@ -61,6 +63,12 @@ class _ServerDetailPageState extends ConsumerState<ServerDetailPage> {
 
   Future<void> _refresh() async {
     await Future.wait([_loadServer(), _loadPosts(reset: true)]);
+  }
+
+  Future<void> _openCheckout() async {
+    await context.push(Routes.serverPlusCheckout(widget.serverId));
+    // Refresh server detail on return — plus may have just been activated.
+    if (mounted) await _loadServer();
   }
 
   Future<void> _loadServer() async {
@@ -148,6 +156,11 @@ class _ServerDetailPageState extends ConsumerState<ServerDetailPage> {
                           slivers: [
                             SliverToBoxAdapter(child: _Banner(server: server)),
                             SliverToBoxAdapter(child: _Info(server: server)),
+                            SliverToBoxAdapter(
+                              child: server.plusActive
+                                  ? PlusActiveBanner(expiresAt: server.plusExpiresAt)
+                                  : PlusUpgradeCard(onTap: _openCheckout),
+                            ),
                             SliverToBoxAdapter(
                               child: _Tabs(
                                 active: _activeTab,

@@ -135,6 +135,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       label: 'Servers',
                       onTap: () => context.push(Routes.settingsServers),
                     ),
+                    _Row(
+                      icon: LucideIcons.creditCard,
+                      label: 'Payment',
+                      onTap: () => context.push(Routes.settingsPayments),
+                    ),
                   ]),
                   _Section(title: 'PREFERENCES', children: const [
                     _Row(

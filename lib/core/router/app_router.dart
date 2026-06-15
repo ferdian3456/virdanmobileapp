@@ -15,6 +15,8 @@ import '../../features/chat/presentation/conversation_page.dart';
 import '../../features/explore/presentation/explore_page.dart';
 import '../../features/notifications/presentation/notifications_page.dart';
 import '../../features/onboarding/presentation/onboarding_server_choice_page.dart';
+import '../../features/plus/presentation/checkout_page.dart';
+import '../../features/plus/presentation/payment_history_page.dart';
 import '../../features/post/domain/post.dart';
 import '../../features/post/presentation/comments_page.dart';
 import '../../features/post/presentation/create_post_page.dart';
@@ -182,6 +184,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             EditServerSettingsPage(serverId: state.pathParameters['id']!),
       ),
       GoRoute(
+        path: '/server/:id/plus/checkout',
+        builder: (_, state) =>
+            CheckoutPage(serverId: state.pathParameters['id']!),
+      ),
+      GoRoute(
         path: '/posts/:id',
         builder: (_, state) => PostDetailPage(postId: state.pathParameters['id']!),
       ),
@@ -230,6 +237,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.settingsServers,
         builder: (_, _) => const ServersPage(),
+      ),
+      GoRoute(
+        path: Routes.settingsPayments,
+        builder: (_, _) => const PaymentHistoryPage(),
       ),
       GoRoute(
         path: '/settings/servers/:serverId/members',

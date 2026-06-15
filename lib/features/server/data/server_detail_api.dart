@@ -18,10 +18,13 @@ class ServerDetail {
     this.createdBy,
     this.memberCount = 0,
     this.isPrivate = false,
+    this.plusActive = false,
+    this.plusExpiresAt,
   });
 
   factory ServerDetail.fromJson(Map<String, dynamic> json) {
     final settings = json['settings'] as Map<String, dynamic>?;
+    final plusExpires = json['plusExpiresAt'] as String?;
     return ServerDetail(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -33,6 +36,8 @@ class ServerDetail {
       createdBy: json['createdBy'] as String?,
       memberCount: (json['memberCount'] as num?)?.toInt() ?? 0,
       isPrivate: (settings?['isPrivate'] as bool?) ?? false,
+      plusActive: (json['plusActive'] as bool?) ?? false,
+      plusExpiresAt: plusExpires != null ? DateTime.tryParse(plusExpires) : null,
     );
   }
 
@@ -46,6 +51,8 @@ class ServerDetail {
   final String? createdBy;
   final int memberCount;
   final bool isPrivate;
+  final bool plusActive;
+  final DateTime? plusExpiresAt;
 }
 
 @immutable
