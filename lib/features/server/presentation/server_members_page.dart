@@ -11,6 +11,7 @@ import '../../../core/util/avatar_color.dart';
 import '../../../core/widgets/v_app_bar.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_state.dart';
+import '../../plus/presentation/widgets/plus_upgrade_card.dart';
 import '../data/server_detail_api.dart';
 import '../data/server_members_api.dart';
 import '../data/server_repository.dart';
@@ -73,6 +74,12 @@ class _ServerMembersPageState extends ConsumerState<ServerMembersPage> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _openCheckout() async {
+    await context.push(Routes.serverPlusCheckout(widget.serverId));
+    // Plus may have just been activated — reload to refresh the card/banner.
+    if (mounted) await _load();
   }
 
   Future<void> _loadMore() async {
@@ -207,6 +214,7 @@ class _ServerMembersPageState extends ConsumerState<ServerMembersPage> {
                       onEdit: _myRole == 'Owner'
                           ? () => context.push(Routes.serverSettings(widget.serverId))
                           : null,
+                      onUpgrade: _openCheckout,
                     ),
                   ),
 
@@ -354,11 +362,17 @@ class _ServerMembersPageState extends ConsumerState<ServerMembersPage> {
 }
 
 class _ServerHeader extends StatelessWidget {
-  const _ServerHeader({this.detail, required this.myRole, this.onEdit});
+  const _ServerHeader({
+    this.detail,
+    required this.myRole,
+    this.onEdit,
+    this.onUpgrade,
+  });
 
   final ServerDetail? detail;
   final String myRole;
   final VoidCallback? onEdit;
+  final VoidCallback? onUpgrade;
 
   @override
   Widget build(BuildContext context) {
@@ -476,6 +490,12 @@ class _ServerHeader extends StatelessWidget {
           ),
 
         const SizedBox(height: 16),
+
+        // Virdan Plus — any member can upgrade this server (active hides the CTA).
+        if (d != null && d.plusActive)
+          PlusActiveBanner(expiresAt: d.plusExpiresAt)
+        else if (d != null && onUpgrade != null)
+          PlusUpgradeCard(onTap: onUpgrade!),
 
         // Info banner (owner/admin only)
         if (myRole == 'Owner' || myRole == 'Admin')
