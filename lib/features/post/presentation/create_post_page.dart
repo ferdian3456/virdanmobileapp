@@ -16,6 +16,8 @@ import '../../../core/feedback/toast/toast_controller.dart';
 import '../../../core/http/dio_client.dart';
 import '../../../core/router/routes.dart';
 import '../../../core/theme/tokens.dart';
+import '../../plus/data/plus_api.dart';
+import '../../plus/domain/plus_limits.dart';
 import '../../server/data/server_repository.dart';
 import '../data/server_feed_provider.dart';
 
@@ -488,6 +490,18 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
         activeId != null;
   }
 
+  /// Returns the max video size (bytes) allowed for [serverId] based on its
+  /// Virdan Plus status. On any error, falls back to the free limit so we never
+  /// block an upload on a status-fetch failure — the backend still enforces.
+  Future<int> _serverVideoLimit(String serverId) async {
+    try {
+      final status = await ref.read(plusApiProvider).getStatus(serverId);
+      return status.active ? kPlusVideoMaxBytes : kFreeVideoMaxBytes;
+    } catch (_) {
+      return kFreeVideoMaxBytes;
+    }
+  }
+
   Future<void> _submit() async {
     if (!_canPost || _isUploading) return;
     final serverId = ref.read(myServersProvider).activeServerId;
@@ -496,6 +510,24 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
           .read(toastControllerProvider.notifier)
           .error(title: 'No active server selected.');
       return;
+    }
+    // Pre-validate video size against this server's plan to avoid a wasted
+    // upload. Only videos can be large; cropped images are always <=1080px JPEG.
+    // The backend still enforces the limit (this is just an early reject).
+    if (_videoFile != null) {
+      final size = await _videoFile!.length();
+      final maxVideo = await _serverVideoLimit(serverId);
+      if (size > maxVideo) {
+        if (!mounted) return;
+        final isFreeLimit = maxVideo == kFreeVideoMaxBytes;
+        ref.read(toastControllerProvider.notifier).error(
+              title: 'Video too large',
+              caption: isFreeLimit
+                  ? 'Max ${megabytes(maxVideo)} MB. Upgrade to Virdan Plus to upload up to ${megabytes(kPlusVideoMaxBytes)} MB.'
+                  : 'Max ${megabytes(maxVideo)} MB per video.',
+            );
+        return;
+      }
     }
     setState(() => _isUploading = true);
     try {
