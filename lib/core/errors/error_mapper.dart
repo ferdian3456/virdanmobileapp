@@ -23,7 +23,8 @@ AppError mapException(Object error, [StackTrace? stack]) {
     final response = error.response;
     if (response != null) {
       final body = response.data;
-      String message = 'Permintaan gagal';
+      final statusCode = response.statusCode ?? 0;
+      String message = 'Request failed (HTTP $statusCode)';
       String? code;
       String? param;
 
@@ -32,11 +33,13 @@ AppError mapException(Object error, [StackTrace? stack]) {
         message = (inner['message'] as String?) ?? message;
         code = inner['code'] as String?;
         param = inner['param'] as String?;
+      } else if (body is String && body.isNotEmpty) {
+        message = body;
       }
 
       return ApiError(
         message: message,
-        statusCode: response.statusCode ?? 0,
+        statusCode: statusCode,
         code: code,
         param: param,
         cause: error,
