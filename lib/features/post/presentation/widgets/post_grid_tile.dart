@@ -26,13 +26,17 @@ class PostGridTile extends StatelessWidget {
         errorBuilder: (_, _, _) => const _Fallback(),
       );
     } else if (hasVideoThumb) {
+      final mirror = post.mirrored == true;
       media = Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(
-            post.thumbnailUrl!,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => const _Fallback(),
+          Transform.flip(
+            flipX: mirror,
+            child: Image.network(
+              post.thumbnailUrl!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => const _Fallback(),
+            ),
           ),
           const Positioned(top: 8, right: 8, child: _PlayBadge()),
         ],

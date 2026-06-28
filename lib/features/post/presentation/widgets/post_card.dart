@@ -259,7 +259,7 @@ class _PostMediaWidgetState extends State<PostMediaWidget> {
   @override
   Widget build(BuildContext context) {
     final ratio = widget.post.mediaAspectRatio;
-    final clampedRatio = ratio?.clamp(4 / 5, 1.91) ?? (4 / 5);
+    final clampedRatio = ratio?.clamp(3 / 4, 1.91) ?? (3 / 4);
     final mirror = widget.post.mirrored == true;
 
     if (widget.post.isVideo) {
@@ -505,7 +505,19 @@ class _FeedVideoPlayerState extends State<FeedVideoPlayer> {
         alignment: Alignment.center,
         fit: StackFit.expand,
         children: [
-          Transform.flip(flipX: widget.mirror, child: VideoPlayer(_controller)),
+          // FittedBox+SizedBox ensures the video crops (BoxFit.cover) rather than
+          // stretches when the native video ratio differs from the feed container ratio.
+          Transform.flip(
+            flipX: widget.mirror,
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: _controller.value.size.width,
+                height: _controller.value.size.height,
+                child: VideoPlayer(_controller),
+              ),
+            ),
+          ),
           if (!_controller.value.isPlaying)
             Center(
               child: Container(

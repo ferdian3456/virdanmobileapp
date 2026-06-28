@@ -34,14 +34,15 @@ class _Aspect {
   final double? ratio; // width / height; null = free
 }
 
-// Only aspects within the feed's displayable range [MIN 4:5, MAX 1.91] are
-// offered. The feed (PostMediaWidget) clamps ratio to that band and renders
-// BoxFit.cover, so cropping to a ratio outside it would get re-cropped in the
-// feed — breaking what-you-see-is-what-you-get. 9:16 and free are intentionally
-// excluded for that reason.
+// Feed displayable range: [3:4, 1.91]. Aspects outside this range get
+// re-cropped by the feed (BoxFit.cover), breaking WYSIWYG.
+// 'orig' uses the image's actual ratio — WYSIWYG for photos within range,
+// warned in the detail step for photos outside it.
 const _aspects = <_Aspect>[
-  _Aspect('1:1', '1:1', 1),
+  _Aspect('orig', 'Orig', null), // null = computed from image at runtime
+  _Aspect('3:4', '3:4', 3 / 4),
   _Aspect('4:5', '4:5', 4 / 5),
+  _Aspect('1:1', '1:1', 1),
   _Aspect('16:9', '16:9', 16 / 9),
 ];
 
@@ -63,7 +64,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
   Uint8List? _sourceBytes;
   img.Image? _decoded;
 
-  String _aspectId = '1:1';
+  String _aspectId = 'orig';
   double _zoom = 1.0;
   Offset _translate = Offset.zero;
   double _stageW = 0;
@@ -375,14 +376,24 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
   /* ─── Step 2 layout math ─── */
 
   double? _aspectRatio() {
-    final a = _aspects.firstWhere((x) => x.id == _aspectId);
-    return a.ratio;
+    if (_aspectId == 'orig') {
+      final dec = _decoded;
+      if (dec == null || dec.height == 0) return null;
+      return dec.width / dec.height;
+    }
+    return _aspects.firstWhere((x) => x.id == _aspectId).ratio;
   }
 
-  void _recalcStage(double parentWidth) {
+  // maxHeight: when provided (orig mode), constrains the frame so a very tall
+  // image doesn't overflow the available crop area.
+  void _recalcStage(double parentWidth, {double? maxHeight}) {
     final ratio = _aspectRatio();
-    final fw = parentWidth;
-    final fh = ratio == null ? parentWidth : (parentWidth / ratio);
+    double fw = parentWidth;
+    double fh = ratio == null ? parentWidth : (parentWidth / ratio);
+    if (maxHeight != null && fh > maxHeight) {
+      fh = maxHeight;
+      fw = ratio != null ? maxHeight * ratio : parentWidth;
+    }
     if (_stageW == fw && _frameW == fw && _frameH == fh) return;
     _stageW = fw;
     _frameW = fw;
@@ -693,7 +704,10 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
             child: Center(
               child: LayoutBuilder(
                 builder: (context, c) {
-                  _recalcStage(c.maxWidth);
+                  _recalcStage(
+                    c.maxWidth,
+                    maxHeight: _aspectId == 'orig' ? c.maxHeight : null,
+                  );
                   final src = _sourceBytes;
                   if (src == null) return const SizedBox.shrink();
                   return SizedBox(
@@ -764,7 +778,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
                       // Mirror the feed exactly: same clamp + BoxFit.cover so
                       // the preview is what-you-see-is-what-you-get.
                       aspectRatio: _croppedH > 0
-                          ? (_croppedW / _croppedH).clamp(4 / 5, 1.91).toDouble()
+                          ? (_croppedW / _croppedH).clamp(3 / 4, 1.91).toDouble()
                           : 1,
                       child: Image.memory(_croppedBytes!, fit: BoxFit.cover),
                     )
@@ -777,6 +791,39 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
             ),
           ),
         ),
+        if (_croppedW > 0 && _croppedH > 0) ...[
+          const SizedBox(height: 8),
+          Builder(builder: (context) {
+            final ratio = _croppedW / _croppedH;
+            if (ratio < 3 / 4) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'Photo is taller than 3:4. Feed will crop the top and bottom slightly.',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    color: Color(0xFFE67700),
+                  ),
+                ),
+              );
+            }
+            if (ratio > 1.91) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'Photo is wider than 1.91:1. Feed will crop the sides slightly.',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    color: Color(0xFFE67700),
+                  ),
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          }),
+        ],
         const SizedBox(height: 16),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
