@@ -35,6 +35,9 @@ class SignupController extends Notifier<SignupSession> {
   /// Step 1 — sends OTP to [email]. Sets sessionId on success.
   Future<void> start(String email) async {
     final normalized = email.toLowerCase().trim();
+    await _storage.deleteSignupSessionId();
+    await _storage.deleteOtpExpiresAt();
+    state = SignupSession.empty();
     final result = await _api.startSignup(normalized);
     await _storage.writeSignupSessionId(result.sessionId);
     await _storage.writeOtpExpiresAt(result.otpExpiresAt);
