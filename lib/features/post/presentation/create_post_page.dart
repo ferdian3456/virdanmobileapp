@@ -163,7 +163,11 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage>
       final isVideoMode = _tab == SourceTab.video;
       final ctrl = CameraController(
         desc,
-        ResolutionPreset.high,
+        // ponytail: max ≈ sensor's native/highest resolution, which is 4:3 on
+        // virtually every phone — matches the stock camera app so in-app
+        // photos don't trip the "taller than 3:4" feed-crop warning the way
+        // ResolutionPreset.high's 16:9 sensor mode did.
+        ResolutionPreset.max,
         enableAudio: isVideoMode,
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
@@ -1423,7 +1427,12 @@ class _PhotoStageState extends State<_PhotoStage> {
       color: Colors.black,
       child: Stack(
         children: [
-          // Fill stage with cover crop — match Quasar object-fit:cover.
+          // ponytail: contain, not cover — takePicture() captures the full
+          // sensor FOV regardless of what's on screen, so cropping the
+          // preview to fill a taller device screen (cover) made the live
+          // view look zoomed-in versus the actual (wider) captured photo.
+          // Showing the full FOV letterboxed keeps the viewfinder WYSIWYG,
+          // at the cost of black bars above/below on tall screens.
           if (ready)
             Positioned.fill(
               child: LayoutBuilder(
@@ -1434,12 +1443,9 @@ class _PhotoStageState extends State<_PhotoStage> {
                   final preview = ctrl.value.previewSize;
                   final pw = preview?.height ?? c.maxWidth;
                   final ph = preview?.width ?? c.maxHeight;
-                  return FittedBox(
-                    fit: BoxFit.cover,
-                    clipBehavior: Clip.hardEdge,
-                    child: SizedBox(
-                      width: pw,
-                      height: ph,
+                  return Center(
+                    child: AspectRatio(
+                      aspectRatio: pw / ph,
                       child: CameraPreview(ctrl),
                     ),
                   );

@@ -39,6 +39,53 @@ class PlusOrder {
   final DateTime? plusExpiresAt;
 }
 
+/// Full detail of a single order. Maps `GET /me/plus-orders/:orderId`.
+@immutable
+class PlusOrderDetail {
+  const PlusOrderDetail({
+    required this.id,
+    required this.serverId,
+    required this.serverName,
+    required this.referenceId,
+    required this.baseIdr,
+    required this.taxIdr,
+    required this.totalIdr,
+    required this.status,
+    required this.createdAt,
+    this.paidAt,
+    this.plusExpiresAt,
+  });
+
+  factory PlusOrderDetail.fromJson(Map<String, dynamic> json) {
+    DateTime? parse(String? v) => v != null ? DateTime.tryParse(v) : null;
+    return PlusOrderDetail(
+      id: json['id'] as String? ?? '',
+      serverId: json['serverId'] as String? ?? '',
+      serverName: json['serverName'] as String? ?? '',
+      referenceId: json['referenceId'] as String? ?? '',
+      baseIdr: (json['baseIdr'] as num?)?.toInt() ?? 0,
+      taxIdr: (json['taxIdr'] as num?)?.toInt() ?? 0,
+      totalIdr: (json['totalIdr'] as num?)?.toInt() ?? 0,
+      status: json['status'] as String? ?? '',
+      createdAt: parse(json['createdAt'] as String?) ?? DateTime.now(),
+      paidAt: parse(json['paidAt'] as String?),
+      plusExpiresAt: parse(json['plusExpiresAt'] as String?),
+    );
+  }
+
+  final String id;
+  final String serverId;
+  final String serverName;
+  final String referenceId;
+  final int baseIdr;
+  final int taxIdr;
+  final int totalIdr;
+  final String status;
+  final DateTime createdAt;
+  final DateTime? paidAt;
+  final DateTime? plusExpiresAt;
+}
+
 /// A page of payment history (cursor pagination).
 @immutable
 class PlusOrderPage {

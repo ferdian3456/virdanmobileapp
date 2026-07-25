@@ -37,6 +37,11 @@ class PlusApi {
     );
     return PlusOrderPage.fromJson(res.data ?? const {});
   }
+
+  Future<PlusOrderDetail> getOrder(String orderId) async {
+    final res = await _dio.get<Map<String, dynamic>>('/me/plus-orders/$orderId');
+    return PlusOrderDetail.fromJson(res.data ?? const {});
+  }
 }
 
 final plusApiProvider = Provider<PlusApi>((ref) {

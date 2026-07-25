@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_custom_tabs/flutter_custom_tabs.dart' as custom_tabs;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../../core/errors/show_api_error_toast.dart';
 import '../../../core/feedback/toast/toast_controller.dart';
@@ -15,9 +18,16 @@ import '../data/plus_providers.dart';
 import '../domain/plus_format.dart';
 import '../domain/plus_status.dart';
 
+// Matches XENDIT_SUCCESS_URL / XENDIT_CANCEL_URL path suffixes (see
+// services/payment/xendit.go) — used to detect when the embedded payment
+// page has finished, regardless of environment domain.
+const _successUrlSuffix = '/payment/success';
+const _cancelUrlSuffix = '/payment/cancel';
+
 /// Checkout for a server's Virdan Plus upgrade. Shows the price breakdown
-/// (from `GET /plus`), starts a Xendit payment session on "Pay Now", opens the
-/// hosted payment page in a custom tab, then polls status when the app resumes.
+/// (from `GET /plus`), starts a Xendit payment session on "Pay Now", then
+/// renders the hosted payment page in an embedded WebView on this same page
+/// so it feels native instead of opening a separate browser.
 class CheckoutPage extends ConsumerStatefulWidget {
   const CheckoutPage({super.key, required this.serverId});
 
@@ -27,33 +37,11 @@ class CheckoutPage extends ConsumerStatefulWidget {
   ConsumerState<CheckoutPage> createState() => _CheckoutPageState();
 }
 
-class _CheckoutPageState extends ConsumerState<CheckoutPage>
-    with WidgetsBindingObserver {
+class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   bool _starting = false;
   bool _polling = false;
-  // True after the hosted payment page has been opened; the next app-resume
-  // triggers status polling.
-  bool _awaitingReturn = false;
   bool _completed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && _awaitingReturn && !_polling) {
-      _pollStatus();
-    }
-  }
+  WebViewController? _webViewController;
 
   Future<void> _payNow(PlusStatus status) async {
     if (_starting) return;
@@ -66,27 +54,50 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage>
         showApiErrorToast(ref, StateError('Empty payment URL'));
         return;
       }
-      _awaitingReturn = true;
-      await custom_tabs.launchUrl(
-        Uri.parse(result.paymentUrl),
-        customTabsOptions: custom_tabs.CustomTabsOptions(
-          colorSchemes: custom_tabs.CustomTabsColorSchemes.defaults(
-            toolbarColor: AppColors.primary,
-          ),
-          showTitle: true,
-        ),
-        safariVCOptions: const custom_tabs.SafariViewControllerOptions(
-          barCollapsingEnabled: true,
-        ),
-      );
+      final controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setNavigationDelegate(
+          NavigationDelegate(onNavigationRequest: _onNavigationRequest),
+        )
+        ..loadRequest(Uri.parse(result.paymentUrl));
+      setState(() => _webViewController = controller);
     } catch (e) {
       if (!mounted) return;
-      _awaitingReturn = false;
       // Mutation — no retry button (avoid creating duplicate orders).
       showApiErrorToast(ref, e);
     } finally {
       if (mounted) setState(() => _starting = false);
     }
+  }
+
+  /// Intercepts navigation inside the embedded payment page: detects the
+  /// Xendit success/cancel redirect, and hands off any non-http(s) scheme
+  /// (e.g. `gojek://`, `ovo://` e-wallet deep links) to the OS instead of
+  /// letting the WebView fail to load it.
+  FutureOr<NavigationDecision> _onNavigationRequest(NavigationRequest request) {
+    final uri = Uri.tryParse(request.url);
+    if (uri == null) return NavigationDecision.navigate;
+
+    if (uri.path.endsWith(_successUrlSuffix)) {
+      setState(() => _webViewController = null);
+      _pollStatus();
+      return NavigationDecision.prevent;
+    }
+    if (uri.path.endsWith(_cancelUrlSuffix)) {
+      setState(() => _webViewController = null);
+      return NavigationDecision.prevent;
+    }
+    if (uri.scheme != 'http' && uri.scheme != 'https') {
+      unawaited(
+        launchUrl(uri, mode: LaunchMode.externalApplication).catchError((_) {
+          // No app installed to handle this deep link — nothing to recover;
+          // the user stays on the payment page and can pick another method.
+          return false;
+        }),
+      );
+      return NavigationDecision.prevent;
+    }
+    return NavigationDecision.navigate;
   }
 
   /// Polls the status endpoint until the webhook grants Plus or we time out.
@@ -104,7 +115,6 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage>
           final status = await ref.read(plusApiProvider).getStatus(widget.serverId);
           if (status.active) {
             _completed = true;
-            _awaitingReturn = false;
             if (!mounted) return;
             ref.invalidate(plusStatusProvider(widget.serverId));
             ref.read(toastControllerProvider.notifier).success(
@@ -132,6 +142,16 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage>
   @override
   Widget build(BuildContext context) {
     final statusAsync = ref.watch(plusStatusProvider(widget.serverId));
+    if (_webViewController != null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: VAppBar(
+          title: 'Payment',
+          onLeadingTap: () => setState(() => _webViewController = null),
+        ),
+        body: WebViewWidget(controller: _webViewController!),
+      );
+    }
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const VAppBar(title: 'Checkout'),
